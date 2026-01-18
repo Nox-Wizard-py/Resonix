@@ -75,9 +75,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("keystore/release.keystore")
-            storePassword = System.getenv("STORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+            storePassword = "Resonix2026"
+            keyAlias = "resonix"
+            keyPassword = "Resonix2026"
         }
         getByName("debug") {
             keyAlias = "androiddebugkey"
