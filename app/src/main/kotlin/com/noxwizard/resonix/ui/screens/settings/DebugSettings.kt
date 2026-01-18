@@ -1,0 +1,527 @@
+package com.noxwizard.resonix.ui.screens.settings
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import com.noxwizard.resonix.R
+import com.noxwizard.resonix.ui.component.PreferenceEntry
+import com.noxwizard.resonix.utils.rememberPreference
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager
+import androidx.compose.runtime.collectAsState
+import com.noxwizard.resonix.utils.makeTimeString
+import com.noxwizard.resonix.ui.component.IconButton
+import com.noxwizard.resonix.ui.utils.backToMain
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+import androidx.compose.foundation.background
+import androidx.compose.ui.unit.Dp
+import com.noxwizard.resonix.utils.GlobalLog
+import com.noxwizard.resonix.LocalPlayerConnection
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import kotlin.math.roundToInt
+
+// single GlobalLog import above
+@OptIn(ExperimentalMaterial3Api::class)
+
+@Composable
+fun DebugSettings(
+    navController: NavController
+) {
+    // Developer preferences
+    val (showDevDebug, onShowDevDebugChange) = rememberPreference(
+        key = booleanPreferencesKey("dev_show_discord_debug"),
+        defaultValue = false
+    )
+    
+    val (showNerdStats, onShowNerdStatsChange) = rememberPreference(
+        key = booleanPreferencesKey("dev_show_nerd_stats"),
+        defaultValue = false
+    )
+    
+    val playerConnection = LocalPlayerConnection.current
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.experiment_settings)) },
+                navigationIcon = {
+                    IconButton(onClick = navController::navigateUp, onLongClick = navController::backToMain) {
+                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
+                    }
+                }
+            )
+        }
+    ) { innerPadding: androidx.compose.foundation.layout.PaddingValues ->
+        Column(Modifier.padding(innerPadding).padding(16.dp).verticalScroll(rememberScrollState())) {
+            PreferenceEntry(
+                title = { Text(stringResource(R.string.show_discord_debug_ui)) },
+                description = stringResource(R.string.enable_discord_debug_lines),
+                icon = { Icon(painterResource(R.drawable.info), null) },
+                trailingContent = {
+                    Switch(checked = showDevDebug, onCheckedChange = onShowDevDebugChange)
+                }
+            )
+            
+            PreferenceEntry(
+                title = { Text(stringResource(R.string.show_nerd_stats)) },
+                description = stringResource(R.string.description_show_nerd_stats),
+                icon = { Icon(painterResource(R.drawable.info), null) },
+                trailingContent = {
+                    Switch(checked = showNerdStats, onCheckedChange = onShowNerdStatsChange)
+                }
+            )
+            
+            val (showCodecOnPlayer, onShowCodecOnPlayerChange) = rememberPreference(
+                key = booleanPreferencesKey("show_codec_on_player"),
+                defaultValue = false
+            )
+            
+            PreferenceEntry(
+                title = { Text(stringResource(R.string.display_codec_on_player)) },
+                description = stringResource(R.string.description_display_codec_on_player),
+                icon = { Icon(painterResource(R.drawable.info), null) },
+                trailingContent = {
+                    Switch(checked = showCodecOnPlayer, onCheckedChange = onShowCodecOnPlayerChange)
+                }
+            )
+
+            if (showDevDebug) {
+                // Show manager status lines (observe flows so UI updates)
+                val lastStartTs: Long? by DiscordPresenceManager.lastRpcStartTimeFlow.collectAsState(initial = null)
+                val lastEndTs: Long? by DiscordPresenceManager.lastRpcEndTimeFlow.collectAsState(initial = null)
+                val lastStart: String = lastStartTs?.let { makeTimeString(it) } ?: "-"
+                val lastEnd: String = lastEndTs?.let { makeTimeString(it) } ?: "-"
+
+                PreferenceEntry(
+                    title = { Text(if (DiscordPresenceManager.isRunning()) stringResource(R.string.presence_manager_running) else stringResource(R.string.presence_manager_stopped)) },
+                    description = stringResource(id = R.string.debug_last_rpc_times, lastStart, lastEnd),
+                    icon = { Icon(painterResource(R.drawable.info), null) }
+                )
+
+                // Log panel with filters, search, and share — Logra-inspired UI
+                val allLogs by GlobalLog.logs.collectAsState()
+                val coroutineScope = rememberCoroutineScope()
+                val context = LocalContext.current
+                val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+
+                val filterMode = remember { mutableStateOf("discord-only") }
+                val query = remember { mutableStateOf("") }
+
+                val selectedLevels = remember {
+                    androidx.compose.runtime.mutableStateOf(
+                        setOf(android.util.Log.INFO, android.util.Log.WARN, android.util.Log.ERROR)
+                    )
+                }
+
+                val filtered = remember(allLogs, filterMode.value, query.value, selectedLevels.value) {
+                    allLogs.filter { entry ->
+                        val tagMatch = when (filterMode.value) {
+                            "discord-only" -> (entry.tag?.contains("DiscordRPC", true) == true) || (entry.tag?.contains("DiscordPresenceManager", true) == true) || entry.message.contains("DiscordPresenceManager") || entry.message.contains("DiscordRPC")
+                            else -> true
+                        }
+                        val q = query.value.trim()
+                        val textMatch = q.isEmpty() || entry.message.contains(q, ignoreCase = true) || (entry.tag?.contains(q, ignoreCase = true) == true)
+                        // Also respect selected levels
+                        val levelMatch = selectedLevels.value.contains(entry.level)
+                        tagMatch && textMatch && levelMatch
+                    }
+                }
+
+                // Lazy list state for auto-scroll
+                val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 500.dp)
+                        .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(14.dp))
+                ) {
+                    Column(Modifier.padding(8.dp)) {
+                        // Top action row: left = filters, right = sort dropdown
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { filterMode.value = if (filterMode.value == "all") "discord-only" else "all" }) {
+                                        Text(if (filterMode.value == "all") "All logs" else "Discord-only")
+                                    }
+                                    TextButton(onClick = { GlobalLog.clear() }, enabled = filtered.isNotEmpty()) { Text("Clear") }
+                                    TextButton(onClick = {
+                                        if (filtered.isEmpty()) return@TextButton
+                                        // Share filtered logs
+                                        val sb = StringBuilder()
+                                        filtered.forEach { sb.appendLine(GlobalLog.format(it)) }
+                                        val send = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, sb.toString())
+                                        }
+                                        context.startActivity(Intent.createChooser(send, "Share logs"))
+                                    }, enabled = filtered.isNotEmpty()) { Text("Share") }
+                            }
+
+                            // Sort / level-picker dropdown anchored to an IconButton on the right
+                            val levelsMenuExpanded = remember { mutableStateOf(false) }
+                            // local reference to the mutable set for convenience
+                            val selLevels = selectedLevels
+
+                            Column {
+                                androidx.compose.material3.IconButton(onClick = { levelsMenuExpanded.value = true }) {
+                                    Icon(painter = painterResource(R.drawable.filter_alt), contentDescription = stringResource(R.string.filter_levels))
+                                }
+
+                                DropdownMenu(expanded = levelsMenuExpanded.value, onDismissRequest = { levelsMenuExpanded.value = false }) {
+                                        // Helper to create an item for each level
+                                        @Composable
+                                        fun levelItem(label: String, level: Int) {
+                                            DropdownMenuItem(onClick = {
+                                                val current = selLevels.value.toMutableSet()
+                                                if (current.contains(level)) current.remove(level) else current.add(level)
+                                                selLevels.value = current
+                                            }, text = {
+                                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                                    Checkbox(checked = selLevels.value.contains(level), onCheckedChange = {
+                                                        val current = selLevels.value.toMutableSet()
+                                                        if (it) current.add(level) else current.remove(level)
+                                                        selLevels.value = current
+                                                    })
+                                                    Spacer(modifier = Modifier.padding(6.dp))
+                                                    Text(label)
+                                                }
+                                            })
+                                        }
+
+                                    levelItem("Verbose", android.util.Log.VERBOSE)
+                                    levelItem("Debug", android.util.Log.DEBUG)
+                                    levelItem("Info", android.util.Log.INFO)
+                                    levelItem("Warn", android.util.Log.WARN)
+                                    levelItem("Error", android.util.Log.ERROR)
+
+                                    // Reset to default
+                                    DropdownMenuItem(onClick = {
+                                        selLevels.value = setOf(android.util.Log.INFO, android.util.Log.WARN, android.util.Log.ERROR)
+                                        levelsMenuExpanded.value = false
+                                    }, text = { Text(stringResource(R.string.reset_to_default_levels)) })
+                                }
+                            }
+                        }
+
+                        // Log list
+                        // If no logs after filtering, show centered placeholder and disable actions
+                        if (filtered.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 150.dp)
+                                    .padding(top = 16.dp),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                    // Fade-in animation for the image
+                                    val visible = remember { androidx.compose.runtime.mutableStateOf(false) }
+                                    LaunchedEffect(Unit) { visible.value = true }
+
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = visible.value,
+                                        enter = androidx.compose.animation.fadeIn(
+                                            animationSpec = androidx.compose.animation.core.tween(durationMillis = 350)
+                                        )
+                                    ) {
+                                        Image(
+                                            painter = painterResource(R.drawable.anime_blank),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(140.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    Text(
+                                        text = stringResource(R.string.no_logs),
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .nestedScroll(rememberNestedScrollInteropConnection())
+                                .padding(top = 8.dp)
+                        ) {
+                            itemsIndexed(filtered) { index, entry ->
+                                val color = when (entry.level) {
+                                    android.util.Log.ERROR -> MaterialTheme.colorScheme.error
+                                    android.util.Log.WARN -> MaterialTheme.colorScheme.tertiary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+
+                                // Single-line header with badge, timestamp and tag
+                                val header = buildString {
+                                    append("[")
+                                    append(android.text.format.DateFormat.format("MM-dd HH:mm:ss", entry.time))
+                                    append("] ")
+                                    if (!entry.tag.isNullOrBlank()) {
+                                        append(entry.tag)
+                                    }
+                                }
+
+                                // Expand state — track this row's expanded state
+                                val (isExpanded, setExpanded) = remember { androidx.compose.runtime.mutableStateOf(false) }
+
+                                Column(modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp)
+                                ) {
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                            // Level badge
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(color = color, shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = when (entry.level) {
+                                                        android.util.Log.VERBOSE -> "V"
+                                                        android.util.Log.ERROR -> "E"
+                                                        android.util.Log.WARN -> "W"
+                                                        android.util.Log.INFO -> "I"
+                                                        else -> "D"
+                                                    },
+                                                    color = MaterialTheme.colorScheme.onPrimary,
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            }
+
+                                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(4.dp))
+
+                                            Text(header, style = MaterialTheme.typography.bodyMedium)
+                                        }
+
+                                        // Clicking the row toggles expansion. Copy on long-press only (hold).
+                                        Spacer(modifier = Modifier.padding(4.dp))
+                                    }
+
+                                    // Message body (collapsed vs expanded). Use combinedClickable to support long-press copy.
+                                    Text(
+                                        text = if (isExpanded) entry.message else entry.message.lines().firstOrNull() ?: "",
+                                        color = color,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = if (isExpanded) Int.MAX_VALUE else 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 8.dp, top = 4.dp)
+                                            .combinedClickable(
+                                                onClick = { setExpanded(!isExpanded) },
+                                                onLongClick = {
+                                                    // copy entry message to clipboard on long-press
+                                                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(entry.message))
+                                                    coroutineScope.launch {
+                                                        // Optionally provide feedback via logs
+                                                        GlobalLog.append(android.util.Log.INFO, "DebugSettings", "Copied log to clipboard")
+                                                    }
+                                                }
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Auto-scroll to bottom when new logs are added
+                LaunchedEffect(filtered.size) {
+                    if (filtered.isNotEmpty()) listState.animateScrollToItem(filtered.size - 1)
+                }
+            }
+            
+            // Nerd Stats Section
+            if (showNerdStats && playerConnection != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                val currentFormat by playerConnection.currentFormat.collectAsState(initial = null)
+                val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+                val player = playerConnection.player
+                
+                // Update stats periodically
+                var bufferPercentage by remember { mutableStateOf(0) }
+                var bufferedPosition by remember { mutableStateOf(0L) }
+                var currentPosition by remember { mutableStateOf(0L) }
+                var playbackSpeed by remember { mutableStateOf(1.0f) }
+                
+                LaunchedEffect(Unit) {
+                    while (isActive) {
+                        bufferPercentage = player.bufferedPercentage
+                        bufferedPosition = player.bufferedPosition
+                        currentPosition = player.currentPosition
+                        playbackSpeed = player.playbackParameters.speed
+                        kotlinx.coroutines.delay(500) // Update every 500ms
+                    }
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.nerd_stats),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        
+                        if (mediaMetadata != null) {
+                            // Current Track Info
+                            NerdStatRow(
+                                label = stringResource(R.string.track_label),
+                                value = mediaMetadata?.title ?: stringResource(R.string.no_track_playing)
+                            )
+                            
+                            // Format/Codec Info
+                            if (currentFormat != null) {
+                                NerdStatRow(
+                                    label = stringResource(R.string.codec_label),
+                                    value = currentFormat?.mimeType?.substringAfter("/")?.uppercase() ?: stringResource(R.string.unknown_codec)
+                                )
+                                
+                                val bitrateKbps = currentFormat?.bitrate?.let { it / 1000 } ?: 0
+                                NerdStatRow(
+                                    label = stringResource(R.string.bitrate_label),
+                                    value = if (bitrateKbps > 0) "$bitrateKbps kbps" else stringResource(R.string.unknown_bitrate)
+                                )
+                                
+                                val sampleRateKhz = currentFormat?.sampleRate?.let { (it / 1000.0).roundToInt() } ?: 0
+                                NerdStatRow(
+                                    label = stringResource(R.string.sample_rate_label),
+                                    value = if (sampleRateKhz > 0) "$sampleRateKhz kHz" else stringResource(R.string.unknown_sample_rate)
+                                )
+                                
+                                NerdStatRow(
+                                    label = stringResource(R.string.content_length_label),
+                                    value = currentFormat?.contentLength?.let {
+                                        if (it > 0) "${(it / 1024.0 / 1024.0).roundToInt()} MB" else stringResource(R.string.unknown_content_length)
+                                    } ?: stringResource(R.string.unknown_content_length)
+                                )
+                            } else {
+                                NerdStatRow(label = stringResource(R.string.format_label), value = stringResource(R.string.loading_format))
+                            }
+                            
+                            // Buffer Health
+                            val bufferDuration = ((bufferedPosition - currentPosition) / 1000.0).roundToInt()
+                            NerdStatRow(
+                                label = stringResource(R.string.buffer_health_label),
+                                value = "$bufferPercentage% ($bufferDuration sec ahead)"
+                            )
+                            
+                            // Playback Speed
+                            NerdStatRow(
+                                label = stringResource(R.string.playback_speed_label),
+                                value = "${playbackSpeed}x"
+                            )
+                            
+                            // Playback State
+                            val playbackStateText = when (player.playbackState) {
+                                androidx.media3.common.Player.STATE_IDLE -> "IDLE"
+                                androidx.media3.common.Player.STATE_BUFFERING -> "BUFFERING"
+                                androidx.media3.common.Player.STATE_READY -> "READY"
+                                androidx.media3.common.Player.STATE_ENDED -> "ENDED"
+                                else -> "UNKNOWN"
+                            }
+                            NerdStatRow(
+                                label = stringResource(R.string.state_label),
+                                value = playbackStateText
+                            )
+                            
+                            // Media ID
+                            NerdStatRow(
+                                label = stringResource(R.string.media_id_label),
+                                value = mediaMetadata?.id ?: "N/A"
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.no_track_playing),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NerdStatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+

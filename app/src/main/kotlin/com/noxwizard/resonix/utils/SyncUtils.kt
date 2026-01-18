@@ -1,0 +1,274 @@
+package com.noxwizard.resonix.utils
+
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.noxwizard.resonix.constants.SelectedYtmPlaylistsKey
+import com.noxwizard.resonix.innertube.YouTube
+import com.noxwizard.resonix.innertube.models.AlbumItem
+import com.noxwizard.resonix.innertube.models.ArtistItem
+import com.noxwizard.resonix.innertube.models.PlaylistItem
+import com.noxwizard.resonix.innertube.models.SongItem
+import com.noxwizard.resonix.innertube.utils.completed
+import com.noxwizard.resonix.db.MusicDatabase
+import com.noxwizard.resonix.db.entities.ArtistEntity
+import com.noxwizard.resonix.db.entities.PlaylistEntity
+import com.noxwizard.resonix.db.entities.PlaylistSongMap
+import com.noxwizard.resonix.db.entities.SongEntity
+import com.noxwizard.resonix.models.toMediaMetadata
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import java.time.LocalDateTime
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class SyncUtils @Inject constructor(
+    private val database: MusicDatabase,
+    @ApplicationContext private val context: Context,
+) {
+    private val syncScope = CoroutineScope(Dispatchers.IO)
+    
+    // Mutex to ensure only one sync operation runs at a time
+    private val syncMutex = Mutex()
+    
+    // Semaphore to limit concurrent database writes per sync operation
+    private val dbWriteSemaphore = Semaphore(2)
+
+    fun likeSong(s: SongEntity) {
+        syncScope.launch {
+            YouTube.likeVideo(s.id, s.liked)
+        }
+    }
+
+    suspend fun syncLikedSongs() = coroutineScope {
+        YouTube.playlist("LM").completed().onSuccess { page ->
+            val remoteSongs = page.songs
+            val remoteIds = remoteSongs.map { it.id }
+            val localSongs = database.likedSongsByNameAsc().first()
+
+            localSongs.filterNot { it.id in remoteIds }
+                .forEach { database.update(it.song.localToggleLike()) }
+
+            val now = LocalDateTime.now()
+            remoteSongs.forEachIndexed { index, song ->
+                launch {
+                    dbWriteSemaphore.withPermit {
+                        val dbSong = database.song(song.id).firstOrNull()
+                        val timestamp = LocalDateTime.now().minusSeconds(index.toLong())
+                        database.transaction {
+                            if (dbSong == null) {
+                                // Use proper MediaMetadata insertion to save artist information
+                                insert(song.toMediaMetadata()) { it.copy(liked = true, likedDate = timestamp) }
+                            } else if (!dbSong.song.liked || dbSong.song.likedDate != timestamp) {
+                                update(dbSong.song.copy(liked = true, likedDate = timestamp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    suspend fun syncLibrarySongs() = coroutineScope {
+        YouTube.library("FEmusic_liked_videos").completed().onSuccess { page ->
+            val remoteSongs = page.items.filterIsInstance<SongItem>().reversed()
+            val remoteIds = remoteSongs.map { it.id }.toSet()
+            val localSongs = database.songsByNameAsc().first()
+
+            localSongs.filterNot { it.id in remoteIds }
+                .forEach { database.update(it.song.toggleLibrary()) }
+
+            remoteSongs.forEach { song ->
+                launch {
+                    dbWriteSemaphore.withPermit {
+                        val dbSong = database.song(song.id).firstOrNull()
+                        database.transaction {
+                            if (dbSong == null) {
+                                // Use proper MediaMetadata insertion to save artist information
+                                insert(song.toMediaMetadata()) { it.toggleLibrary() }
+                            } else if (dbSong.song.inLibrary == null) {
+                                update(dbSong.song.toggleLibrary())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    suspend fun syncLikedAlbums() = coroutineScope {
+        YouTube.library("FEmusic_liked_albums").completed().onSuccess { page ->
+            val remoteAlbums = page.items.filterIsInstance<AlbumItem>().reversed()
+            val remoteIds = remoteAlbums.map { it.id }.toSet()
+            val localAlbums = database.albumsLikedByNameAsc().first()
+
+            localAlbums.filterNot { it.id in remoteIds }
+                .forEach { database.update(it.album.localToggleLike()) }
+
+            remoteAlbums.forEach { album ->
+                launch {
+                    dbWriteSemaphore.withPermit {
+                        val dbAlbum = database.album(album.id).firstOrNull()
+                        YouTube.album(album.browseId).onSuccess { albumPage ->
+                            if (dbAlbum == null) {
+                                database.insert(albumPage)
+                                database.album(album.id).firstOrNull()?.let { newDbAlbum ->
+                                    database.update(newDbAlbum.album.localToggleLike())
+                                }
+                            } else if (dbAlbum.album.bookmarkedAt == null) {
+                                database.update(dbAlbum.album.localToggleLike())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    suspend fun syncArtistsSubscriptions() = coroutineScope {
+        YouTube.library("FEmusic_library_corpus_artists").completed().onSuccess { page ->
+            val remoteArtists = page.items.filterIsInstance<ArtistItem>()
+            val remoteIds = remoteArtists.map { it.id }.toSet()
+            val localArtists = database.artistsBookmarkedByNameAsc().first()
+
+            localArtists.filterNot { it.id in remoteIds }
+                .forEach { database.update(it.artist.localToggleLike()) }
+
+            remoteArtists.forEach { artist ->
+                launch {
+                    dbWriteSemaphore.withPermit {
+                        val dbArtist = database.artist(artist.id).firstOrNull()
+                        database.transaction {
+                            if (dbArtist == null) {
+                                // Insert artist metadata but do not mark as bookmarked
+                                insert(
+                                    ArtistEntity(
+                                        id = artist.id,
+                                        name = artist.title,
+                                        thumbnailUrl = artist.thumbnail,
+                                        channelId = artist.channelId,
+                                    )
+                                )
+                            } else {
+                                // Update existing artist metadata if changed, but keep bookmarkedAt as-is
+                                val existing = dbArtist.artist
+                                if (existing.name != artist.title || existing.thumbnailUrl != artist.thumbnail || existing.channelId != artist.channelId) {
+                                    update(
+                                        existing.copy(
+                                            name = artist.title,
+                                            thumbnailUrl = artist.thumbnail,
+                                            channelId = artist.channelId,
+                                            lastUpdateTime = java.time.LocalDateTime.now()
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    suspend fun syncSavedPlaylists() = coroutineScope {
+        YouTube.library("FEmusic_liked_playlists").completed().onSuccess { page ->
+            val remotePlaylists = page.items.filterIsInstance<PlaylistItem>()
+                .filterNot { it.id == "LM" || it.id == "SE" }
+                .reversed()
+
+            val selectedCsv = context.dataStore[SelectedYtmPlaylistsKey] ?: ""
+            val selectedIds = selectedCsv.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+
+            val playlistsToSync = if (selectedIds.isNotEmpty()) remotePlaylists.filter { it.id in selectedIds } else remotePlaylists
+
+            val remoteIds = playlistsToSync.map { it.id }.toSet()
+            val localPlaylists = database.playlistsByNameAsc().first()
+
+            localPlaylists.filterNot { it.playlist.browseId in remoteIds }
+                .filterNot { it.playlist.browseId == null }
+                .forEach { database.update(it.playlist.localToggleLike()) }
+
+            playlistsToSync.forEach { playlist ->
+                launch {
+                    dbWriteSemaphore.withPermit {
+                        var playlistEntity = localPlaylists.find { it.playlist.browseId == playlist.id }?.playlist
+                        if (playlistEntity == null) {
+                            playlistEntity = PlaylistEntity(
+                                name = playlist.title,
+                                browseId = playlist.id,
+                                thumbnailUrl = playlist.thumbnail,
+                                isEditable = playlist.isEditable,
+                                bookmarkedAt = LocalDateTime.now(),
+                                remoteSongCount = playlist.songCountText?.let { Regex("""\\d+""").find(it)?.value?.toIntOrNull() },
+                                playEndpointParams = playlist.playEndpoint?.params,
+                                shuffleEndpointParams = playlist.shuffleEndpoint?.params,
+                                radioEndpointParams = playlist.radioEndpoint?.params
+                            )
+                            database.insert(playlistEntity)
+                        } else {
+                            database.update(playlistEntity, playlist)
+                        }
+                        syncPlaylist(playlist.id, playlistEntity.id)
+                    }
+                }
+            }
+        }
+    }
+
+    suspend fun syncAutoSyncPlaylists() = coroutineScope {
+        val autoSyncPlaylists = database.playlistsByNameAsc().first()
+            .filter { it.playlist.isAutoSync && it.playlist.browseId != null }
+
+        autoSyncPlaylists.forEach { playlist ->
+            launch {
+                dbWriteSemaphore.withPermit {
+                    syncPlaylist(playlist.playlist.browseId!!, playlist.playlist.id)
+                }
+            }
+        }
+    }
+
+    private suspend fun syncPlaylist(browseId: String, playlistId: String) = coroutineScope {
+        YouTube.playlist(browseId).completed().onSuccess { page ->
+            val songs = page.songs.map(SongItem::toMediaMetadata)
+
+            val remoteIds = songs.map { it.id }
+            val localIds = database.playlistSongs(playlistId).first()
+                .sortedBy { it.map.position }
+                .map { it.song.id }
+
+            if (remoteIds == localIds) return@onSuccess
+
+            database.transaction {
+                runBlocking {
+                    database.clearPlaylist(playlistId)
+                    songs.forEachIndexed { idx, song ->
+                        if (database.song(song.id).firstOrNull() == null) {
+                            // Use proper MediaMetadata insertion to save artist information
+                            database.insert(song)
+                        }
+                        database.insert(
+                            PlaylistSongMap(
+                                songId = song.id,
+                                playlistId = playlistId,
+                                position = idx,
+                                setVideoId = song.setVideoId
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
