@@ -50,6 +50,15 @@ jobs:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
 
+      - name: Verify Secrets
+        run: |
+          if [ -z "${{ secrets.KEYSTORE }}" ]; then
+             echo "::error::KEYSTORE secret is missing or empty! Please check Repository Secrets."
+             exit 1
+          else
+             echo "KEYSTORE secret is present."
+          fi
+
       - name: Sign APK
         uses: ilharp/sign-android-release@v2.0.0
         with:
@@ -95,12 +104,14 @@ jobs:
 
       - name: Generate Debug Keystore
         run: |
-          keytool -genkeypair -v \
-            -keystore ./app/persistent-debug.keystore \
-            -alias androiddebugkey \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
+          if [ ! -f ./app/persistent-debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore ./app/persistent-debug.keystore \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
 
       - name: Build Debug APK
         run: ./gradlew assembleUniversalDebug
