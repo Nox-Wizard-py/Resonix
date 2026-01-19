@@ -51,8 +51,10 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
 
       - name: Verify Secrets
+        env:
+          KEYSTORE_CONTENT: ${{ secrets.KEYSTORE }}
         run: |
-          if [ -z "${{ secrets.KEYSTORE }}" ]; then
+          if [ -z "$KEYSTORE_CONTENT" ]; then
              echo "::error::KEYSTORE secret is missing or empty! Please check Repository Secrets."
              exit 1
           else
