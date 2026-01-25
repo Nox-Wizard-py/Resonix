@@ -565,6 +565,16 @@ fun LibraryPlaylistsScreen(
                         showCreatePlaylistDialog = true
                     },
                 )
+                
+                // Import Playlist FAB (positioned above the create FAB)
+                HideOnScrollFAB(
+                    lazyListState = lazyListState,
+                    icon = R.drawable.input,
+                    offsetY = 80.dp,
+                    onClick = {
+                        navController.navigate("playlist_import")
+                    },
+                )
             }
 
             LibraryViewType.GRID -> {
@@ -705,6 +715,16 @@ fun LibraryPlaylistsScreen(
                     icon = R.drawable.add,
                     onClick = {
                         showCreatePlaylistDialog = true
+                    },
+                )
+                
+                // Import Playlist FAB (positioned above the create FAB)
+                HideOnScrollFAB(
+                    lazyListState = lazyGridState,
+                    icon = R.drawable.input,
+                    offsetY = 80.dp,
+                    onClick = {
+                        navController.navigate("playlist_import")
                     },
                 )
             }

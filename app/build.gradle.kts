@@ -206,6 +206,7 @@ dependencies {
     implementation(project(":lastfm"))
     implementation(project(":betterlyrics"))
     implementation(project(":kizzy"))
+    implementation(project(":playlist-import"))
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.serialization.json)

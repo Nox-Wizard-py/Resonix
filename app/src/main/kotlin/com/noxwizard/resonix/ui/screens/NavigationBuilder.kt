@@ -52,6 +52,7 @@ import com.noxwizard.resonix.ui.screens.library.LibraryScreen
 import com.noxwizard.resonix.ui.screens.playlist.AutoPlaylistScreen
 import com.noxwizard.resonix.ui.screens.playlist.LocalPlaylistScreen
 import com.noxwizard.resonix.ui.screens.playlist.OnlinePlaylistScreen
+import com.noxwizard.resonix.ui.screens.playlist.PlaylistImportScreen
 import com.noxwizard.resonix.ui.screens.playlist.TopPlaylistScreen
 import com.noxwizard.resonix.ui.screens.playlist.CachePlaylistScreen
 import com.noxwizard.resonix.ui.screens.search.OnlineSearchResult
@@ -268,6 +269,9 @@ fun NavGraphBuilder.navigationBuilder(
         ),
     ) {
         TopPlaylistScreen(navController, scrollBehavior)
+    }
+    composable("playlist_import") {
+        PlaylistImportScreen(navController, scrollBehavior)
     }
     composable(
         route = "youtube_browse/{browseId}?params={params}",

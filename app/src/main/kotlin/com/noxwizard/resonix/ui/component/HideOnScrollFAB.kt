@@ -7,6 +7,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -18,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.noxwizard.resonix.LocalPlayerAwareWindowInsets
 import com.noxwizard.resonix.ui.utils.isScrollingUp
@@ -27,6 +29,7 @@ fun BoxScope.HideOnScrollFAB(
     visible: Boolean = true,
     lazyListState: LazyListState,
     @DrawableRes icon: Int,
+    offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
     AnimatedVisibility(
@@ -36,6 +39,7 @@ fun BoxScope.HideOnScrollFAB(
         modifier =
         Modifier
             .align(Alignment.BottomEnd)
+            .offset(y = -offsetY)
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current
                     .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
@@ -58,6 +62,7 @@ fun BoxScope.HideOnScrollFAB(
     visible: Boolean = true,
     lazyListState: LazyGridState,
     @DrawableRes icon: Int,
+    offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
     AnimatedVisibility(
@@ -67,6 +72,7 @@ fun BoxScope.HideOnScrollFAB(
         modifier =
         Modifier
             .align(Alignment.BottomEnd)
+            .offset(y = -offsetY)
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current
                     .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
@@ -89,6 +95,7 @@ fun BoxScope.HideOnScrollFAB(
     visible: Boolean = true,
     scrollState: ScrollState,
     @DrawableRes icon: Int,
+    offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
     AnimatedVisibility(
@@ -98,6 +105,7 @@ fun BoxScope.HideOnScrollFAB(
         modifier =
         Modifier
             .align(Alignment.BottomEnd)
+            .offset(y = -offsetY)
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current
                     .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
