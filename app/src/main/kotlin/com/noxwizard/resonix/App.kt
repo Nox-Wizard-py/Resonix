@@ -18,6 +18,7 @@ import com.noxwizard.resonix.constants.*
 import com.noxwizard.resonix.extensions.*
 import com.noxwizard.resonix.utils.dataStore
 import com.noxwizard.resonix.utils.get
+import com.noxwizard.resonix.utils.initPreferencesCache
 import com.noxwizard.resonix.utils.reportException
 import com.noxwizard.resonix.innertube.YouTube
 import com.noxwizard.resonix.innertube.models.YouTubeLocale
@@ -51,7 +52,10 @@ class App : Application(), SingletonImageLoader.Factory {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate() {
         super.onCreate()
-        instance = this;
+        instance = this
+        
+        // Initialize preferences cache early to avoid blocking main thread
+        initPreferencesCache(dataStore)
         Timber.plant(Timber.DebugTree())
         // Also plant the global log tree to capture logs into an in-memory flow for Debug UI
         try {
@@ -221,7 +225,7 @@ class App : Application(), SingletonImageLoader.Factory {
             private set
 
         fun forgetAccount(context: Context) {
-            runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
                 context.dataStore.edit { settings ->
                     settings.remove(InnerTubeCookieKey)
                     settings.remove(VisitorDataKey)

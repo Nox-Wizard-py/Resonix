@@ -12,33 +12,55 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import com.noxwizard.resonix.extensions.toEnum
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.properties.ReadOnlyProperty
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? =
-    runBlocking(Dispatchers.IO) {
-        withTimeoutOrNull(1500) {
-            data.first()[key]
+/**
+ * In-memory cache for DataStore preferences to avoid blocking the main thread.
+ * This cache is updated asynchronously when preferences change.
+ */
+private val preferencesCache = ConcurrentHashMap<Preferences.Key<*>, Any?>()
+private var cacheInitialized = false
+private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+/**
+ * Initialize the preferences cache. Call this early in Application.onCreate().
+ */
+fun initPreferencesCache(dataStore: DataStore<Preferences>) {
+    if (cacheInitialized) return
+    cacheInitialized = true
+    
+    cacheScope.launch {
+        dataStore.data.collect { preferences ->
+            preferences.asMap().forEach { (key, value) ->
+                @Suppress("UNCHECKED_CAST")
+                preferencesCache[key as Preferences.Key<*>] = value
+            }
         }
     }
+}
 
-fun <T> DataStore<Preferences>.get(
-    key: Preferences.Key<T>,
-    defaultValue: T,
-): T =
-    runBlocking(Dispatchers.IO) {
-        withTimeoutOrNull(1500) {
-            data.first()[key]
-        } ?: defaultValue
-    }
+/**
+ * Non-blocking read from cache. Returns null if not yet cached.
+ */
+@Suppress("UNCHECKED_CAST")
+operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? =
+    preferencesCache[key] as? T
+
+/**
+ * Non-blocking read from cache with default value.
+ */
+@Suppress("UNCHECKED_CAST")
+fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>, defaultValue: T): T =
+    (preferencesCache[key] as? T) ?: defaultValue
 
 fun <T> preference(
     context: Context,
