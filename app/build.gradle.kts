@@ -42,8 +42,12 @@ android {
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
 
-        val spotifyClientId = localProperties.getProperty("SPOTIFY_CLIENT_ID") ?: ""
-        val spotifyRedirectUri = localProperties.getProperty("SPOTIFY_REDIRECT_URI") ?: "com.noxwizard.resonix://callback"
+        val spotifyClientId = localProperties.getProperty("SPOTIFY_CLIENT_ID")
+            ?: System.getenv("SPOTIFY_CLIENT_ID")
+            ?: ""
+        val spotifyRedirectUri = localProperties.getProperty("SPOTIFY_REDIRECT_URI")
+            ?: System.getenv("SPOTIFY_REDIRECT_URI")
+            ?: "com.noxwizard.resonix://callback"
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClientId\"")
         buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"$spotifyRedirectUri\"")
 

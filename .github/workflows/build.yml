@@ -19,6 +19,7 @@ permissions:
 env:
   LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
   LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+  SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
 
 jobs:
   build:
