@@ -16,6 +16,9 @@
     - Account synchronization
     - Access to your library, playlists, and mixes
     - Search for songs, albums, artists, and playlists
+- **Universal Bridge**: Import playlists directly from Spotify or via Text files
+- **Spotify Login**: Authenticate with your Spotify account using Chrome Custom Tabs
+- **Custom Thumbnails**: Add and change custom covers for your imported playlists
 - Sleek Modern and beautiful Material3 design
 - Multiple queues
 - Synchronized lyrics, and support for word by word/Karaoke lyrics formats (e.g LRC, TTML)
