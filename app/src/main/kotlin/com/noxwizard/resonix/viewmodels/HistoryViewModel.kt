@@ -62,7 +62,7 @@ constructor(
                     ).mapValues { entry ->
                         entry.value.distinctBy { it.song.id }
                     }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     init {
         fetchRemoteHistory()

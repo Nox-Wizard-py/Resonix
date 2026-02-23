@@ -52,7 +52,7 @@ constructor(
                             statToPeriod(selection, t - 1)
                         },
                     )
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val mostPlayedSongs =
         combine(
@@ -75,7 +75,7 @@ constructor(
                             statToPeriod(selection, t - 1)
                         },
                     )
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val mostPlayedArtists =
         combine(
@@ -100,7 +100,7 @@ constructor(
                     ).map { artists ->
                         artists.filter { it.artist.isYouTubeArtist }
                     }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val mostPlayedAlbums =
         combine(
@@ -122,12 +122,12 @@ constructor(
                         statToPeriod(selection, t - 1)
                     },
                 )
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val firstEvent =
         database
             .firstEvent()
-            .stateIn(viewModelScope, SharingStarted.Lazily, null)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
         viewModelScope.launch {

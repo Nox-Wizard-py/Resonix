@@ -18,7 +18,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -54,6 +54,7 @@ import com.noxwizard.resonix.LocalDatabase
 import com.noxwizard.resonix.LocalPlayerAwareWindowInsets
 import com.noxwizard.resonix.LocalPlayerConnection
 import com.noxwizard.resonix.R
+import com.noxwizard.resonix.constants.CONTENT_TYPE_SONG
 import com.noxwizard.resonix.constants.HistorySource
 import com.noxwizard.resonix.constants.InnerTubeCookieKey
 import com.noxwizard.resonix.db.entities.EventWithSong
@@ -228,7 +229,8 @@ fun HistoryScreen(
 
                     items(
                         items = section.songs,
-                        key = { "${section.title}_${it.id}_${section.songs.indexOf(it)}" }
+                        key = { "${section.title}_${it.id}_${section.songs.indexOf(it)}" },
+                        contentType = { CONTENT_TYPE_SONG }
                     ) { song ->
                         YouTubeListItem(
                             item = song,

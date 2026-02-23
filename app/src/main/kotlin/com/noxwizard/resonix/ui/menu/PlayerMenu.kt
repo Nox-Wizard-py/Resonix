@@ -147,8 +147,10 @@ fun PlayerMenu(
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
         onGetSong = { playlist ->
-            database.transaction {
-                insert(mediaMetadata)
+            coroutineScope.launch(Dispatchers.IO) {
+                database.transaction {
+                    insert(mediaMetadata)
+                }
             }
             coroutineScope.launch(Dispatchers.IO) {
                 playlist.playlist.browseId?.let { YouTube.addToPlaylist(it, mediaMetadata.id) }
@@ -395,8 +397,10 @@ fun PlayerMenu(
                             )
                         },
                         modifier = Modifier.clickable {
-                            database.transaction {
-                                insert(mediaMetadata)
+                            coroutineScope.launch(Dispatchers.IO) {
+                                database.transaction {
+                                    insert(mediaMetadata)
+                                }
                             }
                             val downloadRequest =
                                 DownloadRequest

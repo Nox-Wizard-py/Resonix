@@ -33,6 +33,9 @@ timber = "5.0.1"
 materialKolor = "3.0.1"
 kuromojiIpadic = "0.9.0"
 newpipeExtractor = "4240401"
+googleServices = "4.4.4"
+appAuth = "0.11.1"
+ucrop = "2.2.9"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
@@ -109,9 +112,12 @@ multidex = { module = "androidx.multidex:multidex", version.ref = "multidex" }
 newpipe-extractor = { module = "com.github.InfinityLoop1308:PipePipeExtractor", version.ref = "newpipeExtractor" }
 
 kuromoji-ipadic = { module = "com.atilika.kuromoji:kuromoji-ipadic", version.ref = "kuromojiIpadic" }
+appAuth = { module = "net.openid:appauth", version.ref = "appAuth" }
+ucrop = { module = "com.github.yalantis:ucrop", version.ref = "ucrop" }
 
 [plugins]
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

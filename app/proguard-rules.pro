@@ -20,6 +20,14 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
+# ═══════════════════════════════════════════════════════
+# Aggressive R8 Optimization
+# ═══════════════════════════════════════════════════════
+-optimizationpasses 5
+-allowaccessmodification
+-dontpreverify
+-keepattributes *Annotation*, InnerClasses, Signature, Exception
+
 ## Kotlin Serialization
 # Keep `Companion` object fields of serializable classes.
 # This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.
@@ -77,10 +85,7 @@
     public static boolean isLoggable(java.lang.String, int);
     public static int v(...);
     public static int d(...);
-    ## Leave in release builds
-    #public static int i(...);
-    #public static int w(...);
-    #public static int e(...);
+    public static int i(...);
 }
 
 # Generated automatically by the Android Gradle plugin.
@@ -118,3 +123,13 @@
 -keep class androidx.media3.** { *; }
 -keep interface androidx.media3.** { *; }
 -dontwarn androidx.media3.**
+
+# ═══════════════════════════════════════════════════════
+# Kotlin Coroutines Optimization
+# ═══════════════════════════════════════════════════════
+-dontwarn kotlinx.coroutines.**
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembers class kotlinx.coroutines.** {
+    volatile <fields>;
+}

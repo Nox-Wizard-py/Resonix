@@ -337,6 +337,13 @@ fun NavGraphBuilder.navigationBuilder(
     composable("login") {
         LoginScreen(navController)
     }
+    composable("spotify_login") {
+        val viewModel = androidx.hilt.navigation.compose.hiltViewModel<com.noxwizard.resonix.viewmodels.SpotifyLoginViewModel>()
+        com.noxwizard.resonix.ui.SpotifyLoginScreen(
+            authManager = viewModel.authManager,
+            onNavigateBack = { navController.popBackStack() }
+        )
+    }
 }
 
 

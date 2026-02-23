@@ -310,7 +310,9 @@ fun SongListItem(
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape = RoundedCornerShape(ThumbnailCornerRadius),
-                    modifier = Modifier.size(ListThumbnailSize)
+                    modifier = Modifier.size(ListThumbnailSize),
+                    cacheKey = song.id,
+                    thumbnailSizePx = 144,
                 )
             },
             trailingContent = trailingContent,
@@ -383,7 +385,9 @@ fun SongGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(ThumbnailCornerRadius),
-            modifier = Modifier.size(GridThumbnailHeight)
+            modifier = Modifier.size(GridThumbnailHeight),
+            cacheKey = song.id,
+            thumbnailSizePx = 384,
         )
         if (!isActive) {
             OverlayPlayButton(
@@ -417,9 +421,20 @@ fun ArtistListItem(
     subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
     badges = badges,
     thumbnailContent = {
+        val context = LocalContext.current
+        val model = remember(artist.artist.thumbnailUrl, artist.id) {
+            ImageRequest.Builder(context)
+                .data(artist.artist.thumbnailUrl)
+                .size(144)
+                .memoryCacheKey(artist.id)
+                .diskCacheKey(artist.id)
+
+                .build()
+        }
         AsyncImage(
-            model = artist.artist.thumbnailUrl,
+            model = model,
             contentDescription = null,
+            contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(ListThumbnailSize)
                 .clip(CircleShape),
@@ -444,8 +459,18 @@ fun ArtistGridItem(
     subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
     badges = badges,
     thumbnailContent = {
+        val context = LocalContext.current
+        val model = remember(artist.artist.thumbnailUrl, artist.id) {
+            ImageRequest.Builder(context)
+                .data(artist.artist.thumbnailUrl)
+                .size(384)
+                .memoryCacheKey("grid_${artist.id}")
+                .diskCacheKey("grid_${artist.id}")
+
+                .build()
+        }
         AsyncImage(
-            model = artist.artist.thumbnailUrl,
+            model = model,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -515,7 +540,9 @@ fun AlbumListItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(ThumbnailCornerRadius),
-            modifier = Modifier.size(ListThumbnailSize)
+            modifier = Modifier.size(ListThumbnailSize),
+            cacheKey = album.id,
+            thumbnailSizePx = 144,
         )
     },
     trailingContent = trailingContent,
@@ -590,6 +617,8 @@ fun AlbumGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(ThumbnailCornerRadius),
+            cacheKey = album.id,
+            thumbnailSizePx = 384,
         )
 
         AlbumPlayButton(
@@ -877,7 +906,9 @@ fun MediaMetadataListItem(
                 isActive = isActive,
                 isPlaying = isPlaying,
                 shape = RoundedCornerShape(ThumbnailCornerRadius),
-                modifier = Modifier.size(ListThumbnailSize)
+                modifier = Modifier.size(ListThumbnailSize),
+                cacheKey = mediaMetadata.id,
+                thumbnailSizePx = 144,
             )
         },
         trailingContent = trailingContent,
@@ -937,7 +968,9 @@ fun YouTubeListItem(
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
-                    modifier = Modifier.size(ListThumbnailSize)
+                    modifier = Modifier.size(ListThumbnailSize),
+                    cacheKey = item.id,
+                    thumbnailSizePx = 144,
                 )
             },
             trailingContent = trailingContent,
@@ -1024,6 +1057,8 @@ fun YouTubeGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
+            cacheKey = item.id,
+            thumbnailSizePx = 384,
         )
 
         if (item is SongItem && !isActive) {
@@ -1153,8 +1188,12 @@ fun ItemThumbnail(
     modifier: Modifier = Modifier,
     albumIndex: Int? = null,
     isSelected: Boolean = false,
-    thumbnailRatio: Float = 1f
+    thumbnailRatio: Float = 1f,
+    cacheKey: String? = null,
+    thumbnailSizePx: Int = 144,
 ) {
+    val context = LocalContext.current
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -1163,9 +1202,24 @@ fun ItemThumbnail(
             .clip(shape)
     ) {
         if (albumIndex == null) {
+            val model = remember(thumbnailUrl, cacheKey, thumbnailSizePx) {
+                ImageRequest.Builder(context)
+                    .data(thumbnailUrl)
+                    .size(thumbnailSizePx)
+                    .apply {
+                        if (cacheKey != null) {
+                            memoryCacheKey(cacheKey)
+                            diskCacheKey(cacheKey)
+                        }
+                    }
+    
+                    .build()
+            }
+
             AsyncImage(
-                model = thumbnailUrl,
+                model = model,
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(shape)

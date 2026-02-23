@@ -31,47 +31,61 @@ class CachePlaylistViewModel @Inject constructor(
     private val _cachedSongs = MutableStateFlow<List<Song>>(emptyList())
     val cachedSongs: StateFlow<List<Song>> = _cachedSongs
 
+    private val refreshTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     init {
         viewModelScope.launch {
-            while (true) {
-                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                val cachedIds = playerCache.keys.mapNotNull { it?.toString() }.toSet()
-                val downloadedIds = downloadCache.keys.mapNotNull { it?.toString() }.toSet()
-                val pureCacheIds = cachedIds.subtract(downloadedIds)
-
-                val songs = if (pureCacheIds.isNotEmpty()) {
-                    database.getSongsByIds(pureCacheIds.toList())
-                } else {
-                    emptyList()
-                }
-
-                val completeSongs = songs.filter {
-                    val contentLength = it.format?.contentLength
-                    contentLength != null && playerCache.isCached(it.song.id, 0, contentLength)
-                }
-
-                if (completeSongs.isNotEmpty()) {
-                    database.query {
-                        completeSongs.forEach {
-                            if (it.song.dateDownload == null) {
-                                update(it.song.copy(dateDownload = LocalDateTime.now()))
-                            }
-                        }
+            // Merge timer ticks with manual refresh triggers
+            merge(
+                flow {
+                    while (true) {
+                        emit(Unit)
+                        delay(30_000) // 30s instead of 1s — cache rarely changes
                     }
-                }
-
-                _cachedSongs.value = completeSongs
-                    .filter { it.song.dateDownload != null }
-                    .sortedByDescending { it.song.dateDownload }
-                    .filterExplicit(hideExplicit)
-
-                delay(1000)
+                },
+                refreshTrigger
+            ).collect {
+                updateCachedSongs()
             }
         }
     }
 
+    private suspend fun updateCachedSongs() {
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        val cachedIds = playerCache.keys.mapNotNull { it?.toString() }.toSet()
+        val downloadedIds = downloadCache.keys.mapNotNull { it?.toString() }.toSet()
+        val pureCacheIds = cachedIds.subtract(downloadedIds)
+
+        val songs = if (pureCacheIds.isNotEmpty()) {
+            database.getSongsByIds(pureCacheIds.toList())
+        } else {
+            emptyList()
+        }
+
+        val completeSongs = songs.filter {
+            val contentLength = it.format?.contentLength
+            contentLength != null && playerCache.isCached(it.song.id, 0, contentLength)
+        }
+
+        if (completeSongs.isNotEmpty()) {
+            database.query {
+                completeSongs.forEach {
+                    if (it.song.dateDownload == null) {
+                        update(it.song.copy(dateDownload = LocalDateTime.now()))
+                    }
+                }
+            }
+        }
+
+        _cachedSongs.value = completeSongs
+            .filter { it.song.dateDownload != null }
+            .sortedByDescending { it.song.dateDownload }
+            .filterExplicit(hideExplicit)
+    }
+
     fun removeSongFromCache(songId: String) {
         playerCache.removeResource(songId)
+        refreshTrigger.tryEmit(Unit) // Immediate refresh after user action
     }
 }
 

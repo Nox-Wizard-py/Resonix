@@ -38,7 +38,7 @@ class OnlinePlaylistViewModel @Inject constructor(
     val isLoadingMore = _isLoadingMore.asStateFlow()
     
     val dbPlaylist = database.playlistByBrowseId(playlistId)
-        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     var continuation: String? = null
         private set

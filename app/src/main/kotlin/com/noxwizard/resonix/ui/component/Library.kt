@@ -222,15 +222,22 @@ fun LibraryPlaylistListItem(
         .padding(horizontal = 12.dp)
         .padding(bottom = 8.dp)
 
+    // Extract valid values to avoid capturing the entire playlist object in the lambda
+    val isEditable = playlist.playlist.isEditable
+    val songCount = playlist.songCount
+    val remoteSongCount = playlist.playlist.remoteSongCount
+    val browseId = playlist.playlist.browseId
+    val playlistId = playlist.id
+
     val openPlaylist: () -> Unit = {
         if (
-            !playlist.playlist.isEditable &&
-            playlist.songCount == 0 &&
-            playlist.playlist.remoteSongCount != 0
+            !isEditable &&
+            songCount == 0 &&
+            remoteSongCount != null && remoteSongCount != 0
         ) {
-            navController.navigate("online_playlist/${'$'}{playlist.playlist.browseId}")
+            navController.navigate("online_playlist/$browseId")
         } else {
-            navController.navigate("local_playlist/${'$'}{playlist.id}")
+            navController.navigate("local_playlist/$playlistId")
         }
     }
 

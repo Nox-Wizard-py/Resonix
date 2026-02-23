@@ -69,7 +69,7 @@ constructor(
             }
         }.stateIn(
             viewModelScope,
-            SharingStarted.Lazily,
+            SharingStarted.WhileSubscribed(5_000),
             LocalSearchResult("", filter.value, emptyMap())
         )
 

@@ -55,6 +55,7 @@ import com.noxwizard.resonix.ui.component.NewAction
 import com.noxwizard.resonix.ui.component.NewActionGrid
 import com.noxwizard.resonix.ui.component.PlaylistListItem
 import com.noxwizard.resonix.ui.component.TextFieldDialog
+import com.noxwizard.resonix.ui.component.EditPlaylistDialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -121,29 +122,41 @@ fun PlaylistMenu(
     }
 
     if (showEditDialog) {
-        TextFieldDialog(
-            icon = { Icon(painter = painterResource(R.drawable.edit), contentDescription = null) },
-            title = { Text(text = stringResource(R.string.edit_playlist)) },
+        EditPlaylistDialog(
+            playlistId = playlist.playlist.id,
+            playlistName = playlist.playlist.name,
+            currentThumbnailUrl = playlist.thumbnails.firstOrNull(),
+            customThumbnailPath = playlist.playlist.customThumbnailPath,
             onDismiss = { showEditDialog = false },
-            initialTextFieldValue =
-            TextFieldValue(
-                playlist.playlist.name,
-                TextRange(playlist.playlist.name.length),
-            ),
-            onDone = { name ->
+            onSave = { newName, newCoverUri ->
                 onDismiss()
-                database.query {
-                    update(
-                        playlist.playlist.copy(
-                            name = name,
-                            lastUpdateTime = LocalDateTime.now()
-                        )
-                    )
-                }
                 coroutineScope.launch(Dispatchers.IO) {
-                    playlist.playlist.browseId?.let { YouTube.renamePlaylist(it, name) }
+                    // Save custom cover if provided
+                    val customCoverPath = if (newCoverUri != null) {
+                        com.noxwizard.resonix.utils.PlaylistCoverManager.saveCover(
+                            context,
+                            newCoverUri,
+                            playlist.playlist.id
+                        )
+                    } else {
+                        playlist.playlist.customThumbnailPath
+                    }
+                    
+                    // Update playlist in database
+                    database.query {
+                        update(
+                            playlist.playlist.copy(
+                                name = newName,
+                                customThumbnailPath = customCoverPath,
+                                lastUpdateTime = LocalDateTime.now()
+                            )
+                        )
+                    }
+                    
+                    // Update on YouTube if synced
+                    playlist.playlist.browseId?.let { YouTube.renamePlaylist(it, newName) }
                 }
-            },
+            }
         )
     }
 

@@ -64,12 +64,15 @@ import androidx.compose.ui.util.fastForEach
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import androidx.compose.material3.Icon
 import com.noxwizard.resonix.LocalPlayerConnection
 import com.noxwizard.resonix.R
 import com.noxwizard.resonix.constants.PlayerBackgroundStyle
 import com.noxwizard.resonix.constants.PlayerBackgroundStyleKey
 import com.noxwizard.resonix.constants.PlayerHorizontalPadding
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.ColorFilter
 import com.noxwizard.resonix.constants.SeekExtraSeconds
 import com.noxwizard.resonix.constants.SwipeThumbnailKey
 import com.noxwizard.resonix.constants.ThumbnailCornerRadiusKey
@@ -353,30 +356,37 @@ fun Thumbnail(
                                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.about_splash),
+                                            Image(
+                                                painter = painterResource(R.drawable.player_app_logo),
                                                 contentDescription = stringResource(R.string.hide_player_thumbnail),
-                                                tint = textBackgroundColor.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(120.dp)
+                                                modifier = Modifier.size(120.dp).clip(RoundedCornerShape(thumbnailCornerRadius.dp))
                                             )
                                         }
                                     } else {
-                                        // Blurred 
+                                        // Blurred background — 50px upscaled = natural blur, no GPU RenderEffect
                                         AsyncImage(
-                                            model = item.mediaMetadata.artworkUri?.toString(),
+                                            model = ImageRequest.Builder(context)
+                                                .data(item.mediaMetadata.artworkUri?.toString())
+                                                .size(50)
+                                                .memoryCacheKey("player_blur_${item.mediaId}")
+                                                .diskCacheKey("player_blur_${item.mediaId}")
+                                                .build(),
                                             contentDescription = null,
                                             contentScale = ContentScale.FillBounds,
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .graphicsLayer(
-                                                    renderEffect = BlurEffect(radiusX = 60f, radiusY = 60f),
-                                                    alpha = 0.6f
-                                                )
+                                                .graphicsLayer(alpha = 0.6f)
                                         )
 
                                         // Main image
                                         AsyncImage(
-                                            model = item.mediaMetadata.artworkUri?.toString(),
+                                            model = ImageRequest.Builder(context)
+                                                .data(item.mediaMetadata.artworkUri?.toString())
+                                                .size(1080)
+                                                .memoryCacheKey("player_main_${item.mediaId}")
+                                                .diskCacheKey("player_main_${item.mediaId}")
+
+                                                .build(),
                                             contentDescription = null,
                                             contentScale = ContentScale.Fit,
                                             modifier = Modifier.fillMaxSize()

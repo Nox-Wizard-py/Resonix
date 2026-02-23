@@ -19,7 +19,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,6 +66,7 @@ import com.noxwizard.resonix.ui.component.ArtistListItem
 import com.noxwizard.resonix.ui.component.LocalMenuState
 import com.noxwizard.resonix.ui.component.PlaylistGridItem
 import com.noxwizard.resonix.ui.component.PlaylistListItem
+import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.SortHeader
 import com.noxwizard.resonix.ui.menu.AlbumMenu
 import com.noxwizard.resonix.ui.menu.ArtistMenu
@@ -407,6 +408,9 @@ fun LibraryMixScreen(
                             }
 
                             is Artist -> {
+                                LaunchedEffect(item) {
+                                    viewModel.enrichArtistIfNeeded(item)
+                                }
                                 ArtistListItem(
                                     artist = item,
                                     trailingContent = {
@@ -450,6 +454,9 @@ fun LibraryMixScreen(
                             }
 
                             is Album -> {
+                                LaunchedEffect(item) {
+                                    viewModel.enrichAlbumIfNeeded(item)
+                                }
                                 AlbumListItem(
                                     album = item,
                                     isActive = item.id == mediaMetadata?.album?.id,
@@ -645,6 +652,9 @@ fun LibraryMixScreen(
                             }
 
                             is Artist -> {
+                                LaunchedEffect(item) {
+                                    viewModel.enrichArtistIfNeeded(item)
+                                }
                                 ArtistGridItem(
                                     artist = item,
                                     fillMaxWidth = true,
@@ -671,6 +681,9 @@ fun LibraryMixScreen(
                             }
 
                             is Album -> {
+                                LaunchedEffect(item) {
+                                    viewModel.enrichAlbumIfNeeded(item)
+                                }
                                 AlbumGridItem(
                                     album = item,
                                     isActive = item.id == mediaMetadata?.album?.id,

@@ -39,7 +39,7 @@ class ArtistViewModel @Inject constructor(
     val artistId = savedStateHandle.get<String>("artistId")!!
     var artistPage by mutableStateOf<ArtistPage?>(null)
     val libraryArtist = database.artist(artistId)
-        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val librarySongs = context.dataStore.data
         .map { it[HideExplicitKey] ?: false }
         .distinctUntilChanged()
@@ -47,14 +47,14 @@ class ArtistViewModel @Inject constructor(
             database.artistSongsByCreateDateAsc(artistId).map { it.filterExplicit(hideExplicit) } // show all
             // database.artistSongsPreview(artistId).map { it.filterExplicit(hideExplicit) } // only preview
         }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val libraryAlbums = context.dataStore.data
         .map { it[HideExplicitKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideExplicit ->
             database.artistAlbumsPreview(artistId).map { it.filterExplicitAlbums(hideExplicit) }
         }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         // Load artist page and reload when hide explicit setting changes

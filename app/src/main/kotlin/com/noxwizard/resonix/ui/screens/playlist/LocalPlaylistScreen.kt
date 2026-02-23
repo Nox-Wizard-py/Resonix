@@ -141,6 +141,7 @@ import com.noxwizard.resonix.ui.component.LocalMenuState
 import com.noxwizard.resonix.ui.component.SongListItem
 import com.noxwizard.resonix.ui.component.SortHeader
 import com.noxwizard.resonix.ui.component.TextFieldDialog
+import com.noxwizard.resonix.ui.component.EditPlaylistDialog
 import com.noxwizard.resonix.ui.component.shimmer.ButtonPlaceholder
 import com.noxwizard.resonix.ui.component.shimmer.ListItemPlaceHolder
 import com.noxwizard.resonix.ui.component.shimmer.ShimmerHost
@@ -224,8 +225,8 @@ fun LocalPlaylistScreen(
     var selection by remember { mutableStateOf(false) }
 
     val wrappedSongs = remember(filteredSongs) {
-        filteredSongs.map { item -> ItemWrapper(item) }
-    }.toMutableStateList()
+        filteredSongs.map { item -> ItemWrapper(item) }.toMutableStateList()
+    }
 
     if (isSearching) {
         BackHandler {
@@ -270,32 +271,40 @@ fun LocalPlaylistScreen(
 
     if (showEditDialog) {
         playlist?.playlist?.let { playlistEntity ->
-            TextFieldDialog(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.edit),
-                        contentDescription = null
-                    )
-                },
-                title = { Text(text = stringResource(R.string.edit_playlist)) },
+            EditPlaylistDialog(
+                playlistId = playlistEntity.id,
+                playlistName = playlistEntity.name,
+                currentThumbnailUrl = playlist?.thumbnails?.firstOrNull(),
+                customThumbnailPath = playlistEntity.customThumbnailPath,
                 onDismiss = { showEditDialog = false },
-                initialTextFieldValue = TextFieldValue(
-                    playlistEntity.name,
-                    TextRange(playlistEntity.name.length)
-                ),
-                onDone = { name ->
-                    database.query {
-                        update(
-                            playlistEntity.copy(
-                                name = name,
-                                lastUpdateTime = LocalDateTime.now()
+                onSave = { newName, newCoverUri ->
+                    coroutineScope.launch(Dispatchers.IO) {
+                        // Save custom cover if provided
+                        val customCoverPath = if (newCoverUri != null) {
+                            com.noxwizard.resonix.utils.PlaylistCoverManager.saveCover(
+                                context,
+                                newCoverUri,
+                                playlistEntity.id
                             )
-                        )
+                        } else {
+                            playlistEntity.customThumbnailPath
+                        }
+                        
+                        // Update playlist in database
+                        database.query {
+                            update(
+                                playlistEntity.copy(
+                                    name = newName,
+                                    customThumbnailPath = customCoverPath,
+                                    lastUpdateTime = LocalDateTime.now()
+                                )
+                            )
+                        }
+                        
+                        // Update on YouTube if synced
+                        playlistEntity.browseId?.let { YouTube.renamePlaylist(it, newName) }
                     }
-                    viewModel.viewModelScope.launch(Dispatchers.IO) {
-                        playlistEntity.browseId?.let { YouTube.renamePlaylist(it, name) }
-                    }
-                },
+                }
             )
         }
     }
@@ -405,8 +414,10 @@ fun LocalPlaylistScreen(
     LaunchedEffect(reorderableState.isAnyItemDragging) {
         if (!reorderableState.isAnyItemDragging) {
             dragInfo?.let { (from, to) ->
-                database.transaction {
-                    move(viewModel.playlistId, from, to)
+                withContext(Dispatchers.IO) {
+                    database.transaction {
+                        move(viewModel.playlistId, from, to)
+                    }
                 }
 
                 if (viewModel.playlist.value?.playlist?.browseId != null) {
@@ -579,8 +590,8 @@ fun LocalPlaylistScreen(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
         ) {
-            playlist?.let { playlist ->
-                if (playlist.songCount == 0 && playlist.playlist.remoteSongCount == 0) {
+            playlist?.let { loadedPlaylist ->
+                if (loadedPlaylist.songCount == 0 && loadedPlaylist.playlist.remoteSongCount == 0) {
                     item {
                         EmptyPlaceholder(
                             icon = R.drawable.music_note,
@@ -605,7 +616,7 @@ fun LocalPlaylistScreen(
                                             translationY = headerParallax
                                         }
                                 ) {
-                                    if (playlist.thumbnails.size == 1) {
+                                    if (loadedPlaylist.thumbnails.size == 1) {
                                         // Single thumbnail
                                         Surface(
                                             modifier = Modifier
@@ -619,13 +630,13 @@ fun LocalPlaylistScreen(
                                             shape = RoundedCornerShape(16.dp)
                                         ) {
                                             AsyncImage(
-                                                model = playlist.thumbnails[0],
+                                                model = loadedPlaylist.thumbnails[0],
                                                 contentDescription = null,
                                                 contentScale = ContentScale.Crop,
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         }
-                                    } else if (playlist.thumbnails.size > 1) {
+                                    } else if (loadedPlaylist.thumbnails.size > 1) {
                                         // Grid of 4 thumbnails
                                         Surface(
                                             modifier = Modifier
@@ -646,7 +657,7 @@ fun LocalPlaylistScreen(
                                                     Alignment.BottomEnd,
                                                 ).fastForEachIndexed { index, alignment ->
                                                     AsyncImage(
-                                                        model = playlist.thumbnails.getOrNull(index),
+                                                        model = loadedPlaylist.thumbnails.getOrNull(index),
                                                         contentDescription = null,
                                                         contentScale = ContentScale.Crop,
                                                         modifier = Modifier
@@ -685,7 +696,7 @@ fun LocalPlaylistScreen(
 
                                 // Playlist Name
                                 Text(
-                                    text = playlist.playlist.name,
+                                    text = loadedPlaylist.playlist.name,
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
@@ -705,10 +716,10 @@ fun LocalPlaylistScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     // Song Count
-                                    val songCount = if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
-                                        playlist.playlist.remoteSongCount
+                                    val songCount = if (loadedPlaylist.songCount == 0 && loadedPlaylist.playlist.remoteSongCount != null) {
+                                        loadedPlaylist.playlist.remoteSongCount
                                     } else {
-                                        playlist.songCount
+                                        loadedPlaylist.songCount
                                     }
                                     MetadataChip(
                                         icon = R.drawable.music_note,
@@ -755,11 +766,11 @@ fun LocalPlaylistScreen(
                                             }
                                         }
                                     } else {
-                                        val liked = playlist.playlist.bookmarkedAt != null
+                                        val liked = loadedPlaylist.playlist.bookmarkedAt != null
                                         Surface(
                                             onClick = {
                                                 database.transaction {
-                                                    update(playlist.playlist.toggleLike())
+                                                    update(loadedPlaylist.playlist.toggleLike())
                                                 }
                                             },
                                             shape = CircleShape,
@@ -790,7 +801,7 @@ fun LocalPlaylistScreen(
                                         onClick = {
                                             playerConnection.playQueue(
                                                 ListQueue(
-                                                    title = playlist.playlist.name,
+                                                    title = loadedPlaylist.playlist.name,
                                                     items = songs.map { it.song.toMediaItem() },
                                                 ),
                                             )
@@ -812,7 +823,7 @@ fun LocalPlaylistScreen(
                                         onClick = {
                                             playerConnection.playQueue(
                                                 ListQueue(
-                                                    title = playlist.playlist.name,
+                                                    title = loadedPlaylist.playlist.name,
                                                     items = songs.shuffled().map { it.song.toMediaItem() },
                                                 ),
                                             )
@@ -905,20 +916,20 @@ fun LocalPlaylistScreen(
                                             // Show more options (edit, sync, queue)
                                             if (editable) {
                                                 showEditDialog = true
-                                            } else if (playlist.playlist.browseId != null) {
+                                            } else if (loadedPlaylist.playlist.browseId != null) {
                                                 coroutineScope.launch(Dispatchers.IO) {
-                                                    val playlistPage = YouTube.playlist(playlist.playlist.browseId)
+                                                    val playlistPage = YouTube.playlist(loadedPlaylist.playlist.browseId)
                                                         .completed()
                                                         .getOrNull() ?: return@launch
                                                     database.transaction {
-                                                        clearPlaylist(playlist.id)
+                                                        clearPlaylist(loadedPlaylist.id)
                                                         playlistPage.songs
                                                             .map(SongItem::toMediaMetadata)
                                                             .onEach(::insert)
                                                             .mapIndexed { position, song ->
                                                                 PlaylistSongMap(
                                                                     songId = song.id,
-                                                                    playlistId = playlist.id,
+                                                                    playlistId = loadedPlaylist.id,
                                                                     position = position,
                                                                     setVideoId = song.setVideoId
                                                                 )
@@ -993,10 +1004,62 @@ fun LocalPlaylistScreen(
                         }
                     }
                 }
+            } ?: run {
+                // Loading shimmer placeholder when playlist is loading
+                item(key = "loading_header") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = systemBarsTopPadding + AppBarHeight),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        ShimmerHost {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 8.dp, bottom = 20.dp)
+                                    .size(240.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .shimmer()
+                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                            )
+                            
+                            // Title placeholder
+                            TextPlaceholder(
+                                modifier = Modifier
+                                    .padding(vertical = 8.dp)
+                                    .size(width = 160.dp, height = 28.dp)
+                            )
+                            
+                            // Subtitle placeholder  
+                            TextPlaceholder(
+                                modifier = Modifier
+                                    .padding(bottom = 16.dp)
+                                    .size(width = 100.dp, height = 16.dp)
+                            )
+                            
+                            // Button placeholders
+                            Row(
+                                modifier = Modifier.padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                repeat(2) {
+                                    ButtonPlaceholder(Modifier.size(width = 140.dp, height = 48.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Loading song list placeholders
+                items(8) { 
+                    ShimmerHost {
+                        ListItemPlaceHolder()
+                    }
+                }
             }
 
             // Songs List
-            if (!selection) {
+            if (playlist != null && !selection) {
                 itemsIndexed(
                     items = if (isSearching) filteredSongs else mutableSongs,
                     key = { _, song -> song.map.id },

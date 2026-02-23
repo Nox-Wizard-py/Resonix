@@ -19,7 +19,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -89,6 +89,7 @@ import com.noxwizard.resonix.ui.component.LibraryPlaylistListItem
 import com.noxwizard.resonix.ui.component.LocalMenuState
 import com.noxwizard.resonix.ui.component.PlaylistGridItem
 import com.noxwizard.resonix.ui.component.PlaylistListItem
+import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.SortHeader
 import com.noxwizard.resonix.utils.rememberEnumPreference
 import com.noxwizard.resonix.utils.rememberPreference
@@ -126,53 +127,63 @@ fun LibraryPlaylistsScreen(
 
     val playlists by viewModel.allPlaylists.collectAsState()
 
-    val visiblePlaylists = playlists.distinctBy { it.id }
-        .filter { playlist ->
-            val name = playlist.playlist.name ?: ""
-            !name.contains("episode", ignoreCase = true)
-        }
+    val visiblePlaylists = remember(playlists) {
+        playlists.distinctBy { it.id }
+            .filter { playlist ->
+                val name = playlist.playlist.name ?: ""
+                !name.contains("episode", ignoreCase = true)
+            }
+    }
 
     val topSize by viewModel.topValue.collectAsState(initial = 50)
 
-    val likedPlaylist =
+    val likedName = stringResource(R.string.liked)
+    val likedPlaylist = remember {
         Playlist(
             playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.liked)
+                id = "auto_liked",
+                name = likedName
             ),
             songCount = 0,
             songThumbnails = emptyList(),
         )
+    }
 
-    val downloadPlaylist =
+    val offlineName = stringResource(R.string.offline)
+    val downloadPlaylist = remember {
         Playlist(
             playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.offline)
+                id = "auto_downloaded",
+                name = offlineName
             ),
             songCount = 0,
             songThumbnails = emptyList(),
         )
+    }
 
-    val topPlaylist =
+    val topName = stringResource(R.string.my_top)
+    val topPlaylist = remember(topSize) {
         Playlist(
             playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.my_top) + " $topSize"
+                id = "auto_top",
+                name = "$topName $topSize"
             ),
             songCount = 0,
             songThumbnails = emptyList(),
         )
+    }
 
-    val cachePlaylist =
+    val cacheName = stringResource(R.string.cached_playlist)
+    val cachePlaylist = remember {
         Playlist(
             playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.cached_playlist)
+                id = "auto_cached",
+                name = cacheName
             ),
             songCount = 0,
             songThumbnails = emptyList(),
         )
+    }
 
     val (showLiked) = rememberPreference(ShowLikedPlaylistKey, true)
     val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, true)

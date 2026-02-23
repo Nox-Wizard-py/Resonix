@@ -35,6 +35,8 @@ import com.noxwizard.resonix.constants.SongSortType
 import com.noxwizard.resonix.constants.SongSortTypeKey
 import com.noxwizard.resonix.constants.TopSize
 import com.noxwizard.resonix.db.MusicDatabase
+import com.noxwizard.resonix.db.entities.Album
+import com.noxwizard.resonix.db.entities.Artist
 import com.noxwizard.resonix.db.entities.Song
 import com.noxwizard.resonix.extensions.filterExplicit
 import com.noxwizard.resonix.extensions.filterExplicitAlbums
@@ -47,7 +49,7 @@ import com.noxwizard.resonix.utils.get
 import com.noxwizard.resonix.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -61,6 +63,9 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.util.Locale
 import javax.inject.Inject
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import com.noxwizard.resonix.di.IoDispatcher
 
 @HiltViewModel
 class LibrarySongsViewModel
@@ -70,6 +75,7 @@ constructor(
     database: MusicDatabase,
     downloadUtil: DownloadUtil,
     private val syncUtils: SyncUtils,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     val allSongs =
         context.dataStore.data
@@ -92,7 +98,7 @@ constructor(
                         downloadUtil.downloads.flatMapLatest { downloads ->
                             database
                                 .allSongs()
-                                .flowOn(Dispatchers.IO)
+                                .flowOn(ioDispatcher)
                                 .map { songs ->
                                     songs.filter { song: Song ->
                                         downloads[song.id]?.state == Download.STATE_COMPLETED
@@ -128,14 +134,14 @@ constructor(
                                 }
                         }
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun syncLikedSongs() {
-        viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedSongs() }
+        viewModelScope.launch(ioDispatcher) { syncUtils.syncLikedSongs() }
     }
 
     fun syncLibrarySongs() {
-        viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLibrarySongs() }
+        viewModelScope.launch(ioDispatcher) { syncUtils.syncLibrarySongs() }
     }
 }
 
@@ -146,6 +152,7 @@ constructor(
     @ApplicationContext context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     val allArtists =
         context.dataStore.data
@@ -161,14 +168,16 @@ constructor(
                     ArtistFilter.LIBRARY -> database.artists(sortType, descending)
                     ArtistFilter.LIKED -> database.artistsBookmarked(sortType, descending)
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun sync() {
-        viewModelScope.launch(Dispatchers.IO) { syncUtils.syncArtistsSubscriptions() }
+        viewModelScope.launch(ioDispatcher) { syncUtils.syncArtistsSubscriptions() }
     }
 
+    private val enrichSemaphore = Semaphore(3)
+
     init {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             allArtists.collect { artists ->
                 artists
                     .map { it.artist }
@@ -178,9 +187,11 @@ constructor(
                             LocalDateTime.now()
                         ) > Duration.ofDays(10)
                     }.forEach { artist ->
-                        YouTube.artist(artist.id).onSuccess { artistPage ->
-                            database.query {
-                                update(artist, artistPage)
+                        enrichSemaphore.withPermit {
+                            YouTube.artist(artist.id).onSuccess { artistPage ->
+                                database.query {
+                                    update(artist, artistPage)
+                                }
                             }
                         }
                     }
@@ -197,6 +208,7 @@ constructor(
     database: MusicDatabase,
     downloadUtil: DownloadUtil,
     private val syncUtils: SyncUtils,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     val allAlbums =
         context.dataStore.data
@@ -216,7 +228,7 @@ constructor(
                     AlbumFilter.DOWNLOADED ->
                         downloadUtil.downloads.flatMapLatest { downloads ->
                             database.allSongs()
-                                .flowOn(Dispatchers.IO)
+                                .flowOn(ioDispatcher)
                                 .map { songs ->
                                     songs
                                         .filter { song -> downloads[song.id]?.state == Download.STATE_COMPLETED }
@@ -231,7 +243,7 @@ constructor(
                         AlbumFilter.DOWNLOADED_FULL ->
                             downloadUtil.downloads.flatMapLatest { downloads ->
                                 database.allSongs()
-                                    .flowOn(Dispatchers.IO)
+                                    .flowOn(ioDispatcher)
                                     .map { songs ->
                                         songs
                                             .filter { song -> downloads[song.id]?.state == Download.STATE_COMPLETED }
@@ -252,33 +264,37 @@ constructor(
                     AlbumFilter.LIBRARY -> database.albums(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
                     AlbumFilter.LIKED -> database.albumsLiked(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun sync() {
-        viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedAlbums() }
+        viewModelScope.launch(ioDispatcher) { syncUtils.syncLikedAlbums() }
     }
 
+    private val enrichSemaphore = Semaphore(3)
+
     init {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             allAlbums.collect { albums ->
                 albums
                     .filter {
                         it.album.songCount == 0
                     }.forEach { album ->
-                        YouTube
-                            .album(album.id)
-                            .onSuccess { albumPage ->
-                                database.query {
-                                    update(album.album, albumPage, album.artists)
-                                }
-                            }.onFailure {
-                                reportException(it)
-                                if (it.message?.contains("NOT_FOUND") == true) {
+                        enrichSemaphore.withPermit {
+                            YouTube
+                                .album(album.id)
+                                .onSuccess { albumPage ->
                                     database.query {
-                                        delete(album.album)
+                                        update(album.album, albumPage, album.artists)
+                                    }
+                                }.onFailure {
+                                    reportException(it)
+                                    if (it.message?.contains("NOT_FOUND") == true) {
+                                        database.query {
+                                            delete(album.album)
+                                        }
                                     }
                                 }
-                            }
+                        }
                     }
             }
         }
@@ -292,6 +308,7 @@ constructor(
     @ApplicationContext context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
     val allPlaylists =
         context.dataStore.data
@@ -301,10 +318,10 @@ constructor(
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending) ->
                 database.playlists(sortType, descending)
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun sync() {
-        viewModelScope.launch(Dispatchers.IO) { 
+        viewModelScope.launch(ioDispatcher) { 
             syncUtils.syncSavedPlaylists()
             syncUtils.syncAutoSyncPlaylists()
         }
@@ -328,7 +345,7 @@ constructor(
     val artist =
         database
             .artist(artistId)
-            .stateIn(viewModelScope, SharingStarted.Lazily, null)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val songs =
         context.dataStore.data
@@ -342,19 +359,24 @@ constructor(
             .flatMapLatest { (sortDesc, hideExplicit) ->
                 val (sortType, descending) = sortDesc
                 database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
+
+
 
 @HiltViewModel
 class LibraryMixViewModel
 @Inject
 constructor(
     @ApplicationContext context: Context,
-    database: MusicDatabase,
+    private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
+    private val enrichSemaphore = Semaphore(3)
+
     val syncAllLibrary = {
-         viewModelScope.launch(Dispatchers.IO) {
+         viewModelScope.launch(ioDispatcher) {
              try {
                  syncUtils.syncLikedSongs()
                  syncUtils.syncLibrarySongs()
@@ -376,57 +398,51 @@ constructor(
             .artistsBookmarked(
                 ArtistSortType.CREATE_DATE,
                 true,
-            ).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     var albums = context.dataStore.data
         .map { it[HideExplicitKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideExplicit ->
             database.albumsLiked(AlbumSortType.CREATE_DATE, true).map { it.filterExplicitAlbums(hideExplicit) }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     var playlists = database.playlists(PlaylistSortType.CREATE_DATE, true)
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    init {
-        viewModelScope.launch(Dispatchers.IO) {
-            albums.collect { albums ->
-                albums
-                    .filter {
-                        it.album.songCount == 0
-                    }.forEach { album ->
-                        YouTube
-                            .album(album.id)
-                            .onSuccess { albumPage ->
-                                database.query {
-                                    update(album.album, albumPage, album.artists)
-                                }
-                            }.onFailure {
-                                reportException(it)
-                                if (it.message?.contains("NOT_FOUND") == true) {
-                                    database.query {
-                                        delete(album.album)
-                                    }
-                                }
-                            }
-                    }
-            }
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            artists.collect { artists ->
-                artists
-                    .map { it.artist }
-                    .filter {
-                        it.thumbnailUrl == null ||
-                                Duration.between(
-                                    it.lastUpdateTime,
-                                    LocalDateTime.now(),
-                                ) > Duration.ofDays(10)
-                    }.forEach { artist ->
-                        YouTube.artist(artist.id).onSuccess { artistPage ->
+    fun enrichAlbumIfNeeded(album: Album) {
+        if (album.album.songCount > 0) return
+
+        viewModelScope.launch(ioDispatcher) {
+            enrichSemaphore.withPermit {
+                YouTube.album(album.id)
+                    .onSuccess { albumPage ->
+                        database.query {
+                            update(album.album, albumPage, album.artists)
+                        }
+                    }.onFailure {
+                        reportException(it)
+                        if (it.message?.contains("NOT_FOUND") == true) {
                             database.query {
-                                update(artist, artistPage)
+                                delete(album.album)
                             }
                         }
                     }
+            }
+        }
+    }
+
+    fun enrichArtistIfNeeded(artist: Artist) {
+        val needsUpdate = artist.artist.thumbnailUrl == null ||
+                Duration.between(artist.artist.lastUpdateTime, LocalDateTime.now()) > Duration.ofDays(10)
+
+        if (!needsUpdate) return
+
+        viewModelScope.launch(ioDispatcher) {
+            enrichSemaphore.withPermit {
+                YouTube.artist(artist.artist.id).onSuccess { artistPage ->
+                    database.query {
+                        update(artist.artist, artistPage)
+                    }
+                }
             }
         }
     }

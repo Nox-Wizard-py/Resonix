@@ -32,6 +32,7 @@ import com.noxwizard.resonix.extensions.toMediaItem
 import com.noxwizard.resonix.extensions.togglePlayPause
 import com.noxwizard.resonix.playback.queues.ListQueue
 import com.noxwizard.resonix.ui.component.*
+import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.menu.SongMenu
 import com.noxwizard.resonix.viewmodels.LocalFilter
 import com.noxwizard.resonix.viewmodels.LocalSearchViewModel

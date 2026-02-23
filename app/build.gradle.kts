@@ -26,6 +26,8 @@ android {
         targetSdk = 36
         versionCode = 2
         versionName = "1.5.1"
+        
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.noxwizard.resonix"
 
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -39,6 +41,12 @@ android {
             ?: ""
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
+
+        val spotifyClientId = localProperties.getProperty("SPOTIFY_CLIENT_ID") ?: ""
+        val spotifyRedirectUri = localProperties.getProperty("SPOTIFY_REDIRECT_URI") ?: "com.noxwizard.resonix://callback"
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClientId\"")
+        buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"$spotifyRedirectUri\"")
+
     }
 
     flavorDimensions += "abi"
@@ -92,7 +100,7 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
+            // applicationIdSuffix = ".debug"  // Temporarily commented to match google-services.json
             isDebuggable = true
         }
     }
@@ -146,12 +154,22 @@ android {
             excludes += "META-INF/NOTICE.md"
             excludes += "META-INF/CONTRIBUTORS.md"
             excludes += "META-INF/LICENSE.md"
+            excludes += "META-INF/LICENSE*"
+            excludes += "META-INF/NOTICE*"
+            excludes += "META-INF/*.kotlin_module"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "DebugProbesKt.bin"
+            excludes += "kotlin-tooling-metadata.json"
         }
     }
 }
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+composeCompiler {
+    stabilityConfigurationFile.set(project.layout.projectDirectory.file("compose_stability.conf"))
 }
 
 dependencies {
@@ -220,6 +238,9 @@ dependencies {
     // Ensure ProcessLifecycleOwner is available for the presence manager and CI unit tests
     implementation("com.github.therealbush:translator:1.1.1")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
+
+    implementation(libs.appAuth)
+    implementation(libs.ucrop)
 }
 
 kapt {

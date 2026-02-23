@@ -39,6 +39,7 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.analytics.PlaybackStats
 import androidx.media3.exoplayer.analytics.PlaybackStatsListener
@@ -306,8 +307,19 @@ class MusicService :
                     setSmallIcon(R.drawable.small_icon)
                 },
         )
+        val loadControl = DefaultLoadControl.Builder()
+            .setTargetBufferBytes(8 * 1024 * 1024) // 8 MB — sufficient for ~5 min of audio
+            .setBufferDurationsMs(
+                15_000,  // min buffer before playback starts
+                60_000,  // max buffer duration
+                2_500,   // buffer for playback (rebuffer threshold)
+                5_000    // buffer for playback after rebuffer
+            )
+            .build()
+
         player = ExoPlayer
             .Builder(this)
+            .setLoadControl(loadControl)
             .setMediaSourceFactory(createMediaSourceFactory())
             .setRenderersFactory(createRenderersFactory())
             .setHandleAudioBecomingNoisy(true)

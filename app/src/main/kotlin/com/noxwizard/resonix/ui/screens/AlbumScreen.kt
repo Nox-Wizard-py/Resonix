@@ -94,6 +94,10 @@ import com.noxwizard.resonix.LocalPlayerAwareWindowInsets
 import com.noxwizard.resonix.LocalPlayerConnection
 import com.noxwizard.resonix.R
 import com.noxwizard.resonix.constants.AppBarHeight
+import com.noxwizard.resonix.constants.CONTENT_TYPE_HEADER
+import com.noxwizard.resonix.constants.CONTENT_TYPE_LIST
+import com.noxwizard.resonix.constants.CONTENT_TYPE_SHIMMER
+import com.noxwizard.resonix.constants.CONTENT_TYPE_SONG
 import com.noxwizard.resonix.constants.DisableBlurKey
 import com.noxwizard.resonix.constants.HideExplicitKey
 import com.noxwizard.resonix.db.entities.Album
@@ -344,7 +348,7 @@ fun AlbumScreen(
             val albumWithSongs = albumWithSongs
             if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
                 // Hero Header
-                item(key = "header") {
+                item(key = "header", contentType = CONTENT_TYPE_HEADER) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -371,7 +375,13 @@ fun AlbumScreen(
                                 shape = RoundedCornerShape(16.dp)
                             ) {
                                 AsyncImage(
-                                    model = albumWithSongs.album.thumbnailUrl,
+                                    model = ImageRequest.Builder(context)
+                                        .data(albumWithSongs.album.thumbnailUrl)
+                                        .size(720)
+                                        .memoryCacheKey("album_hero_${albumWithSongs.album.id}")
+                                        .diskCacheKey("album_hero_${albumWithSongs.album.id}")
+
+                                        .build(),
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
@@ -653,7 +663,7 @@ fun AlbumScreen(
                 }
 
                 // Songs Section Header
-                item(key = "songs_header") {
+                item(key = "songs_header", contentType = CONTENT_TYPE_HEADER) {
                     NavigationTitle(
                         title = stringResource(R.string.songs),
                     )
@@ -663,6 +673,7 @@ fun AlbumScreen(
                 itemsIndexed(
                     items = wrappedSongs,
                     key = { _, song -> song.item.id },
+                    contentType = { _, _ -> CONTENT_TYPE_SONG },
                 ) { index, songWrapper ->
                     SongListItem(
                         song = songWrapper.item,
@@ -721,12 +732,12 @@ fun AlbumScreen(
 
                 // Other Versions Section
                 if (otherVersions.isNotEmpty()) {
-                    item(key = "other_versions_header") {
+                    item(key = "other_versions_header", contentType = CONTENT_TYPE_HEADER) {
                         NavigationTitle(
                             title = stringResource(R.string.other_versions),
                         )
                     }
-                    item(key = "other_versions_list") {
+                    item(key = "other_versions_list", contentType = CONTENT_TYPE_LIST) {
                         LazyRow {
                             items(
                                 items = otherVersions.distinctBy { it.id },
@@ -759,7 +770,7 @@ fun AlbumScreen(
                 }
             } else {
                 // Shimmer Loading State
-                item(key = "shimmer") {
+                item(key = "shimmer", contentType = CONTENT_TYPE_SHIMMER) {
                     ShimmerHost {
                         Column(
                             modifier = Modifier

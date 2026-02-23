@@ -205,7 +205,7 @@ fun SongMenu(
                 val newTitle = values[0]
                 val newArtist = values[1]
 
-                coroutineScope.launch {
+                coroutineScope.launch(Dispatchers.IO) {
                     database.query {
                         update(song.song.copy(title = newTitle))
                         val artist = song.artists.firstOrNull()
@@ -213,10 +213,9 @@ fun SongMenu(
                             update(artist.copy(name = newArtist))
                         }
                     }
-
-                    showEditDialog = false
-                    onDismiss()
                 }
+                showEditDialog = false
+                onDismiss()
             },
             onDismiss = { showEditDialog = false }
         )
@@ -332,8 +331,10 @@ fun SongMenu(
             IconButton(
                 onClick = {
                     val s = song.song.toggleLike()
-                    database.query {
-                        update(s)
+                    coroutineScope.launch(Dispatchers.IO) {
+                        database.query {
+                            update(s)
+                        }
                     }
                     syncUtils.likeSong(s)
                 },
@@ -477,8 +478,10 @@ fun SongMenu(
                     )
                 },
                 modifier = Modifier.clickable {
-                    database.query {
-                        update(song.song.toggleLibrary())
+                    coroutineScope.launch(Dispatchers.IO) {
+                        database.query {
+                            update(song.song.toggleLibrary())
+                        }
                     }
                 }
             )
@@ -495,8 +498,10 @@ fun SongMenu(
                     },
                     modifier = Modifier.clickable {
                         onDismiss()
-                        database.query {
-                            delete(event)
+                        coroutineScope.launch(Dispatchers.IO) {
+                            database.query {
+                                delete(event)
+                            }
                         }
                     }
                 )
@@ -513,18 +518,20 @@ fun SongMenu(
                         )
                     },
                     modifier = Modifier.clickable {
-                        database.transaction {
-                            coroutineScope.launch {
-                                playlistBrowseId?.let { playlistId ->
-                                    if (playlistSong.map.setVideoId != null) {
-                                        YouTube.removeFromPlaylist(
-                                            playlistId, playlistSong.map.songId, playlistSong.map.setVideoId
-                                        )
+                        coroutineScope.launch(Dispatchers.IO) {
+                            database.transaction {
+                                launch {
+                                    playlistBrowseId?.let { playlistId ->
+                                        if (playlistSong.map.setVideoId != null) {
+                                            YouTube.removeFromPlaylist(
+                                                playlistId, playlistSong.map.songId, playlistSong.map.setVideoId
+                                            )
+                                        }
                                     }
                                 }
+                                move(playlistSong.map.playlistId, playlistSong.map.position, Int.MAX_VALUE)
+                                delete(playlistSong.map.copy(position = Int.MAX_VALUE))
                             }
-                            move(playlistSong.map.playlistId, playlistSong.map.position, Int.MAX_VALUE)
-                            delete(playlistSong.map.copy(position = Int.MAX_VALUE))
                         }
                         onDismiss()
                     }

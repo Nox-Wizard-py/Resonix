@@ -1,0 +1,1016 @@
+{
+  "props": {
+    "pageProps": {
+      "state": {
+        "data": {
+          "entity": {
+            "type": "playlist",
+            "name": "RapCaviar",
+            "uri": "spotify:playlist:37i9dQZF1DX0XUsuxWHRQd",
+            "id": "37i9dQZF1DX0XUsuxWHRQd",
+            "title": "RapCaviar",
+            "subtitle": "Spotify",
+            "authors": null,
+            "coverArt": {
+              "sources": [
+                {
+                  "height": null,
+                  "width": null,
+                  "url": "https://i.scdn.co/image/ab67706f000000028bf6d8928523daf838b6cdc5"
+                }
+              ]
+            },
+            "releaseDate": null,
+            "duration": 0,
+            "isPlayable": true,
+            "playabilityReason": "UNKNOWN",
+            "isExplicit": false,
+            "hasVideo": false,
+            "relatedEntityUri": "spotify:playlist:37i9dQZF1DX0XUsuxWHRQd",
+            "trackList": [
+              {
+                "uri": "spotify:track:7cjoZVmWe2xsGR4wcXiV2v",
+                "uid": "34656635376666306365343965336638",
+                "title": "What You Saying",
+                "subtitle": "Lil Uzi Vert",
+                "isExplicit": false,
+                "isNineteenPlus": false,
+                "duration": 131729,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/56f26b01dec81ee0156b04f26f0160f72999478f"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:554qQSs9lpRVq6TlaaiIKT",
+                "uid": "39613738353064323865383133626264",
+                "title": "4 Raws",
+                "subtitle": "EsDeeKid",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 146666,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/3e831219ae80f230b66f38fdb7541e9204189903"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:0FrESd7LNffZyGZ37VuSmH",
+                "uid": "64353062323233333261633662616130",
+                "title": "ATM",
+                "subtitle": "Don Toliver",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 180705,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/422fd857e65a8bf4f5d1fbec2f520dbbe670ce42"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:2FycFFuNMVVYIiIqeldXF5",
+                "uid": "33366562623630383632303530333338",
+                "title": "STOLE YA FLOW",
+                "subtitle": "A$AP Rocky",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 199015,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/c49404df85ec81c12edd0dff78d3f4ec5f577399"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:7KSe5wIvvaKCrPN8ySgSfg",
+                "uid": "30396538363834373465353139353939",
+                "title": "Mrs. Trendsetter",
+                "subtitle": "Lil Baby",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 148860,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/bf8debfeea4d6c686aec30af1330e484ec438566"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:38iBHQloAVZNpKsFVU8aAd",
+                "uid": "31333637386338373439316565663537",
+                "title": "MR RECOUP",
+                "subtitle": "21 Savage,\u00a0Drake",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 165789,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/85f670255556d9265b2ad26f17dfa88e55957b34"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:1lJOLxDS8kS2rihrqezMcv",
+                "uid": "31633139613130386634353932366564",
+                "title": "Century",
+                "subtitle": "EsDeeKid",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 109714,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/b1b0fe7b8d85bebae157f71775480e31ca14a330"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:3v1d12O8WEj5H9eFID7HBn",
+                "uid": "62363239626163623863346563383432",
+                "title": "HELICOPTER",
+                "subtitle": "A$AP Rocky",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 165288,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/206b13df437635bceac465b85d96a0a333ae4fdb"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4YmsnZcxHEGEqHB3K0vdt0",
+                "uid": "30343632666637623533613235383534",
+                "title": "DON'T KILL THE PARTY (feat. Quavo & Juicy J)",
+                "subtitle": "Ty Dolla $ign,\u00a0Juicy J,\u00a0Quavo",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 132485,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/924eccea6b0e088a6cc65f6d4a892819b86a8694"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:0YMSaZ3DPE898PQ28VgRav",
+                "uid": "33366265663864346464646635626632",
+                "title": "Flex",
+                "subtitle": "The Party Boyz",
+                "isExplicit": false,
+                "isNineteenPlus": false,
+                "duration": 276080,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/08952e19796a983ddc14c97e95a24a0b4ff24b2a"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:0Sy9PzIKNGbnoY3WWPBZAR",
+                "uid": "31653833316137333038366139323366",
+                "title": "Bruce Wayne",
+                "subtitle": "YoungBoy Never Broke Again",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 176294,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/c6f10debfdee8cc473d73ee9e3efefbf77b255f1"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:0CtG3VBxkHbEuIexLCyVcZ",
+                "uid": "63393233313336616463363437303034",
+                "title": "Satellite",
+                "subtitle": "CHASE B,\u00a0Don Toliver,\u00a0SoFaygo",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 181739,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/013a6a6a8f8ffd029a81a69271801697c2ac43b3"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:0w88s8d4hqv3jVYBwq7led",
+                "uid": "34643863396532646530306561623934",
+                "title": "STEPBROTHERS",
+                "subtitle": "21 Savage,\u00a0Young Nudy",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 249610,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/2377d0577c1333542f5fe64a9bb529cc739b9098"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:7bhMeTchpDsG69wNmAZgzN",
+                "uid": "65643136653833383130653466653066",
+                "title": "Let's Do It (feat. Playboi Carti & Skooly)",
+                "subtitle": "Lil Baby,\u00a0Playboi Carti,\u00a0Skooly",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 202162,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/a2c24292f074a99a683e2eae3ddaf6488130bd11"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:5ehgf6op0j2sE4lqjiTkMY",
+                "uid": "37663838666135303132376337656131",
+                "title": "Ever Since U Left Me (I Went Deaf)",
+                "subtitle": "French Montana,\u00a0Max B",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 136333,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/db6003e8a3e3c67c6adfb2cd6cbc01c8ce9d6b23"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:5YbDA37CN0YcgZXF6L2cBX",
+                "uid": "37323364393165633031326533613830",
+                "title": "FDO",
+                "subtitle": "Pooh Shiesty",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 319213,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/68f2bd95215904546ffa2de6a0d534068143b0a2"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:3GTcDTmwv59jmHwxlpamfe",
+                "uid": "63366130303433666563636361316236",
+                "title": "A+",
+                "subtitle": "Key Glock",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 155955,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/2cff48951648249dcd2f739b76306ef149dd003e"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:2xsTsnA5QOFCnFXdEHGkli",
+                "uid": "63346234666333653664376161653661",
+                "title": "STAY HERE 4 LIFE (feat. Brent Faiyaz)",
+                "subtitle": "A$AP Rocky,\u00a0Brent Faiyaz",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 346093,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/b966c2d0ef56468ca5f8775ac8424d49aea2f843"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4fwJzG3arwvfC1ZbRdracJ",
+                "uid": "33376632656264626637353435313563",
+                "title": "Flo Jackson",
+                "subtitle": "Flo Milli",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 143444,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/90d3b081d5b2befab8f9813d987478f917456d1d"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:7z0fmhOBmjifu0BqMP5vuG",
+                "uid": "65626363343636393632663838613165",
+                "title": "BOO",
+                "subtitle": "H3adband",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 138657,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/09b453840d64f9713ea8d0dfcca1dd95870405ff"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:3NZ3oBrDN9D2Bi1hykwXHb",
+                "uid": "63633133396466386232636536336337",
+                "title": "Regular",
+                "subtitle": "Lil Uzi Vert",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 146865,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/1f0a96eafbdb4b8325afba07e81bc240571192b0"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:57Z6TJCTMACXxdrcwZ3Zvf",
+                "uid": "62633938396463623334373936383732",
+                "title": "Phantom",
+                "subtitle": "EsDeeKid,\u00a0Rico Ace",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 109759,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/28bd445b5dc103cb170eb5c8dd3bb74162158645"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:2lSDVBIWbWQ7z5Lw15GRNw",
+                "uid": "38343135336239363164353130353036",
+                "title": "STOP SNITCHING (feat. BossMan Dlow & Sauce Walka)",
+                "subtitle": "A$AP Rocky,\u00a0BossMan Dlow,\u00a0Sauce Walka",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 200170,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/b76cfebcbd05a35e2993c736ad5dc432d25d7691"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4PRDNZEGrKlPj6Y0hMFdN8",
+                "uid": "65343432666664346264366665306633",
+                "title": "WHERE YOU FROM",
+                "subtitle": "21 Savage",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 219991,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/c546e259f0cab511c85a1b91bcb3957db7e4245a"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:0pVYhms1xQW1TFsyl1SDmH",
+                "uid": "33333662623164336130633561336162",
+                "title": "All On Me (feat. G Herbo)",
+                "subtitle": "Lil Baby,\u00a0G Herbo",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 219767,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/a45a0c1223d691638e6d09a33a1ebe39cd5e4fe0"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:57TSLzWfZdQroiwtIFX97X",
+                "uid": "31653939373461353136313863383566",
+                "title": "Putting Ya Dine",
+                "subtitle": "Monaleo",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 179476,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/211e701a0a0ef64d371abd67254c9d663b11bfc4"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4evMMKc2HD6fV9slMfgkMx",
+                "uid": "30393936363863363832353836316139",
+                "title": "TOXIC (with Skepta)",
+                "subtitle": "Playboi Carti,\u00a0Skepta",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 135275,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/fb7441a4c6926521aa793b49ff41376a3c4d1e27"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:3nENfCHtFMlnKUMpCU3jUn",
+                "uid": "61306464613264643063663064613663",
+                "title": "From The Bottom",
+                "subtitle": "BigXthaPlug",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 122266,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/d1c845d5338574aa66eca197b0e7e4c9f8aa0568"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:3o6Wg0EOBtWXPdufCes5Lj",
+                "uid": "61306565646339656331666532343438",
+                "title": "DOG $HIT",
+                "subtitle": "21 Savage,\u00a0GloRilla",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 198108,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/04d8fedbd73d7aeaee82a93057d60c13a957ee08"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:2lpLHJXgSGFU5GuIk8qzgs",
+                "uid": "66663866363264323234303133656263",
+                "title": "New Trip (feat. Yeat & BNYX\u00ae)",
+                "subtitle": "Quavo,\u00a0Yeat,\u00a0BNYX\u00ae",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 207119,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/fdae2ad29ddbbfa436907c2220582e07361b2c3d"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:2F5yTzGkclnguED0nwworg",
+                "uid": "31353834393964613333643434306262",
+                "title": "IDB",
+                "subtitle": "42 Dugg",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 172324,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/43acd11fa640f903d6025d0120b611044417b4cf"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:43oBNdp6W1Z9YDu1svX1hl",
+                "uid": "62343032383632313761316138666530",
+                "title": "3am",
+                "subtitle": "Loe Shimmy,\u00a0Don Toliver",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 136127,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/8c5da7261b12e4679d1d3de73bb8d411f7621306"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4m4sk6NdP92HCvioRCo9BM",
+                "uid": "30653664306361346435636638326166",
+                "title": "wgft (Remix) [feat. Chris Brown]",
+                "subtitle": "Gunna,\u00a0Chris Brown",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 187133,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/2b8e68b13c2471af869bd311ce8af92d1d353462"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:2igNvPf7RLTZG688Mx8GtU",
+                "uid": "63663364356362333464653166633533",
+                "title": "girl, get up. (feat. SZA)",
+                "subtitle": "Doechii,\u00a0SZA",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 188600,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/dc455f6a907ffe00d7837c3cbd35a49d2d404a11"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:197BDJNJEEEO3GjoDe9eIN",
+                "uid": "33663362303736653830666635353864",
+                "title": "600 Degrees",
+                "subtitle": "BigXthaPlug,\u00a0Ro$ama,\u00a0Yung Hood,\u00a0MurdaGang PB",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 177142,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/f1aa0ecb8fb7d27f9175eb54212cd30ab916182a"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:6f0UpQ2qdNevj7NARngtna",
+                "uid": "30313366623931376633376262306465",
+                "title": "One of Them Ones",
+                "subtitle": "Veeze,\u00a0Lil Baby,\u00a0Rylo Rodriguez",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 185400,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/1a780c0ed3d461b4841a913d304eeab9fd5eec38"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4k6sLrwnabcM6AiUza1qKb",
+                "uid": "38653136356437326336306166306564",
+                "title": "How I'm Livin",
+                "subtitle": "BossMan Dlow",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 112207,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/724359a945b6df3a09c138a56d8e5f5d348b142a"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:1d94WA0KdviIHSKlyDN2VF",
+                "uid": "62656330643137396339333239393931",
+                "title": "Booga",
+                "subtitle": "Central Cee",
+                "isExplicit": false,
+                "isNineteenPlus": false,
+                "duration": 112733,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/56f696c37f0925d93175523c6c1695e30fe0359f"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4hcMQJ8MInQQjm7r1sFBuv",
+                "uid": "35396231336638653264333730393162",
+                "title": "Who Coppin'",
+                "subtitle": "Larry June",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 201666,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/24c5499b1cf41d3158c201aa751e75159b3a6037"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:50RFfEjzKnTAzzYkmPb6DO",
+                "uid": "33353530373238663463393761663432",
+                "title": "Feet On Land",
+                "subtitle": "Moneybagg Yo,\u00a0G Herbo",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 152658,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/417f76bff3b7879a72f04624483463c719c2d208"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:6JPysVgPfEab03Gbm7hjXM",
+                "uid": "64633732633036366561373264623332",
+                "title": "NOW OR NEVER",
+                "subtitle": "Tkandz,\u00a0CXSPER",
+                "isExplicit": false,
+                "isNineteenPlus": false,
+                "duration": 123428,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/aa50f95aaffb73ebc279d2ebcbb5bab5d6217f31"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:3oTuTpF1F3A7rEC6RKsMRz",
+                "uid": "31636662343836373961363234383234",
+                "title": "Raindance (feat. Tems)",
+                "subtitle": "Dave,\u00a0Tems",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 219743,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/7d860804d259f81b4a7bc04900a5410d99995fd4"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:1qDDgZwDI312DbDaFPaXVD",
+                "uid": "64623333663635653733303463336234",
+                "title": "Seen Enough (feat. Polo G)",
+                "subtitle": "Tee Grizzley,\u00a0Polo G",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 169644,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/7d853167e60b9ab209f426b790af8190d4aab9f9"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:7zPqfEr2mvXfDbPYaJhaJd",
+                "uid": "66383136373737386632373562303165",
+                "title": "MARCH",
+                "subtitle": "GloRilla",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 170666,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/847bd83a7b2aac03587b5c9b272efbd5e5e04d64"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:6pDt1F76BKy3ywWg4t8wee",
+                "uid": "66383762636663636262636261363366",
+                "title": "Tiramisu",
+                "subtitle": "Don Toliver",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 138947,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/8ec03fc13c6bd4812dddc0eef3451cdafb08619a"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4nds6JYKbzMdpXwuINhSEZ",
+                "uid": "39333339373136666364383666623433",
+                "title": "Part of Me",
+                "subtitle": "A Boogie Wit da Hoodie",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 167213,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/72aa85fad513170572f4ca5d4c843b2cc31e5d8e"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:2Dlp3mgmT5GgKw9tXs85NA",
+                "uid": "30333835376566336561376461336638",
+                "title": "I'm a Dog",
+                "subtitle": "Kevin Gates",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 148653,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/e6c16ca119e0d732d0aa9e1d245d8ceca8121e30"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:1L5kcJo9aJIjudbqoOyP5e",
+                "uid": "34643133306664633961623139386432",
+                "title": "SEEUMSAYIN",
+                "subtitle": "BunnaB",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 98624,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/064d771f3b4eb978bb8a27eda9b6048fe37a6b6d"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:4bqOuFHjpDpCE3z5rHUbne",
+                "uid": "32363464646164306661343136663937",
+                "title": "4TH OF JULY (feat. Fridayy)",
+                "subtitle": "Meek Mill,\u00a0Fridayy",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 221539,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/15e02f2dd604b18b3f1bf546d69b4851352eea6e"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:007REOMMTHhzCr6w1WT2ER",
+                "uid": "31383465376636336562643938613639",
+                "title": "Hoes Be Mad - 2.0",
+                "subtitle": "Cash Cobain,\u00a0BunnaB,\u00a0YKNIECE,\u00a0Loe Shimmy,\u00a0ZEDDY WILL",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 176599,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/282e936fd6728c156710c77ecdba130445faa513"
+                },
+                "entityType": "track"
+              },
+              {
+                "uri": "spotify:track:57KbQMnqfP3U5RsjqA1Rum",
+                "uid": "32393530633330613531396532353663",
+                "title": "Gangsta Graduation (feat. G Herbo)",
+                "subtitle": "Polo G,\u00a0G Herbo",
+                "isExplicit": true,
+                "isNineteenPlus": false,
+                "duration": 201586,
+                "isPlayable": true,
+                "playabilityReason": "PLAYABLE",
+                "audioPreview": {
+                  "format": "MP3_96",
+                  "url": "https://p.scdn.co/mp3-preview/6c0ef54786f597f7405fcb00002e75ac25711a81"
+                },
+                "entityType": "track"
+              }
+            ],
+            "visualIdentity": {
+              "backgroundBase": {
+                "alpha": 255,
+                "blue": 30,
+                "green": 0,
+                "red": 158
+              },
+              "backgroundTintedBase": {
+                "alpha": 255,
+                "blue": 5,
+                "green": 0,
+                "red": 97
+              },
+              "textBase": {
+                "alpha": 255,
+                "blue": 255,
+                "green": 255,
+                "red": 255
+              },
+              "textBrightAccent": {
+                "alpha": 255,
+                "blue": 255,
+                "green": 255,
+                "red": 255
+              },
+              "textSubdued": {
+                "alpha": 255,
+                "blue": 185,
+                "green": 189,
+                "red": 255
+              },
+              "image": [
+                {
+                  "url": "https://image-cdn-ak.spotifycdn.com/image/ab67706f000000018bf6d8928523daf838b6cdc5",
+                  "maxHeight": 64,
+                  "maxWidth": 64
+                },
+                {
+                  "url": "https://image-cdn-ak.spotifycdn.com/image/ab67706f000000028bf6d8928523daf838b6cdc5",
+                  "maxHeight": 300,
+                  "maxWidth": 300
+                },
+                {
+                  "url": "https://image-cdn-ak.spotifycdn.com/image/ab67706f000000038bf6d8928523daf838b6cdc5",
+                  "maxHeight": 640,
+                  "maxWidth": 640
+                }
+              ]
+            },
+            "attributes": [
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "request_id",
+                "value": "ssp~064991453ba4c77dc97943343e8ba8974651"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "uri",
+                "value": "spotify:user:spotify:playlist:37i9dQZF1DX0XUsuxWHRQd"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "status",
+                "value": "PUBLISHED"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "isAlgotorial",
+                "value": "false"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "primary_color",
+                "value": "#F49B23"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "recs.hasArtists",
+                "value": "spotify:artist:4O15NlyKLIASxsJ0PrXPfz,spotify:artist:0EyhkwP3UnwGFBy6xwKjSy,spotify:artist:4Gso3d4CscCijv0lmajZWs,spotify:artist:13ubrt8QOOCPljQ2FL1Kca,spotify:artist:5f7VJjfbwm532GiveGC0ZK"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "autoplay",
+                "value": "spotify:playlist:37i9dQZF1DWY4xHQp97fN6"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "header_image_url_desktop",
+                "value": "https://i.scdn.co/image/ab6768640000fe89a3339f147c8a1f7be2c328eb"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "image_url",
+                "value": "https://i.scdn.co/image/ab67686d00003ae009add40851093d58495e693f"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "episode_description",
+                "value": "New music from Lil Uzi Vert, A$AP Rocky and YoungBoy Never Broke Again. "
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "is_video_first",
+                "value": "false"
+              },
+              {
+                "__typename": "PlaylistAttribute",
+                "key": "correlation-id",
+                "value": "ssp~064991453ba4c77dc97943343e8ba8974651"
+              }
+            ],
+            "format": "format-shows"
+          },
+          "embeded_entity_uri": "spotify:playlist:37i9dQZF1DX0XUsuxWHRQd",
+          "defaultAudioFileObject": {
+            "passthrough": "NONE"
+          }
+        },
+        "settings": {
+          "rtl": false,
+          "session": {
+            "accessToken": "BQB5aKgWrYbaUoqmdIejDaYjglwKwRZfuOYo25ZBhXZf3u1tgoDV2cIoRx-YtEzqnY7lDBKJ_uR2iAtJI_bqK5FXeig_qGxweetyTj4XS7fbzs4h0cfOUpeeaRPwzFa4vFAwAnJXKlg",
+            "accessTokenExpirationTimestampMs": 1769742835642,
+            "isAnonymous": true
+          },
+          "entityContext": "playlist",
+          "clientId": "ab9ad0d96a624805a7d51e8868df1f97",
+          "isMobile": false,
+          "isSafari": false,
+          "isIOS": false,
+          "isTablet": false,
+          "isDarkMode": false,
+          "isAudiobookLaunchedInGeoMarket": false
+        },
+        "machineState": {
+          "initialized": false,
+          "showOverflowMenu": false,
+          "playbackMode": "unknown",
+          "currentPreviewTrackIndex": 0,
+          "platformSupportsEncryptedContent": false
+        }
+      },
+      "config": {
+        "correlationId": "906fe7a58f5bc012ea7f356de72f3a98",
+        "strings": {
+          "en": {
+            "translation": {}
+          }
+        },
+        "locale": "en",
+        "clientId": "ab9ad0d96a624805a7d51e8868df1f97",
+        "restrictionId": ""
+      },
+      "_sentryTraceData": "3fc1b65c7498cd008315bd9063a86928-98b0f7065774aa18-0",
+      "_sentryBaggage": "sentry-environment=production,sentry-release=8860aece609540f4203eff844739a545d837fbca,sentry-public_key=4cc707ab12ea4779b417479c0550a5cb,sentry-trace_id=3fc1b65c7498cd008315bd9063a86928,sentry-org_id=22381,sentry-sampled=false,sentry-sample_rand=0.25619645471252084,sentry-sample_rate=0"
+    },
+    "__N_SSP": true
+  },
+  "page": "/playlist/[id]",
+  "query": {
+    "id": "37i9dQZF1DX0XUsuxWHRQd"
+  },
+  "buildId": "fdb7a23c-c5ef-4e2e-84d4-d448e27df8dc",
+  "assetPrefix": "https://embed-cdn.spotifycdn.com",
+  "isFallback": false,
+  "isExperimentalCompile": false,
+  "gssp": true,
+  "scriptLoader": []
+}

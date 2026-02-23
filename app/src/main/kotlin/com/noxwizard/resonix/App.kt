@@ -35,7 +35,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import android.content.ComponentCallbacks2
 import android.content.Intent
+import coil3.imageLoader
 import com.noxwizard.resonix.BuildConfig
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -54,52 +56,18 @@ class App : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         instance = this
         
-        // Initialize preferences cache early to avoid blocking main thread
+        // ✅ PHASE 1: Critical-only init on main thread (<50ms)
         initPreferencesCache(dataStore)
         Timber.plant(Timber.DebugTree())
-        // Also plant the global log tree to capture logs into an in-memory flow for Debug UI
         try {
             Timber.plant(com.noxwizard.resonix.utils.GlobalLogTree())
         } catch (_: Exception) {}
 
-        val locale = Locale.getDefault()
-        val languageTag = locale.toLanguageTag().replace("-Hant", "") // replace zh-Hant-* to zh-*
-        YouTube.locale = YouTubeLocale(
-            gl = dataStore[ContentCountryKey]?.takeIf { it != SYSTEM_DEFAULT }
-                ?: locale.country.takeIf { it in CountryCodeToName }
-                ?: "US",
-            hl = dataStore[ContentLanguageKey]?.takeIf { it != SYSTEM_DEFAULT }
-                ?: locale.language.takeIf { it in LanguageCodeToName }
-                ?: languageTag.takeIf { it in LanguageCodeToName }
-                ?: "en"
-        )
-        if (languageTag == "zh-TW") {
-            KuGou.useTraditionalChinese = true
-        }
-
-        // Initialize Last.fm with API credentials
-        LastFM.initialize(
-            apiKey = BuildConfig.LASTFM_API_KEY,
-            secret = BuildConfig.LASTFM_SECRET
-        )
-        
-        // Load Last.fm session key from preferences
-        LastFM.sessionKey = dataStore[LastFMSessionKey]
-
-        if (dataStore[ProxyEnabledKey] == true) {
-            try {
-                YouTube.proxy = Proxy(
-                    dataStore[ProxyTypeKey].toEnum(defaultValue = Proxy.Type.HTTP),
-                    dataStore[ProxyUrlKey]!!.toInetSocketAddress()
-                )
-            } catch (e: Exception) {
-                Toast.makeText(this, "Failed to parse proxy url.", LENGTH_SHORT).show()
-                reportException(e)
-            }
-        }
-
-        if (dataStore[UseLoginForBrowse] != false) {
-            YouTube.useLoginForBrowse = true
+        // ✅ PHASE 2: Defer heavy config to background
+        applicationScope.launch(Dispatchers.Default) {
+            initializeYouTubeConfig()
+            initializeLastFM()
+            initializeProxy()
         }
 
         applicationScope.launch {
@@ -196,28 +164,105 @@ class App : Application(), SingletonImageLoader.Factory {
         }
     }
 
+    // ══════════════════════════════════════════════════════
+    // Deferred Initialization Helpers
+    // ══════════════════════════════════════════════════════
+
+    private fun initializeYouTubeConfig() {
+        val locale = Locale.getDefault()
+        val languageTag = locale.toLanguageTag().replace("-Hant", "")
+        YouTube.locale = YouTubeLocale(
+            gl = dataStore[ContentCountryKey]?.takeIf { it != SYSTEM_DEFAULT }
+                ?: locale.country.takeIf { it in CountryCodeToName }
+                ?: "US",
+            hl = dataStore[ContentLanguageKey]?.takeIf { it != SYSTEM_DEFAULT }
+                ?: locale.language.takeIf { it in LanguageCodeToName }
+                ?: languageTag.takeIf { it in LanguageCodeToName }
+                ?: "en"
+        )
+        if (languageTag == "zh-TW") {
+            KuGou.useTraditionalChinese = true
+        }
+        if (dataStore[UseLoginForBrowse] != false) {
+            YouTube.useLoginForBrowse = true
+        }
+    }
+
+    private fun initializeLastFM() {
+        LastFM.initialize(
+            apiKey = BuildConfig.LASTFM_API_KEY,
+            secret = BuildConfig.LASTFM_SECRET
+        )
+        LastFM.sessionKey = dataStore[LastFMSessionKey]
+    }
+
+    private fun initializeProxy() {
+        if (dataStore[ProxyEnabledKey] == true) {
+            try {
+                YouTube.proxy = Proxy(
+                    dataStore[ProxyTypeKey].toEnum(defaultValue = Proxy.Type.HTTP),
+                    dataStore[ProxyUrlKey]!!.toInetSocketAddress()
+                )
+            } catch (e: Exception) {
+                applicationScope.launch(Dispatchers.Main) {
+                    Toast.makeText(this@App, "Failed to parse proxy url.", LENGTH_SHORT).show()
+                }
+                reportException(e)
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    // Memory Pressure Handling
+    // ══════════════════════════════════════════════════════
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        when (level) {
+            ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN,
+            ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW,
+            ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> {
+                // Clear Coil image memory cache to free RAM
+                imageLoader.memoryCache?.clear()
+            }
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        imageLoader.memoryCache?.clear()
+    }
+
+    // ══════════════════════════════════════════════════════
+    // Image Loader Configuration
+    // ══════════════════════════════════════════════════════
+
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         val cacheSize = dataStore[MaxImageCacheSizeKey]
 
-        // will crash app if you set to 0 after cache starts being used
-        if (cacheSize == 0) {
-            return ImageLoader.Builder(this)
-                .crossfade(true)
-                .allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                .diskCachePolicy(CachePolicy.DISABLED)
-                .build()
+        val builder = ImageLoader.Builder(this)
+            .crossfade(150)
+            .allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .memoryCache {
+                coil3.memory.MemoryCache.Builder()
+                    .maxSizePercent(context, 0.25)
+                    .build()
+            }
+
+        // Disk cache: disabled if user set cache size to 0
+        if (cacheSize != 0) {
+            builder.diskCache(
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("coil"))
+                    .maxSizeBytes((cacheSize ?: 512) * 1024 * 1024L)
+                    .build()
+            )
+        } else {
+            builder.diskCachePolicy(CachePolicy.DISABLED)
         }
 
-        return ImageLoader.Builder(this)
-        .crossfade(true)
-        .allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-        .diskCache(
-            DiskCache.Builder()
-                .directory(cacheDir.resolve("coil"))
-                .maxSizeBytes((cacheSize ?: 512) * 1024 * 1024L)
-                .build()
-        )
-        .build()
+        return builder.build()
     }
 
     companion object {

@@ -399,7 +399,10 @@ fun ExploreScreen(
                         contentPadding = PaddingValues(6.dp),
                         modifier = Modifier.height((MoodAndGenresButtonHeight + 12.dp) * 4 + 12.dp),
                     ) {
-                        items(moodAndGenres) {
+                        items(
+                            items = moodAndGenres,
+                            key = { "${it.endpoint.browseId}_${it.endpoint.params}" },
+                        ) {
                             MoodAndGenresButton(
                                 title = it.title,
                                 onClick = {

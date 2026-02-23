@@ -71,6 +71,14 @@ fun IntegrationScreen(
             },
         )
 
+        PreferenceEntry(
+            title = { Text("Link Spotify") },
+            icon = { Icon(painterResource(R.drawable.link), null) }, // Using generic link icon
+            onClick = {
+                navController.navigate("spotify_login")
+            },
+        )
+
         PreferenceGroupTitle(
             title = stringResource(R.string.scrobbling),
         )

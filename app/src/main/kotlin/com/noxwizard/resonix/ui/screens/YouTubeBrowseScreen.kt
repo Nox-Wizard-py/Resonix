@@ -27,7 +27,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -145,6 +145,7 @@ fun YouTubeBrowseScreen(
                             ) {
                                 items(
                                     items = it.items,
+                                    key = { item -> item.id },
                                 ) { song ->
                                     Box(Modifier.width(350.dp)) {
                                         YouTubeListItem(
@@ -194,6 +195,7 @@ fun YouTubeBrowseScreen(
                             LazyRow {
                                 items(
                                     items = it.items,
+                                    key = { item -> item.id },
                                 ) { item ->
                                     YouTubeGridItem(
                                         item = item,

@@ -161,6 +161,8 @@
     <string name="edit_playlist">Edit playlist</string>
     <string name="create_playlist">Create playlist</string>
     <string name="playlist_name">Playlist name</string>
+    <string name="action_change_cover">Change cover</string>
+    <string name="cover_changed">Cover will be updated</string>
     <string name="error_playlist_name_empty">Playlist name cannot be empty.</string>
 
     <string name="edit_artist">Edit artist</string>

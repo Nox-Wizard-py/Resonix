@@ -68,6 +68,8 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_BUFFERING
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import com.noxwizard.resonix.LocalDatabase
 import com.noxwizard.resonix.LocalPlayerConnection
 import com.noxwizard.resonix.R
@@ -79,6 +81,7 @@ import com.noxwizard.resonix.db.entities.ArtistEntity
 import com.noxwizard.resonix.extensions.togglePlayPause
 import com.noxwizard.resonix.models.MediaMetadata
 import com.noxwizard.resonix.utils.rememberPreference
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -139,10 +142,12 @@ private fun NewMiniPlayer(
     var dragStartTime by remember { mutableStateOf(0L) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
-    val animationSpec = spring<Float>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessLow
-    )
+    val animationSpec = remember {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    }
     
     val overlayAlpha by animateFloatAsState(
         targetValue = if (isPlaying) 0.0f else 0.4f,
@@ -298,7 +303,13 @@ private fun NewMiniPlayer(
                         // Thumbnail background
                         mediaMetadata?.let { metadata ->
                             AsyncImage(
-                                model = metadata.thumbnailUrl,
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(metadata.thumbnailUrl)
+                                    .size(144)
+                                    .memoryCacheKey("mini_new_${metadata.id}")
+                                    .diskCacheKey("mini_new_${metadata.id}")
+                
+                                    .build(),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -370,8 +381,11 @@ private fun NewMiniPlayer(
                             )
                         }
 
+                        val artistsText = remember(metadata.artists) {
+                            metadata.artists.joinToString { it.name }
+                        }
                         AnimatedContent(
-                            targetState = metadata.artists.joinToString { it.name },
+                            targetState = artistsText,
                             transitionSpec = { fadeIn() togetherWith fadeOut() },
                             label = "",
                         ) { artists ->
@@ -431,6 +445,7 @@ private fun NewMiniPlayer(
                                     shape = CircleShape
                                 )
                                 .clickable {
+                                coroutineScope.launch(Dispatchers.IO) {
                                     database.transaction {
                                         val artist = libraryArtist?.artist
                                         if (artist != null) {
@@ -449,6 +464,7 @@ private fun NewMiniPlayer(
                                         }
                                     }
                                 }
+                            }
                         ) {
                             Icon(
                                 painter = painterResource(
@@ -542,10 +558,12 @@ private fun LegacyMiniPlayer(
     var dragStartTime by remember { mutableStateOf(0L) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
-    val animationSpec = spring<Float>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessLow
-    )
+    val animationSpec = remember {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    }
 
     fun calculateAutoSwipeThreshold(swipeSensitivity: Float): Int {
         return (600 / (1f + kotlin.math.exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
@@ -740,25 +758,30 @@ private fun LegacyMiniMediaInfo(
                 .size(48.dp)
                 .clip(RoundedCornerShape(ThumbnailCornerRadius))
         ) {
-            // Blurred background for thumbnail
+            // Blurred background — 50px upscaled = natural blur, no GPU RenderEffect
             AsyncImage(
-                model = mediaMetadata.thumbnailUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(mediaMetadata.thumbnailUrl)
+                    .size(50)
+                    .memoryCacheKey("mini_blur_${mediaMetadata.id}")
+                    .diskCacheKey("mini_blur_${mediaMetadata.id}")
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.FillBounds,
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(
-                        renderEffect = BlurEffect(
-                            radiusX = 75f,
-                            radiusY = 75f
-                        ),
-                        alpha = 0.5f
-                    )
+                    .graphicsLayer(alpha = 0.5f)
             )
 
             // Main thumbnail
             AsyncImage(
-                model = mediaMetadata.thumbnailUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(mediaMetadata.thumbnailUrl)
+                    .size(144)
+                    .memoryCacheKey("mini_main_${mediaMetadata.id}")
+                    .diskCacheKey("mini_main_${mediaMetadata.id}")
+
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier

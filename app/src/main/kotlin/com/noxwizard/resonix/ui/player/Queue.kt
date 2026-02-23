@@ -238,8 +238,8 @@ fun Queue(
                             if (it > 0) "${(it / 1024.0 / 1024.0).roundToInt()} MB" else ""
                         } ?: ""
                         
-                        Text(
-                            text = buildString {
+                        val codecText = remember(codec, bitrate, fileSize) {
+                            buildString {
                                 append(codec)
                                 if (bitrate != "Unknown") {
                                     append(" • ")
@@ -249,7 +249,11 @@ fun Queue(
                                     append(" • ")
                                     append(fileSize)
                                 }
-                            },
+                            }
+                        }
+
+                        Text(
+                            text = codecText,
                             style = MaterialTheme.typography.labelSmall,
                             fontFamily = FontFamily.Monospace,
                             color = TextBackgroundColor.copy(alpha = 0.7f),
@@ -461,8 +465,8 @@ fun Queue(
                             if (it > 0) "${(it / 1024.0 / 1024.0).roundToInt()} MB" else ""
                         } ?: ""
                         
-                        Text(
-                            text = buildString {
+                        val codecText = remember(codec, bitrate, fileSize) {
+                            buildString {
                                 append(codec)
                                 if (bitrate != "Unknown") {
                                     append(" • ")
@@ -472,7 +476,11 @@ fun Queue(
                                     append(" • ")
                                     append(fileSize)
                                 }
-                            },
+                            }
+                        }
+
+                        Text(
+                            text = codecText,
                             style = MaterialTheme.typography.labelSmall,
                             fontFamily = FontFamily.Monospace,
                             color = TextBackgroundColor.copy(alpha = 0.7f),

@@ -40,7 +40,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -95,6 +95,7 @@ import com.noxwizard.resonix.innertube.YouTube
 import com.noxwizard.resonix.innertube.utils.completed
 import com.noxwizard.resonix.innertube.utils.parseCookieString
 import com.noxwizard.resonix.ui.component.InfoLabel
+import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.TextFieldDialog
 import com.noxwizard.resonix.utils.Updater
 import com.noxwizard.resonix.utils.dataStore
@@ -124,8 +125,7 @@ fun AccountSettings(
     val (ytmSync, onYtmSyncChange) = rememberPreference(YtmSyncKey, true)
 
     val viewModel: HomeViewModel = hiltViewModel()
-    val accountName by viewModel.accountName.collectAsState()
-    val accountImageUrl by viewModel.accountImageUrl.collectAsState()
+    val accountState by viewModel.accountState.collectAsState()
 
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
@@ -148,9 +148,9 @@ fun AccountSettings(
             // Account Card
             AccountCard(
                 isLoggedIn = isLoggedIn,
-                accountName = accountName,
+                accountName = accountState.name,
                 accountEmail = accountEmail,
-                accountImageUrl = accountImageUrl,
+                accountImageUrl = accountState.imageUrl,
                 onAccountClick = {
                     onClose()
                     if (isLoggedIn) {

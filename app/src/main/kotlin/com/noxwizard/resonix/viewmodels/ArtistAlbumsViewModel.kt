@@ -16,10 +16,10 @@ class ArtistAlbumsViewModel @Inject constructor(
 ) : ViewModel() {
     private val artistId = savedStateHandle.get<String>("artistId")!!
     val artist = database.artist(artistId)
-        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val albums = database.artistAlbumsPreview(artistId)
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
 
 
