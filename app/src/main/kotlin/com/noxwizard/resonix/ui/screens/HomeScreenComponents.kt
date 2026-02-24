@@ -83,7 +83,7 @@ import kotlin.math.min
  * (e.g. isPlaying, mediaMetadata), only the affected section recomposes —
  * not the entire 900+ line LazyColumn DSL body.
  *
- * This mirrors ArchiveTune's HomeScreenComponents.kt pattern.
+ * This mirrors Resonix's HomeScreenComponents.kt pattern.
  */
 
 // ─── Quick Picks Section ──────────────────────────────────────────

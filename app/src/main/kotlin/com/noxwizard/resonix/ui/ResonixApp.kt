@@ -117,6 +117,9 @@ import com.noxwizard.resonix.constants.AppBarHeight
 import com.noxwizard.resonix.constants.DarkModeKey
 import com.noxwizard.resonix.constants.DefaultOpenTabKey
 import com.noxwizard.resonix.constants.DisableBlurKey
+import com.noxwizard.resonix.constants.CustomThemeColorKey
+import com.noxwizard.resonix.ui.theme.ThemeSeedPaletteCodec
+import com.noxwizard.resonix.constants.UseSystemFontKey
 import com.noxwizard.resonix.constants.DisableScreenshotKey
 import com.noxwizard.resonix.constants.DynamicThemeKey
 import com.noxwizard.resonix.constants.HasPressedStarKey
@@ -161,6 +164,7 @@ import com.noxwizard.resonix.ui.screens.navigationBuilder
 import com.noxwizard.resonix.ui.screens.settings.DarkMode
 import com.noxwizard.resonix.ui.screens.settings.NavigationTab
 import com.noxwizard.resonix.ui.theme.ColorSaver
+import com.noxwizard.resonix.ui.screens.settings.ThemePalettes
 import com.noxwizard.resonix.ui.theme.DefaultThemeColor
 import com.noxwizard.resonix.ui.theme.ResonixTheme
 import com.noxwizard.resonix.ui.theme.extractThemeColor
@@ -278,15 +282,23 @@ fun ResonixApp(
     }
     val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
     val pureBlack = pureBlackEnabled && useDarkTheme
+    val useSystemFont by rememberPreference(UseSystemFontKey, defaultValue = false)
+    val customThemeColorId by rememberPreference(CustomThemeColorKey, defaultValue = ThemePalettes.Default.id)
+
+    val paletteThemeColor = remember(customThemeColorId) {
+        ThemeSeedPaletteCodec.decodeFromPreference(customThemeColorId)?.primary
+            ?: ThemePalettes.findById(customThemeColorId)?.primary
+            ?: DefaultThemeColor
+    }
 
     var themeColor by rememberSaveable(stateSaver = ColorSaver) {
         mutableStateOf(DefaultThemeColor)
     }
 
-    LaunchedEffect(playerConnection, enableDynamicTheme, isSystemInDarkTheme) {
+    LaunchedEffect(playerConnection, enableDynamicTheme, isSystemInDarkTheme, paletteThemeColor) {
         val playerConnection = playerConnection
         if (!enableDynamicTheme || playerConnection == null) {
-            themeColor = DefaultThemeColor
+            themeColor = paletteThemeColor
             return@LaunchedEffect
         }
         playerConnection.service.currentMediaMetadata.collectLatest { song ->
@@ -314,6 +326,7 @@ fun ResonixApp(
         darkTheme = useDarkTheme,
         pureBlack = pureBlack,
         themeColor = themeColor,
+        useSystemFont = useSystemFont,
     ) {
         BoxWithConstraints(
             modifier =

@@ -71,6 +71,8 @@ import com.noxwizard.resonix.ui.screens.settings.LastFMSettings
 import com.noxwizard.resonix.ui.screens.settings.PlayerSettings
 import com.noxwizard.resonix.ui.screens.settings.PrivacySettings
 import com.noxwizard.resonix.ui.screens.settings.SettingsScreen
+import com.noxwizard.resonix.ui.screens.settings.PalettePickerScreen
+import com.noxwizard.resonix.ui.screens.settings.ThemeCreatorScreen
 import com.noxwizard.resonix.ui.screens.settings.StorageSettings
 import com.noxwizard.resonix.ui.utils.ShowMediaInfo
 import com.noxwizard.resonix.utils.rememberEnumPreference
@@ -294,6 +296,12 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/appearance") {
         AppearanceSettings(navController, scrollBehavior)
+    }
+    composable("settings/appearance/palette_picker") {
+        PalettePickerScreen(navController)
+    }
+    composable("settings/appearance/theme_creator") {
+        ThemeCreatorScreen(navController)
     }
     composable("settings/content") {
         ContentSettings(navController, scrollBehavior)

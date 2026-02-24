@@ -23,6 +23,8 @@ val HidePlayerThumbnailKey = booleanPreferencesKey("hidePlayerThumbnail")
 val ThumbnailCornerRadiusKey = floatPreferencesKey("thumbnailCornerRadius")
 val SeekExtraSeconds = booleanPreferencesKey("seekExtraSeconds")
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
+val UseSystemFontKey = booleanPreferencesKey("useSystemFont")
+val CustomThemeColorKey = stringPreferencesKey("customThemeColor")
 
 enum class SliderStyle {
     DEFAULT,
@@ -325,6 +327,7 @@ enum class PlayerDesignStyle {
     V1,
     V2,
     V3,
+    CINEMATIC,
 }
 
 enum class PlayerBackgroundStyle {

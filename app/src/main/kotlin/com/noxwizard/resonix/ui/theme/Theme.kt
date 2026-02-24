@@ -30,6 +30,7 @@ fun ResonixTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
+    useSystemFont: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -59,12 +60,13 @@ fun ResonixTheme(
         }
     }
 
-    // Use the defined M3 Expressive Typography
-    // TODO: Define M3 Expressive Shapes instance if needed
+    val typography = remember(useSystemFont) {
+        if (useSystemFont) SystemTypography else AppTypography
+    }
+
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
-        typography = AppTypography, // Use the defined AppTypography
-        // shapes = MaterialTheme.shapes, // Placeholder - Needs update (Shapes not used in original)
+        typography = typography,
         content = content
     )
 }

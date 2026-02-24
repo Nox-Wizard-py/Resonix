@@ -55,6 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -445,6 +446,200 @@ fun Queue(
                             modifier = Modifier.size(iconSize),
                             tint = iconButtonColor
                         )
+                    }
+                }
+                }
+
+                PlayerDesignStyle.CINEMATIC -> {
+                // Codec Info Display (if enabled)
+                if (showCodecOnPlayer && currentFormat != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 30.dp, vertical = 6.dp)
+                    ) {
+                        val codec = currentFormat?.mimeType?.substringAfter("/")?.uppercase() ?: "Unknown"
+                        val bitrate = currentFormat?.bitrate?.let { "${it / 1000} kbps" } ?: "Unknown"
+                        val fileSize = currentFormat?.contentLength?.let {
+                            if (it > 0) "${(it / 1024.0 / 1024.0).roundToInt()} MB" else ""
+                        } ?: ""
+                        
+                        val codecText = remember(codec, bitrate, fileSize) {
+                            buildString {
+                                append(codec)
+                                if (bitrate != "Unknown") {
+                                    append(" • ")
+                                    append(bitrate)
+                                }
+                                if (fileSize.isNotEmpty()) {
+                                    append(" • ")
+                                    append(fileSize)
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = codecText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = TextBackgroundColor.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                // Cinematic V4 bottom bar - pill-shaped Queue/Lyrics with text, no loop button
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 30.dp, vertical = 12.dp)
+                        .windowInsetsPadding(
+                            WindowInsets.systemBars.only(
+                                WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                            ),
+                        ),
+                ) {
+                    val buttonHeight = 42.dp
+                    val iconSize = 20.dp
+
+                    // Queue button - pill-shaped with text
+                    Surface(
+                        onClick = { state.expandSoft() },
+                        shape = RoundedCornerShape(50),
+                        color = TextBackgroundColor.copy(alpha = 0.12f),
+                        modifier = Modifier.height(buttonHeight)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.queue_music),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = TextBackgroundColor
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Queue",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextBackgroundColor
+                            )
+                        }
+                    }
+
+                    // Sleep timer button - circular
+                    Surface(
+                        onClick = {
+                            if (sleepTimerEnabled) {
+                                playerConnection.service.sleepTimer.clear()
+                            } else {
+                                showSleepTimerDialog = true
+                            }
+                        },
+                        shape = CircleShape,
+                        color = TextBackgroundColor.copy(alpha = 0.12f),
+                        modifier = Modifier.size(buttonHeight)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            AnimatedContent(
+                                label = "sleepTimer",
+                                targetState = sleepTimerEnabled,
+                            ) { enabled ->
+                                if (enabled) {
+                                    Text(
+                                        text = makeTimeString(sleepTimerTimeLeft),
+                                        color = TextBackgroundColor,
+                                        fontSize = 9.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.basicMarquee()
+                                    )
+                                } else {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.bedtime),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(iconSize),
+                                        tint = TextBackgroundColor
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Lyrics button - pill-shaped with text
+                    Surface(
+                        onClick = { onShowLyrics() },
+                        shape = RoundedCornerShape(50),
+                        color = TextBackgroundColor.copy(alpha = 0.12f),
+                        modifier = Modifier.height(buttonHeight)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.lyrics),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = TextBackgroundColor
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Lyrics",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextBackgroundColor
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // More button - circular
+                    Surface(
+                        onClick = {
+                            menuState.show {
+                                PlayerMenu(
+                                    mediaMetadata = mediaMetadata,
+                                    navController = navController,
+                                    playerBottomSheetState = playerBottomSheetState,
+                                    onShowDetailsDialog = {
+                                        mediaMetadata?.id?.let {
+                                            bottomSheetPageState.show {
+                                                ShowMediaInfo(it)
+                                            }
+                                        }
+                                    },
+                                    onDismiss = menuState::dismiss
+                                )
+                            }
+                        },
+                        shape = CircleShape,
+                        color = textButtonColor,
+                        modifier = Modifier.size(buttonHeight)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.more_vert),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = iconButtonColor
+                            )
+                        }
                     }
                 }
                 }

@@ -90,8 +90,10 @@ import com.noxwizard.resonix.constants.SwipeToSongKey
 import com.noxwizard.resonix.constants.HidePlayerThumbnailKey
 import com.noxwizard.resonix.constants.ThumbnailCornerRadiusKey
 import com.noxwizard.resonix.constants.DisableBlurKey
+import com.noxwizard.resonix.constants.UseSystemFontKey
 import com.noxwizard.resonix.ui.component.DefaultDialog
 import com.noxwizard.resonix.ui.component.EnumListPreference
+import com.noxwizard.resonix.ui.component.PreferenceEntry
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.ListPreference
 import com.noxwizard.resonix.ui.component.PlayerSliderTrack
@@ -147,6 +149,7 @@ fun AppearanceSettings(
         )
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
     val (disableBlur, onDisableBlurChange) = rememberPreference(DisableBlurKey, defaultValue = false)
+    val (useSystemFont, onUseSystemFontChange) = rememberPreference(UseSystemFontKey, defaultValue = false)
     val (defaultOpenTab, onDefaultOpenTabChange) = rememberEnumPreference(
         DefaultOpenTabKey,
         defaultValue = NavigationTab.HOME
@@ -383,6 +386,14 @@ fun AppearanceSettings(
             onCheckedChange = onDynamicThemeChange,
         )
 
+        if (!dynamicTheme) {
+            PreferenceEntry(
+                title = { Text(stringResource(R.string.color_palette)) },
+                icon = { Icon(painterResource(R.drawable.format_paint), null) },
+                onClick = { navController.navigate("settings/appearance/palette_picker") },
+            )
+        }
+
         EnumListPreference(
             title = { Text(stringResource(R.string.dark_theme)) },
             icon = { Icon(painterResource(R.drawable.dark_mode), null) },
@@ -414,6 +425,14 @@ fun AppearanceSettings(
             onCheckedChange = onDisableBlurChange,
         )
 
+        SwitchPreference(
+            title = { Text(stringResource(R.string.use_system_font)) },
+            description = stringResource(R.string.use_system_font_desc),
+            icon = { Icon(painterResource(R.drawable.text_fields), null) },
+            checked = useSystemFont,
+            onCheckedChange = onUseSystemFontChange,
+        )
+
         PreferenceGroupTitle(
             title = stringResource(R.string.player),
         )
@@ -428,6 +447,7 @@ fun AppearanceSettings(
                     PlayerDesignStyle.V1 -> stringResource(R.string.player_design_v1)
                     PlayerDesignStyle.V2 -> stringResource(R.string.player_design_v2)
                     PlayerDesignStyle.V3 -> stringResource(R.string.player_design_v3)
+                    PlayerDesignStyle.CINEMATIC -> stringResource(R.string.player_design_cinematic)
                 }
             },
         )
