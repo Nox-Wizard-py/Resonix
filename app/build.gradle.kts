@@ -25,7 +25,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 4
-        versionName = "1.7.0 Wave-III"
+        versionName = "1.7.0-Wave-III"
         
         manifestPlaceholders["appAuthRedirectScheme"] = "com.noxwizard.resonix"
 
