@@ -61,6 +61,11 @@ class SpotifyAuthManager @Inject constructor(
      * Takes an ActivityResultLauncher to launch the intent.
      */
     fun startAuth(launcher: ActivityResultLauncher<Intent>) {
+        if (clientId.isBlank()) {
+            println("[SpotifyAuthManager] SPOTIFY_CLIENT_ID is not configured. Cannot start auth.")
+            return
+        }
+
         val serviceConfig = AuthorizationServiceConfiguration(authEndpoint, tokenEndpoint)
         
         val authRequest = AuthorizationRequest.Builder(

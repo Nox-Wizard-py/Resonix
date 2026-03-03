@@ -10,6 +10,8 @@ on:
 env:
   LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
   LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+  SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+  SPOTIFY_REDIRECT_URI: ${{ secrets.SPOTIFY_REDIRECT_URI }}
 
 jobs:
   check-version:
