@@ -30,6 +30,7 @@ enum class SliderStyle {
     DEFAULT,
     SQUIGGLY,
     SLIM,
+    WAVEFORM,
 }
 
 const val SYSTEM_DEFAULT = "SYSTEM_DEFAULT"

@@ -145,6 +145,7 @@ import com.noxwizard.resonix.ui.component.BottomSheetState
 import com.noxwizard.resonix.ui.component.LocalBottomSheetPageState
 import com.noxwizard.resonix.ui.component.LocalMenuState
 import com.noxwizard.resonix.ui.component.PlayerSliderTrack
+import com.noxwizard.resonix.ui.component.WaveformSlider
 import com.noxwizard.resonix.ui.component.ResizableIconButton
 import com.noxwizard.resonix.ui.component.rememberBottomSheetState
 import com.noxwizard.resonix.ui.menu.PlayerMenu
@@ -1054,6 +1055,27 @@ fun BottomSheetPlayer(
                             )
                         },
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding)
+                    )
+                }
+
+                SliderStyle.WAVEFORM -> {
+                    WaveformSlider(
+                        value = (sliderPosition ?: position).toFloat(),
+                        valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                        onValueChange = {
+                            sliderPosition = it.toLong()
+                        },
+                        onValueChangeFinished = {
+                            sliderPosition?.let {
+                                playerConnection.player.seekTo(it)
+                                position = it
+                            }
+                            sliderPosition = null
+                        },
+                        isPlaying = isPlaying,
+                        activeColor = textButtonColor,
+                        inactiveColor = Color.White.copy(alpha = 0.15f),
+                        modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
                     )
                 }
             }

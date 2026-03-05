@@ -78,6 +78,20 @@ object PlayerSliderColors {
     }
 
     /**
+     * Waveform slider colors using button color scheme
+     *
+     * @param buttonColor The active button color from player theme
+     * @return SliderColors configuration for waveform slider
+     */
+    @Composable
+    fun waveformSliderColors(buttonColor: Color): SliderColors {
+        return getSliderColors(
+            activeColor = buttonColor,
+            inactiveAlpha = Config.INACTIVE_TRACK_ALPHA
+        )
+    }
+
+    /**
      * Configuration constants for slider colors
      */
     object Config {

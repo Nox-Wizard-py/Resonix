@@ -97,6 +97,7 @@ import com.noxwizard.resonix.ui.component.PreferenceEntry
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.ListPreference
 import com.noxwizard.resonix.ui.component.PlayerSliderTrack
+import com.noxwizard.resonix.ui.component.WaveformSlider
 import com.noxwizard.resonix.ui.component.PreferenceEntry
 import com.noxwizard.resonix.ui.component.PreferenceGroupTitle
 import com.noxwizard.resonix.ui.component.SwitchPreference
@@ -366,6 +367,44 @@ fun AppearanceSettings(
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .weight(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(
+                            1.dp,
+                            if (sliderStyle == SliderStyle.WAVEFORM) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable {
+                            onSliderStyleChange(SliderStyle.WAVEFORM)
+                            showSliderOptionDialog = false
+                        }
+                        .padding(16.dp)
+                ) {
+                    var sliderValue by remember {
+                        mutableFloatStateOf(0.5f)
+                    }
+                    WaveformSlider(
+                        value = sliderValue,
+                        valueRange = 0f..1f,
+                        onValueChange = {
+                            sliderValue = it
+                        },
+                        onValueChangeFinished = null,
+                        isPlaying = false,
+                        activeColor = MaterialTheme.colorScheme.primary,
+                        inactiveColor = MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(R.string.waveform),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             }
         }
     }
@@ -531,6 +570,7 @@ fun AppearanceSettings(
                     SliderStyle.DEFAULT -> stringResource(R.string.default_)
                     SliderStyle.SQUIGGLY -> stringResource(R.string.squiggly)
                     SliderStyle.SLIM -> stringResource(R.string.slim)
+                    SliderStyle.WAVEFORM -> stringResource(R.string.waveform)
                 },
             icon = { Icon(painterResource(R.drawable.sliders), null) },
             onClick = {

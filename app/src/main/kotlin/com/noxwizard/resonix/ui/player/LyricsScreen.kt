@@ -97,6 +97,7 @@ import com.noxwizard.resonix.models.MediaMetadata
 import com.noxwizard.resonix.ui.component.Lyrics
 import com.noxwizard.resonix.ui.component.LocalMenuState
 import com.noxwizard.resonix.ui.component.PlayerSliderTrack
+import com.noxwizard.resonix.ui.component.WaveformSlider
 import com.noxwizard.resonix.ui.component.BigSeekBar
 import androidx.navigation.NavController
 import me.saket.squiggles.SquigglySlider
@@ -729,6 +730,26 @@ fun LyricsScreen(
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                 }
+                                SliderStyle.WAVEFORM -> {
+                                    WaveformSlider(
+                                        value = (sliderPosition ?: position).toFloat(),
+                                        valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                                        onValueChange = {
+                                            sliderPosition = it.toLong()
+                                        },
+                                        onValueChangeFinished = {
+                                            sliderPosition?.let {
+                                                player.seekTo(it)
+                                                position = it
+                                            }
+                                            sliderPosition = null
+                                        },
+                                        isPlaying = isPlaying,
+                                        activeColor = textBackgroundColor,
+                                        inactiveColor = Color.White.copy(alpha = 0.15f),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
                             }
 
                             // Time display below slider
@@ -1059,6 +1080,26 @@ fun LyricsScreen(
                                         )
                                     },
                                     modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            SliderStyle.WAVEFORM -> {
+                                WaveformSlider(
+                                    value = (sliderPosition ?: position).toFloat(),
+                                    valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                                    onValueChange = {
+                                        sliderPosition = it.toLong()
+                                    },
+                                    onValueChangeFinished = {
+                                        sliderPosition?.let {
+                                            player.seekTo(it)
+                                            position = it
+                                        }
+                                        sliderPosition = null
+                                    },
+                                    isPlaying = isPlaying,
+                                    activeColor = textBackgroundColor,
+                                    inactiveColor = Color.White.copy(alpha = 0.15f),
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                             }
                         }
