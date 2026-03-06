@@ -33,6 +33,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
+import kotlin.math.pow
 import kotlin.math.sin
 
 /**
@@ -136,7 +137,7 @@ fun WaveformSlider(
             val topOfBase = centerY - baseH / 2f
             
             // Dynamic breathing amplitude based on base track height
-            val baseAmplitude = 16.dp.toPx() // Increased vertical width scale
+            val baseAmplitude = 13.dp.toPx() // Relaxed vertical width for subtler fluid rise
             val breathingFactor = 0.85f + 0.15f * kotlin.math.sin(phase)
             val ampPx = baseAmplitude * breathingFactor * animatedMultiplier
             
@@ -171,7 +172,7 @@ fun WaveformSlider(
 
                 // Only calculate wave arcs if mathematically visible
                 if (ampPx > 0.1f) {
-                    val frequency = 6f * PI.toFloat() // exactly 3 sine waves across the screen
+                    val frequency = 4.6f * PI.toFloat() // Adjusted to exactly ~2.3x waves per user request
                     val step = 4f // Optimized pixel step gap
 
                     // A. Calculate Phantom Wave (Background Liquid Depth)
@@ -188,8 +189,12 @@ fun WaveformSlider(
                         val knobEase = 1f - smoothstep(splitX - (w * 0.15f), splitX, currentX)
                         val progressFactor = originEase * knobEase
                         
-                        val normalizedSin = kotlin.math.sin((currentX / w * frequency) + phantomPhase) * 0.5f + 0.5f
-                        val waveHeight = normalizedSin * phantomAmp * progressFactor
+                        // Negative Phase = Wave flows Left-to-Right
+                        val rawSin = kotlin.math.sin((currentX / w * frequency) - phantomPhase) * 0.5f + 0.5f
+                        // Apply Fractional Exponent: 0.7f pulls the wave base wide while preserving a soft point at the exact peak (Option A)
+                        val curvedSin = rawSin.pow(0.7f)
+                        
+                        val waveHeight = curvedSin * phantomAmp * progressFactor
                         phantomWavePath.lineTo(currentX, topOfBase - waveHeight)
                         if (currentX == w) break
                         px += step
@@ -209,8 +214,12 @@ fun WaveformSlider(
                         val knobEase = 1f - smoothstep(splitX - (w * 0.15f), splitX, currentX)
                         val progressFactor = originEase * knobEase
                         
-                        val normalizedSin = kotlin.math.sin((currentX / w * frequency) + phase) * 0.5f + 0.5f
-                        val waveHeight = normalizedSin * ampPx * progressFactor
+                        // Negative Phase = Wave flows Left-to-Right
+                        val rawSin = kotlin.math.sin((currentX / w * frequency) - phase) * 0.5f + 0.5f
+                        // Apply Fractional Exponent: 0.7f pulls the wave base wide while preserving a soft point at the exact peak (Option A)
+                        val curvedSin = rawSin.pow(0.7f)
+                        
+                        val waveHeight = curvedSin * ampPx * progressFactor
                         mainWavePath.lineTo(currentX, topOfBase - waveHeight)
                         if (currentX == w) break
                         mx += step
