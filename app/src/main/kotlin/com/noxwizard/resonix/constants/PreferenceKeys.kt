@@ -420,4 +420,9 @@ val LaunchCountKey = intPreferencesKey("launch_count")
 val HasPressedStarKey = booleanPreferencesKey("has_pressed_star")
 val RemindAfterKey = intPreferencesKey("remind_after")
 
+// In-app update notification preferences
+val EnableUpdateNotificationKey = booleanPreferencesKey("enableUpdateNotification")
+val LastNotifiedVersionKey = stringPreferencesKey("lastNotifiedVersion")
+val LastUpdateCheckKey = longPreferencesKey("lastUpdateCheck")
+
 

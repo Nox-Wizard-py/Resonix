@@ -446,6 +446,19 @@
     <string name="new_update_available">New update available</string>
     <string name="release_notes_unavailable">Release notes are unavailable</string>
     <string name="update_text">Update</string>
+    <string name="updates">Updates</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="enable_update_notifications">Enable update notifications</string>
+    <string name="enable_update_notifications_desc">Periodically check for new releases in the background</string>
+    <string name="up_to_date">You\'re up to date!</string>
+    <string name="current_version">Current version</string>
+    <string name="latest_version">Latest version</string>
+    <string name="checking_for_updates">Checking for updates…</string>
+    <string name="download">Download</string>
+    <string name="update_notification_channel_name">App Updates</string>
+    <string name="update_notification_channel_desc">Notifications for new app versions</string>
+    <string name="update_notification_title">Resonix Update Available</string>
+    <string name="update_notification_text">Version %s is available. Tap to update.</string>
 
     <!-- Translate UI strings -->
     <string name="translate">Translate</string>

@@ -25,7 +25,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 5
-        versionName = "1.7.1-Wave-III"
+        versionName = "1.7.2-Wave-III"
         
         manifestPlaceholders["appAuthRedirectScheme"] = "com.noxwizard.resonix"
 
@@ -242,6 +242,7 @@ dependencies {
     // Ensure ProcessLifecycleOwner is available for the presence manager and CI unit tests
     implementation("com.github.therealbush:translator:1.1.1")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     implementation(libs.appAuth)
     implementation(libs.ucrop)

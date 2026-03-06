@@ -74,6 +74,7 @@ import com.noxwizard.resonix.ui.screens.settings.SettingsScreen
 import com.noxwizard.resonix.ui.screens.settings.PalettePickerScreen
 import com.noxwizard.resonix.ui.screens.settings.ThemeCreatorScreen
 import com.noxwizard.resonix.ui.screens.settings.StorageSettings
+import com.noxwizard.resonix.ui.screens.settings.UpdateScreen
 import com.noxwizard.resonix.ui.utils.ShowMediaInfo
 import com.noxwizard.resonix.utils.rememberEnumPreference
 import com.noxwizard.resonix.utils.rememberPreference
@@ -338,6 +339,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/about") {
         AboutScreen(navController, scrollBehavior)
+    }
+    composable("settings/update") {
+        UpdateScreen(navController, scrollBehavior, latestVersionName)
     }
     composable("customize_background") {
         CustomizeBackground(navController)
