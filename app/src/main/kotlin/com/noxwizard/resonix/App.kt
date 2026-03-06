@@ -148,9 +148,12 @@ class App : Application(), SingletonImageLoader.Factory {
                     try {
                         YouTube.cookie = cookie
                     } catch (e: Exception) {
-                        // we now allow user input now, here be the demons. This serves as a last ditch effort to avoid a crash loop
-                        Timber.e("Could not parse cookie. Clearing existing cookie. %s", e.message)
-                        forgetAccount(this@App)
+                        // Only clear the cookie itself, NOT the user's identity (name, email, handle).
+                        // forgetAccount() was too aggressive here — it wiped profile info on transient errors.
+                        Timber.e("Could not parse cookie. Clearing cookie only. %s", e.message)
+                        dataStore.edit { settings ->
+                            settings.remove(InnerTubeCookieKey)
+                        }
                     }
                 }
         }
