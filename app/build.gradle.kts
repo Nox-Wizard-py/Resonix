@@ -33,20 +33,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         
-        val lastfmApiKey = localProperties.getProperty("LASTFM_API_KEY") 
-            ?: System.getenv("LASTFM_API_KEY") 
+        val lastfmApiKey = localProperties.getProperty("LASTFM_API_KEY")?.takeIf { it.isNotEmpty() }
+            ?: System.getenv("LASTFM_API_KEY")?.takeIf { it.isNotEmpty() }
             ?: ""
-        val lastfmSecret = localProperties.getProperty("LASTFM_SECRET") 
-            ?: System.getenv("LASTFM_SECRET") 
+        val lastfmSecret = localProperties.getProperty("LASTFM_SECRET")?.takeIf { it.isNotEmpty() }
+            ?: System.getenv("LASTFM_SECRET")?.takeIf { it.isNotEmpty() }
             ?: ""
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
 
-        val spotifyClientId = localProperties.getProperty("SPOTIFY_CLIENT_ID")
-            ?: System.getenv("SPOTIFY_CLIENT_ID")
+        val spotifyClientId = localProperties.getProperty("SPOTIFY_CLIENT_ID")?.takeIf { it.isNotEmpty() }
+            ?: System.getenv("SPOTIFY_CLIENT_ID")?.takeIf { it.isNotEmpty() }
             ?: ""
-        val spotifyRedirectUri = localProperties.getProperty("SPOTIFY_REDIRECT_URI")
-            ?: System.getenv("SPOTIFY_REDIRECT_URI")
+        val spotifyRedirectUri = localProperties.getProperty("SPOTIFY_REDIRECT_URI")?.takeIf { it.isNotEmpty() }
+            ?: System.getenv("SPOTIFY_REDIRECT_URI")?.takeIf { it.isNotEmpty() }
             ?: "com.noxwizard.resonix://callback"
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClientId\"")
         buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"$spotifyRedirectUri\"")

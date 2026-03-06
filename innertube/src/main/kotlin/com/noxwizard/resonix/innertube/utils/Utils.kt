@@ -73,7 +73,7 @@ fun parseCookieString(cookie: String): Map<String, String> =
             if (splitIndex == -1) null
             else part.substring(0, splitIndex) to part.substring(splitIndex + 1)
         }
-        .toMap()
+        .associate { it }
 
 fun String.parseTime(): Int? {
     try {
