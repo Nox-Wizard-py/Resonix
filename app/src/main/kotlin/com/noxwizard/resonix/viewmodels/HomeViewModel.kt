@@ -453,13 +453,12 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Listen for cookie changes AFTER initial emission (drop(1) skips the first value)
-        // No delay hacks — react directly to actual changes
+        // Listen for cookie changes. Removed drop(1) because we need the FIRST emission to load
+        // account info (username, avatar) on app startup. Otherwise it stays at "Guest".
         viewModelScope.launch(ioDispatcher) {
             context.dataStore.data
                 .map { it[InnerTubeCookieKey] }
                 .distinctUntilChanged()
-                .drop(1)  // Skip the initial emission, we handle that in load()
                 .collect { cookie ->
                     if (isProcessingAccountData) return@collect
 
