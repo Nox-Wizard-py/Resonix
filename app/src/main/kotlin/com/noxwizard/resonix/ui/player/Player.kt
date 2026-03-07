@@ -1078,6 +1078,28 @@ fun BottomSheetPlayer(
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
                     )
                 }
+
+                SliderStyle.WAVEFORM_BARS -> {
+                    val songSeed = mediaMetadata?.id?.hashCode() ?: 0
+                    com.noxwizard.resonix.ui.component.VerticalWaveformSlider(
+                        value = (sliderPosition ?: position).toFloat(),
+                        valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                        onValueChange = {
+                            sliderPosition = it.toLong()
+                        },
+                        onValueChangeFinished = {
+                            sliderPosition?.let {
+                                playerConnection.player.seekTo(it)
+                                position = it
+                            }
+                            sliderPosition = null
+                        },
+                        seed = songSeed,
+                        activeColor = textButtonColor,
+                        inactiveColor = Color.White.copy(alpha = 0.15f),
+                        modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
+                    )
+                }
             }
 
             Spacer(Modifier.height(4.dp))

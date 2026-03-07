@@ -412,8 +412,44 @@ fun AppearanceSettings(
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Spacer(modifier = Modifier.weight(1f))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .weight(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(
+                            1.dp,
+                            if (sliderStyle == SliderStyle.WAVEFORM_BARS) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable {
+                            onSliderStyleChange(SliderStyle.WAVEFORM_BARS)
+                            showSliderOptionDialog = false
+                        }
+                        .padding(16.dp)
+                ) {
+                    var sliderValue by remember {
+                        mutableFloatStateOf(0.5f)
+                    }
+                    com.noxwizard.resonix.ui.component.VerticalWaveformSlider(
+                        value = sliderValue,
+                        valueRange = 0f..1f,
+                        onValueChange = {
+                            sliderValue = it
+                        },
+                        onValueChangeFinished = null,
+                        seed = 1234,
+                        activeColor = MaterialTheme.colorScheme.primary,
+                        inactiveColor = MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(R.string.waveform_bars),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
                 }
             }
         }
@@ -581,6 +617,7 @@ fun AppearanceSettings(
                     SliderStyle.SQUIGGLY -> stringResource(R.string.squiggly)
                     SliderStyle.SLIM -> stringResource(R.string.slim)
                     SliderStyle.WAVEFORM -> stringResource(R.string.waveform)
+                    SliderStyle.WAVEFORM_BARS -> stringResource(R.string.waveform_bars)
                 },
             icon = { Icon(painterResource(R.drawable.sliders), null) },
             onClick = {
