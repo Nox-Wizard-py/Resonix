@@ -1,5 +1,6 @@
 package com.noxwizard.resonix.ui.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -146,13 +148,13 @@ fun ResonixTopBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // app icon
-                    Icon(
+                    Image(
                         painter = painterResource(R.drawable.about_appbar),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(35.dp)
+                            .size(55.dp)
                             .padding(end = 3.dp),
-                        tint = MaterialTheme.colorScheme.onBackground
+                        contentScale = ContentScale.Fit
                     )
 
                     Text(
