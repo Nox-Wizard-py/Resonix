@@ -23,8 +23,8 @@ android {
     applicationId = "com.noxwizard.resonix"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.7.2-Wave-III"
+        versionCode = 6
+        versionName = "1.7.3-Wave-IV"
         
         manifestPlaceholders["appAuthRedirectScheme"] = "com.noxwizard.resonix"
 
