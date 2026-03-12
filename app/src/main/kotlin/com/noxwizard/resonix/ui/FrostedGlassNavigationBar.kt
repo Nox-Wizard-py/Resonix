@@ -46,7 +46,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import com.noxwizard.resonix.constants.NavigationBarHeight
-import com.noxwizard.resonix.ui.component.BottomSheetState3
+import com.noxwizard.resonix.ui.component.BottomSheetState
 import com.noxwizard.resonix.ui.player.BottomSheetPlayer
 import com.noxwizard.resonix.ui.screens.Screens
 import io.github.fletchmckee.liquid.liquid
