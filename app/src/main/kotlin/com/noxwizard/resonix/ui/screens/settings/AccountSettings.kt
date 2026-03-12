@@ -257,24 +257,9 @@ fun AccountSettings(
                 )
             }
 
-            // Settings & Updates Section
-            SettingsSection {
-                SettingsClickableItem(
-                    icon = painterResource(R.drawable.settings),
-                    title = stringResource(R.string.settings),
-                    showBadge = hasUpdate,
-                    onClick = {
-                        onClose()
-                        navController.navigate("settings")
-                    }
-                )
-
-                if (hasUpdate) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 56.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                    )
-
+            // Updates Section
+            if (hasUpdate) {
+                SettingsSection {
                     UpdateAvailableItem(
                         latestVersion = latestVersionName,
                         onClick = { uriHandler.openUri(Updater.getLatestDownloadUrl()) }
@@ -325,7 +310,7 @@ private fun AccountSettingsHeader(onClose: () -> Unit) {
             ) {
                 // App Icon
                 Image(
-                    painter = painterResource(R.drawable.about_appbar),
+                    painter = painterResource(R.drawable.resonix_logo),
                     contentDescription = null,
                     modifier = Modifier
                         .size(44.dp)

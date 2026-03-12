@@ -133,6 +133,7 @@ import com.noxwizard.resonix.constants.PureBlackKey
 import com.noxwizard.resonix.constants.RemindAfterKey
 import com.noxwizard.resonix.constants.SearchSource
 import com.noxwizard.resonix.constants.SearchSourceKey
+import com.noxwizard.resonix.constants.FrostedGlassNavBarKey
 import com.noxwizard.resonix.constants.SlimNavBarHeight
 import com.noxwizard.resonix.constants.SlimNavBarKey
 import com.noxwizard.resonix.constants.UseNewMiniPlayerDesignKey
@@ -351,6 +352,7 @@ fun ResonixApp(
 
             val navigationItems = remember { Screens.MainScreens }
             val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
+            val (frostedGlassNavBar) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
             val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
             val defaultOpenTab =
                 remember {
@@ -696,38 +698,55 @@ fun ResonixApp(
                     },
                     bottomBar = {
                         val currentNavPadding = getNavPadding()
-                        
-                        ResonixBottomBar(
-                            navController = navController,
-                            navBackStackEntry = navBackStackEntry,
-                            playerBottomSheetState = playerBottomSheetState,
-                            navigationBarHeight = navigationBarHeight,
-                            currentNavPadding = currentNavPadding,
-                            bottomInset = bottomInset,
-                            bottomInsetDp = bottomInsetDp,
-                            pureBlack = pureBlack,
-                            slimNav = slimNav,
 
-                            navigationItems = navigationItems,
-                            onItemClick = { screen, isSelected ->
-                                if (screen.route == Screens.Search.route) {
-                                    onActiveChange(true)
-                                } else if (isSelected) {
-                                    navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
-                                    coroutineScope.launch {
-                                        searchBarScrollBehavior.state.resetHeightOffset()
+                        val navItemClick: (Screens, Boolean) -> Unit = { screen, isSelected ->
+                            if (screen.route == Screens.Search.route) {
+                                onActiveChange(true)
+                            } else if (isSelected) {
+                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                coroutineScope.launch {
+                                    searchBarScrollBehavior.state.resetHeightOffset()
+                                }
+                            } else {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
                                     }
-                                } else {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.startDestinationId) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
                             }
-                        )
+                        }
+
+                        if (frostedGlassNavBar) {
+                            FrostedGlassNavigationBar(
+                                navController = navController,
+                                navBackStackEntry = navBackStackEntry,
+                                playerBottomSheetState = playerBottomSheetState,
+                                navigationBarHeight = navigationBarHeight,
+                                currentNavPadding = currentNavPadding,
+                                bottomInset = bottomInset,
+                                bottomInsetDp = bottomInsetDp,
+                                pureBlack = pureBlack,
+                                slimNav = slimNav,
+                                navigationItems = navigationItems,
+                                onItemClick = navItemClick,
+                            )
+                        } else {
+                            ResonixBottomBar(
+                                navController = navController,
+                                navBackStackEntry = navBackStackEntry,
+                                playerBottomSheetState = playerBottomSheetState,
+                                navigationBarHeight = navigationBarHeight,
+                                currentNavPadding = currentNavPadding,
+                                bottomInset = bottomInset,
+                                bottomInsetDp = bottomInsetDp,
+                                pureBlack = pureBlack,
+                                slimNav = slimNav,
+                                navigationItems = navigationItems,
+                                onItemClick = navItemClick,
+                            )
+                        }
                     },
                     modifier = Modifier
                         .fillMaxSize()

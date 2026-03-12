@@ -4,7 +4,6 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     kotlin("android")
-    kotlin("kapt")
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.compose.compiler)
@@ -170,10 +169,12 @@ android {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+    arg("dagger.fastInit", "enabled")
+    arg("dagger.formatGeneratedSource", "disabled")
 }
 
 composeCompiler {
-    stabilityConfigurationFile.set(project.layout.projectDirectory.file("compose_stability.conf"))
+    stabilityConfigurationFiles.add(project.layout.projectDirectory.file("compose_stability.conf"))
 }
 
 dependencies {
@@ -210,6 +211,7 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.okhttp)
     implementation(libs.squigglyslider)
+    implementation("io.github.fletchmckee.liquid:liquid:1.1.1")
 
     implementation(libs.room.runtime)
     implementation(libs.kuromoji.ipadic)
@@ -220,7 +222,7 @@ dependencies {
 
     implementation(libs.hilt)
     implementation(libs.jsoup)
-    kapt(libs.hilt.compiler)
+    ksp(libs.hilt.compiler)
 
     implementation(project(":innertube"))
     implementation(project(":kugou"))
@@ -246,16 +248,6 @@ dependencies {
 
     implementation(libs.appAuth)
     implementation(libs.ucrop)
-}
-
-kapt {
-    correctErrorTypes = true
-    useBuildCache = true
-    arguments {
-        arg("dagger.fastInit", "enabled")
-        arg("dagger.formatGeneratedSource", "disabled")
-        // dagger.gradle.incremental is deprecated in newer versions
-    }
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {

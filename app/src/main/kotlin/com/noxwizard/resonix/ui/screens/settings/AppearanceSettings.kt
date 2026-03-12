@@ -79,6 +79,7 @@ import com.noxwizard.resonix.constants.LyricsTextSizeKey
 import com.noxwizard.resonix.constants.LyricsLineSpacingKey
 import com.noxwizard.resonix.constants.SliderStyle
 import com.noxwizard.resonix.constants.SliderStyleKey
+import com.noxwizard.resonix.constants.FrostedGlassNavBarKey
 import com.noxwizard.resonix.constants.SlimNavBarKey
 import com.noxwizard.resonix.constants.ShowLikedPlaylistKey
 import com.noxwizard.resonix.constants.ShowDownloadedPlaylistKey
@@ -192,6 +193,11 @@ fun AppearanceSettings(
     val (slimNav, onSlimNavChange) = rememberPreference(
         SlimNavBarKey,
         defaultValue = false
+    )
+
+    val (frostedGlassNavBar, onFrostedGlassNavBarChange) = rememberPreference(
+        FrostedGlassNavBarKey,
+        defaultValue = true
     )
 
     val (swipeToSong, onSwipeToSongChange) = rememberPreference(
@@ -951,6 +957,14 @@ fun AppearanceSettings(
             icon = { Icon(painterResource(R.drawable.nav_bar), null) },
             checked = slimNav,
             onCheckedChange = onSlimNavChange
+        )
+
+        SwitchPreference(
+            title = { Text(stringResource(R.string.frosted_glass_navbar)) },
+            description = stringResource(R.string.frosted_glass_navbar_desc),
+            icon = { Icon(painterResource(R.drawable.gradient), null) },
+            checked = frostedGlassNavBar,
+            onCheckedChange = onFrostedGlassNavBarChange
         )
 
         EnumListPreference(
