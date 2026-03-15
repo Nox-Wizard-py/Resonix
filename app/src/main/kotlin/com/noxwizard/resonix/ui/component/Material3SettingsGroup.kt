@@ -9,10 +9,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.noxwizard.resonix.R
 
 /**
  * A Material 3 Expressive style settings group component
@@ -73,79 +76,98 @@ private fun Material3SettingsItemRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
                 .clickable(
-                    enabled = item.onClick != null,
+                    enabled = !item.disabled && item.onClick != null,
                     onClick = { item.onClick?.invoke() }
                 )
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(vertical = 12.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon with background
-            item.icon?.let { icon ->
+            // Icon
+            if (item.icon != null) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(48.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            MaterialTheme.colorScheme.primary.copy(
-                                alpha = if (item.isHighlighted) 0.15f else 0.1f
-                            )
-                        ),
+                            if (item.disabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            else if (item.isHighlighted) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        .alpha(if (item.disabled) 0.5f else 1f),
                     contentAlignment = Alignment.Center
                 ) {
                     if (item.showBadge) {
                         BadgedBox(
-                            badge = { 
+                            badge = {
                                 Badge(
                                     containerColor = MaterialTheme.colorScheme.error
                                 )
                             }
                         ) {
                             Icon(
-                                painter = icon,
+                                painter = item.icon,
                                 contentDescription = null,
-                                tint = if (item.isHighlighted) 
-                                    MaterialTheme.colorScheme.primary 
-                                else 
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(24.dp),
+                                tint = if (item.isHighlighted && !item.disabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     } else {
                         Icon(
-                            painter = icon,
+                            painter = item.icon,
                             contentDescription = null,
-                            tint = if (item.isHighlighted) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
+                            tint = if (item.isHighlighted && !item.disabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
             }
             
             // Title and description
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .alpha(if (item.disabled) 0.4f else 1f)
             ) {
                 // Title content (can be Text or custom composable)
                 item.title()
+
+                // Subtitle if provided (simple string)
+                item.subtitle?.let { sub ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = sub,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 
-                // Description if provided
+                // Description if provided (custom composable)
                 item.description?.let { desc ->
                     Spacer(modifier = Modifier.height(2.dp))
                     desc()
                 }
             }
             
-            // Trailing content
-            item.trailingContent?.let { trailing ->
+            // Trailing Content
+            if (item.trailingContent != null) {
+                Spacer(modifier = Modifier.width(16.dp))
+                Box(Modifier.alpha(if (item.disabled) 0.4f else 1f)) {
+                    item.trailingContent.invoke()
+                }
+            }
+            
+            // Navigation Chevron if item is clickable, not disabled, and has no trailing content
+            if (item.onClick != null && !item.disabled && item.trailingContent == null) {
                 Spacer(modifier = Modifier.width(8.dp))
-                trailing()
+                Icon(
+                    painter = painterResource(id = R.drawable.lucide_chevron_right),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp).alpha(if (item.disabled) 0.4f else 1f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
         
@@ -169,10 +191,12 @@ private fun Material3SettingsItemRow(
 data class Material3SettingsItem(
     val icon: Painter? = null,
     val title: @Composable () -> Unit,
+    val subtitle: String? = null,
     val description: (@Composable () -> Unit)? = null,
     val trailingContent: (@Composable () -> Unit)? = null,
     val showBadge: Boolean = false,
     val isHighlighted: Boolean = false,
+    val disabled: Boolean = false,
     val onClick: (() -> Unit)? = null
 )
 

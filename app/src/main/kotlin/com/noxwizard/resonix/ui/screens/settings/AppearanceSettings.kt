@@ -206,11 +206,6 @@ fun AppearanceSettings(
         defaultValue = true
     )
 
-    val (frostedGlassMiniPlayer, onFrostedGlassMiniPlayerChange) = rememberPreference(
-        FrostedGlassMiniPlayerKey,
-        defaultValue = true
-    )
-
     val (swipeToSong, onSwipeToSongChange) = rememberPreference(
         SwipeToSongKey,
         defaultValue = false
@@ -550,6 +545,7 @@ fun AppearanceSettings(
                     PlayerDesignStyle.V2 -> stringResource(R.string.player_design_v2)
                     PlayerDesignStyle.V3 -> stringResource(R.string.player_design_v3)
                     PlayerDesignStyle.CINEMATIC -> stringResource(R.string.player_design_cinematic)
+                    PlayerDesignStyle.EXPRESSIVE -> stringResource(R.string.player_design_expressive)
                 }
             },
         )

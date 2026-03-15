@@ -92,6 +92,7 @@
     <string name="player_design_v2">모던</string>
     <string name="player_design_v3">엘레강트</string>
     <string name="player_design_cinematic">시네마틱</string>
+    <string name="player_design_expressive">익스프레시브</string>
     <string name="coloring">채색</string>
     <string name="blur_gradient">블러 그라데이션</string>
     <string name="glow">빛나다</string>

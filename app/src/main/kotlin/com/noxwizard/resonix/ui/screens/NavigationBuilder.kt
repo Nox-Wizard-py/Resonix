@@ -70,11 +70,16 @@ import com.noxwizard.resonix.ui.screens.settings.IntegrationScreen
 import com.noxwizard.resonix.ui.screens.settings.LastFMSettings
 import com.noxwizard.resonix.ui.screens.settings.PlayerSettings
 import com.noxwizard.resonix.ui.screens.settings.PrivacySettings
+import com.noxwizard.resonix.ui.screens.settings.PermissionsSettings
 import com.noxwizard.resonix.ui.screens.settings.SettingsScreen
 import com.noxwizard.resonix.ui.screens.settings.PalettePickerScreen
 import com.noxwizard.resonix.ui.screens.settings.ThemeCreatorScreen
 import com.noxwizard.resonix.ui.screens.settings.StorageSettings
 import com.noxwizard.resonix.ui.screens.settings.UpdateScreen
+import com.noxwizard.resonix.ui.screens.settings.PlayerStyleSettings
+import com.noxwizard.resonix.ui.screens.settings.HighResAudioSettings
+import com.noxwizard.resonix.ui.screens.settings.LibraryBehaviourSettings
+import com.noxwizard.resonix.ui.screens.settings.ImportPlaylistsSettings
 import com.noxwizard.resonix.ui.utils.ShowMediaInfo
 import com.noxwizard.resonix.utils.rememberEnumPreference
 import com.noxwizard.resonix.utils.rememberPreference
@@ -316,6 +321,9 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/privacy") {
         PrivacySettings(navController, scrollBehavior)
     }
+    composable("settings/permissions") {
+        PermissionsSettings(navController, scrollBehavior)
+    }
     composable("settings/backup_restore") {
         BackupAndRestore(navController, scrollBehavior)
     }
@@ -342,6 +350,18 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/update") {
         UpdateScreen(navController, scrollBehavior, latestVersionName)
+    }
+    composable("settings/player_style") {
+        PlayerStyleSettings(navController, scrollBehavior)
+    }
+    composable("settings/high_res_audio") {
+        HighResAudioSettings(navController, scrollBehavior)
+    }
+    composable("settings/library_behaviour") {
+        LibraryBehaviourSettings(navController, scrollBehavior)
+    }
+    composable("settings/import_playlists") {
+        ImportPlaylistsSettings(navController, scrollBehavior)
     }
     composable("customize_background") {
         CustomizeBackground(navController)
