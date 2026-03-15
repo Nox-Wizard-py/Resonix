@@ -92,11 +92,9 @@ fun UpdateScreen(
     val hasUpdate = localLatestVersion != BuildConfig.VERSION_NAME
         && localLatestVersion.isNotBlank()
 
-    LaunchedEffect(localLatestVersion) {
-        if (hasUpdate) {
-            Updater.getLatestReleaseNotes().onSuccess {
-                releaseNotes = it
-            }
+    LaunchedEffect(Unit) {
+        Updater.getLatestReleaseNotes().onSuccess {
+            releaseNotes = it
         }
     }
 
@@ -293,7 +291,7 @@ fun UpdateScreen(
         }
 
         // Release notes
-        if (hasUpdate && !releaseNotes.isNullOrBlank()) {
+        if (!releaseNotes.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(24.dp))
 
             Card(

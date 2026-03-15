@@ -80,6 +80,7 @@ import com.noxwizard.resonix.constants.LyricsLineSpacingKey
 import com.noxwizard.resonix.constants.SliderStyle
 import com.noxwizard.resonix.constants.SliderStyleKey
 import com.noxwizard.resonix.constants.FrostedGlassNavBarKey
+import com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey
 import com.noxwizard.resonix.constants.SlimNavBarKey
 import com.noxwizard.resonix.constants.ShowLikedPlaylistKey
 import com.noxwizard.resonix.constants.ShowDownloadedPlaylistKey
@@ -197,6 +198,16 @@ fun AppearanceSettings(
 
     val (frostedGlassNavBar, onFrostedGlassNavBarChange) = rememberPreference(
         FrostedGlassNavBarKey,
+        defaultValue = true
+    )
+
+    val (frostedGlassMiniPlayer, onFrostedGlassMiniPlayerChange) = rememberPreference(
+        FrostedGlassMiniPlayerKey,
+        defaultValue = true
+    )
+
+    val (frostedGlassMiniPlayer, onFrostedGlassMiniPlayerChange) = rememberPreference(
+        FrostedGlassMiniPlayerKey,
         defaultValue = true
     )
 
@@ -965,6 +976,14 @@ fun AppearanceSettings(
             icon = { Icon(painterResource(R.drawable.gradient), null) },
             checked = frostedGlassNavBar,
             onCheckedChange = onFrostedGlassNavBarChange
+        )
+
+        SwitchPreference(
+            title = { Text(stringResource(R.string.frosted_glass_miniplayer)) },
+            description = stringResource(R.string.frosted_glass_miniplayer_desc),
+            icon = { Icon(painterResource(R.drawable.gradient), null) },
+            checked = frostedGlassMiniPlayer,
+            onCheckedChange = onFrostedGlassMiniPlayerChange
         )
 
         EnumListPreference(

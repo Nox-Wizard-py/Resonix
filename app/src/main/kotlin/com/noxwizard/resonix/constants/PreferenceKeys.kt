@@ -14,6 +14,7 @@ val PureBlackKey = booleanPreferencesKey("pureBlack")
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
 val FrostedGlassNavBarKey = booleanPreferencesKey("frostedGlassNavBar")
+val FrostedGlassMiniPlayerKey = booleanPreferencesKey("frostedGlassMiniPlayer")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")
 val SwipeToSongKey = booleanPreferencesKey("SwipeToSong")
@@ -331,6 +332,7 @@ enum class PlayerDesignStyle {
     V2,
     V3,
     CINEMATIC,
+    EXPRESSIVE
 }
 
 enum class PlayerBackgroundStyle {

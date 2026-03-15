@@ -53,11 +53,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import io.github.fletchmckee.liquid.liquid
+import io.github.fletchmckee.liquid.rememberLiquidState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -141,6 +146,24 @@ private fun NewMiniPlayer(
     val offsetXAnimatable = remember { Animatable(0f) }
     var dragStartTime by remember { mutableStateOf(0L) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
+    
+    val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val isDarkTheme = if (pureBlack) true
+    else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
+
+    val glassBg = if (isDarkTheme)
+        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+    else
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
+
+    val shadowColor = if (isDarkTheme) Color.Black.copy(alpha = 0.50f)
+    else Color.Black.copy(alpha = 0.12f)
+    
+    val innerReflectionColor = if (isDarkTheme) Color.White.copy(alpha = 0.06f)
+    else Color.White.copy(alpha = 0.40f)
+
+    val borderColor = if (isDarkTheme) Color.White.copy(alpha = 0.10f)
+    else Color.Black.copy(alpha = 0.08f)
 
     val animationSpec = remember {
         spring<Float>(
@@ -247,16 +270,63 @@ private fun NewMiniPlayer(
                 }
             }
     ) {
-        // Main MiniPlayer box that moves with swipe
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp) // Circular height
                 .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                .clip(RoundedCornerShape(32.dp)) // Clip first for perfect rounded corners
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceContainer // Same as navigation bar color
-                )
+                .let {
+                    if (frostedGlassMiniPlayer) {
+                        it.shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(32.dp),
+                            ambientColor = shadowColor,
+                            spotColor = shadowColor,
+                        )
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(glassBg)
+                        .liquid(rememberLiquidState()) {
+                            shape = RoundedCornerShape(32.dp)
+                            frost = if (isDarkTheme) 32.dp else 28.dp
+                            curve = if (isDarkTheme) 0.40f else 0.50f
+                            refraction = if (isDarkTheme) 0.06f else 0.10f
+                            dispersion = if (isDarkTheme) 0.15f else 0.22f
+                            saturation = if (isDarkTheme) 0.70f else 0.90f
+                            contrast = if (isDarkTheme) 1.9f else 1.2f
+                        }
+                        .drawBehind {
+                            // Top specular highlight
+                            drawRoundRect(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        innerReflectionColor,
+                                        innerReflectionColor,
+                                        Color.Transparent,
+                                    ),
+                                    startX = size.width * 0.15f,
+                                    endX = size.width * 0.85f,
+                                ),
+                                topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.15f, 1.dp.toPx()),
+                                size = androidx.compose.ui.geometry.Size(size.width * 0.70f, 1.5f.dp.toPx()),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()),
+                            )
+                            // Subtle border
+                            drawRoundRect(
+                                color = borderColor,
+                                topLeft = androidx.compose.ui.geometry.Offset.Zero,
+                                size = size,
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(32.dp.toPx()),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                    width = 0.5f.dp.toPx()
+                                ),
+                            )
+                        }
+                    } else {
+                        it.clip(RoundedCornerShape(32.dp))
+                          .background(color = MaterialTheme.colorScheme.surfaceContainer)
+                    }
+                }
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -558,6 +628,21 @@ private fun LegacyMiniPlayer(
     var dragStartTime by remember { mutableStateOf(0L) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
+    val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val isDarkTheme = if (pureBlack) true
+    else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
+
+    val glassBg = if (isDarkTheme)
+        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+    else
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
+
+    val shadowColor = if (isDarkTheme) Color.Black.copy(alpha = 0.50f)
+    else Color.Black.copy(alpha = 0.12f)
+    
+    val innerReflectionColor = if (isDarkTheme) Color.White.copy(alpha = 0.06f)
+    else Color.White.copy(alpha = 0.40f)
+
     val animationSpec = remember {
         spring<Float>(
             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -575,12 +660,46 @@ private fun LegacyMiniPlayer(
             .fillMaxWidth()
             .height(MiniPlayerHeight)
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-            .background(
-                if (pureBlack) 
-                    Color.Black 
-                else 
-                    MaterialTheme.colorScheme.surfaceContainer // Fixed background independent of player background
-            )
+            .let {
+                if (frostedGlassMiniPlayer) {
+                    it.shadow(
+                        elevation = 8.dp,
+                        ambientColor = shadowColor,
+                        spotColor = shadowColor,
+                    )
+                    .background(glassBg)
+                    .liquid(rememberLiquidState()) {
+                        frost = if (isDarkTheme) 32.dp else 28.dp
+                        curve = if (isDarkTheme) 0.40f else 0.50f
+                        refraction = if (isDarkTheme) 0.06f else 0.10f
+                        dispersion = if (isDarkTheme) 0.15f else 0.22f
+                        saturation = if (isDarkTheme) 0.70f else 0.90f
+                        contrast = if (isDarkTheme) 1.9f else 1.2f
+                    }
+                    .drawBehind {
+                        // Top specular highlight
+                        drawRect(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    innerReflectionColor,
+                                    innerReflectionColor,
+                                    Color.Transparent,
+                                ),
+                                startX = size.width * 0.15f,
+                                endX = size.width * 0.85f,
+                            ),
+                            topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.15f, 1.dp.toPx()),
+                            size = androidx.compose.ui.geometry.Size(size.width * 0.70f, 1.5f.dp.toPx()),
+                        )
+                    }
+                } else {
+                    it.background(
+                        if (pureBlack) Color.Black
+                        else MaterialTheme.colorScheme.surfaceContainer
+                    )
+                }
+            }
             .let { baseModifier ->
                 if (swipeThumbnail) {
                     baseModifier.pointerInput(Unit) {

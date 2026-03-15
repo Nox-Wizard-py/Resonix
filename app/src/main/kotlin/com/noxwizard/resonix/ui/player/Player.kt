@@ -918,6 +918,108 @@ fun BottomSheetPlayer(
                             }
                         }
                     }
+                    PlayerDesignStyle.EXPRESSIVE -> {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Share button
+                            Surface(
+                                onClick = {
+                                    val intent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        type = "text/plain"
+                                        putExtra(
+                                            Intent.EXTRA_TEXT,
+                                            "https://music.youtube.com/watch?v=${mediaMetadata.id}"
+                                        )
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, null))
+                                },
+                                shape = RoundedCornerShape(
+                                    topStart = 50.dp, bottomStart = 50.dp,
+                                    topEnd = 6.dp, bottomEnd = 6.dp
+                                ),
+                                color = TextBackgroundColor.copy(alpha = 0.12f),
+                                modifier = Modifier
+                                    .height(42.dp)
+                                    .width(42.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.share),
+                                        contentDescription = null,
+                                        tint = TextBackgroundColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            // Favorite button
+                            Surface(
+                                onClick = { playerConnection.toggleLike() },
+                                shape = RoundedCornerShape(50),
+                                color = if (currentSong?.song?.liked == true)
+                                    MaterialTheme.colorScheme.error.copy(alpha = 0.18f)
+                                else TextBackgroundColor.copy(alpha = 0.12f),
+                                modifier = Modifier
+                                    .height(42.dp)
+                                    .width(42.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (currentSong?.song?.liked == true) R.drawable.favorite
+                                            else R.drawable.favorite_border
+                                        ),
+                                        contentDescription = null,
+                                        tint = if (currentSong?.song?.liked == true)
+                                            MaterialTheme.colorScheme.error
+                                        else TextBackgroundColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            // More menu button
+                            Surface(
+                                onClick = {
+                                    menuState.show {
+                                        PlayerMenu(
+                                            mediaMetadata = mediaMetadata,
+                                            navController = navController,
+                                            playerBottomSheetState = state,
+                                            onShowDetailsDialog = {
+                                                mediaMetadata.id.let {
+                                                    bottomSheetPageState.show {
+                                                        ShowMediaInfo(it)
+                                                    }
+                                                }
+                                            },
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                    }
+                                },
+                                shape = RoundedCornerShape(
+                                    topStart = 6.dp, bottomStart = 6.dp,
+                                    topEnd = 50.dp, bottomEnd = 50.dp
+                                ),
+                                color = TextBackgroundColor.copy(alpha = 0.12f),
+                                modifier = Modifier
+                                    .height(42.dp)
+                                    .width(42.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.more_horiz),
+                                        contentDescription = null,
+                                        tint = TextBackgroundColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                     
                     PlayerDesignStyle.V1 -> {
                         Box(
@@ -1551,6 +1653,193 @@ fun BottomSheetPlayer(
                                             modifier = Modifier.size(smallIcon)
                                         )
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+                PlayerDesignStyle.EXPRESSIVE -> {
+                    val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsState()
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = PlayerHorizontalPadding)
+                    ) {
+                        // Main controls row: circle prev | dark pill play/pause | circle next
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Previous — circular light button
+                            Surface(
+                                onClick = { playerConnection.seekToPrevious() },
+                                enabled = canSkipPrevious,
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.size(64.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.skip_previous),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                                            alpha = if (canSkipPrevious) 1f else 0.4f
+                                        ),
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Play/Pause — large dark rounded pill with text
+                            Surface(
+                                onClick = {
+                                    if (playbackState == STATE_ENDED) {
+                                        playerConnection.player.seekTo(0, 0)
+                                        playerConnection.player.playWhenReady = true
+                                    } else {
+                                        playerConnection.player.togglePlayPause()
+                                    }
+                                },
+                                shape = RoundedCornerShape(50),
+                                color = textButtonColor,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(64.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(32.dp),
+                                            color = iconButtonColor,
+                                            strokeWidth = 3.dp
+                                        )
+                                    } else {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(
+                                                    when {
+                                                        playbackState == STATE_ENDED -> R.drawable.replay
+                                                        isPlaying -> R.drawable.pause
+                                                        else -> R.drawable.play
+                                                    }
+                                                ),
+                                                contentDescription = null,
+                                                tint = iconButtonColor,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = when {
+                                                    playbackState == STATE_ENDED -> "Replay"
+                                                    isPlaying -> "Pause"
+                                                    else -> "Play"
+                                                },
+                                                color = iconButtonColor,
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Next — circular light button
+                            Surface(
+                                onClick = { playerConnection.seekToNext() },
+                                enabled = canSkipNext,
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.size(64.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.skip_next),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                                            alpha = if (canSkipNext) 1f else 0.4f
+                                        ),
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Surface(
+                                onClick = {
+                                    playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled
+                                },
+                                shape = RoundedCornerShape(50),
+                                color = if (shuffleModeEnabled)
+                                    MaterialTheme.colorScheme.tertiaryContainer
+                                else TextBackgroundColor.copy(alpha = 0.08f),
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.shuffle),
+                                        contentDescription = null,
+                                        tint = if (shuffleModeEnabled)
+                                            MaterialTheme.colorScheme.onTertiaryContainer
+                                        else TextBackgroundColor.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Surface(
+                                onClick = { playerConnection.player.toggleRepeatMode() },
+                                shape = RoundedCornerShape(50),
+                                color = if (repeatMode != Player.REPEAT_MODE_OFF)
+                                    MaterialTheme.colorScheme.tertiaryContainer
+                                else TextBackgroundColor.copy(alpha = 0.08f),
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(
+                                            when (repeatMode) {
+                                                Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
+                                                else -> R.drawable.repeat
+                                            }
+                                        ),
+                                        contentDescription = null,
+                                        tint = if (repeatMode != Player.REPEAT_MODE_OFF)
+                                            MaterialTheme.colorScheme.onTertiaryContainer
+                                        else TextBackgroundColor.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         }

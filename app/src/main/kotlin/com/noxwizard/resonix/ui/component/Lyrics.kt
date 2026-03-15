@@ -266,14 +266,7 @@ fun Lyrics(
 
     val expressiveAccent = when (playerBackground) {
         PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.primary
-        else -> {
-            val tertiaryColor = MaterialTheme.colorScheme.tertiary
-            if (tertiaryColor.luminance() < 0.5f) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                tertiaryColor
-            }
-        }
+        else -> Color.White
     }
     val textColor = expressiveAccent
 

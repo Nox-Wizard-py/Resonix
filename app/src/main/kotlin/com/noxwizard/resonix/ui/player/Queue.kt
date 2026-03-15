@@ -507,12 +507,12 @@ fun Queue(
                     val buttonHeight = 42.dp
                     val iconSize = 20.dp
 
-                    // Queue button - pill-shaped with text
+                    // Queue button - rounded rectangle with text
                     Surface(
                         onClick = { state.expandSoft() },
-                        shape = RoundedCornerShape(50),
+                        shape = RoundedCornerShape(12.dp),
                         color = TextBackgroundColor.copy(alpha = 0.12f),
-                        modifier = Modifier.height(buttonHeight)
+                        modifier = Modifier.height(buttonHeight).weight(1f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -577,12 +577,12 @@ fun Queue(
                         }
                     }
 
-                    // Lyrics button - pill-shaped with text
+                    // Lyrics button - rounded rectangle with text
                     Surface(
                         onClick = { onShowLyrics() },
-                        shape = RoundedCornerShape(50),
+                        shape = RoundedCornerShape(12.dp),
                         color = TextBackgroundColor.copy(alpha = 0.12f),
-                        modifier = Modifier.height(buttonHeight)
+                        modifier = Modifier.height(buttonHeight).weight(1f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -604,40 +604,164 @@ fun Queue(
                         }
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
 
-                    // More button - circular
+                }
+                }
+
+                PlayerDesignStyle.EXPRESSIVE -> {
+                // Codec Info Display (if enabled)
+                if (showCodecOnPlayer && currentFormat != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 30.dp, vertical = 6.dp)
+                    ) {
+                        val codec = currentFormat?.mimeType?.substringAfter("/")?.uppercase() ?: "Unknown"
+                        val bitrate = currentFormat?.bitrate?.let { "${it / 1000} kbps" } ?: "Unknown"
+                        val fileSize = currentFormat?.contentLength?.let {
+                            if (it > 0) "${(it / 1024.0 / 1024.0).roundToInt()} MB" else ""
+                        } ?: ""
+                        
+                        val codecText = remember(codec, bitrate, fileSize) {
+                            buildString {
+                                append(codec)
+                                if (bitrate != "Unknown") {
+                                    append(" • ")
+                                    append(bitrate)
+                                }
+                                if (fileSize.isNotEmpty()) {
+                                    append(" • ")
+                                    append(fileSize)
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = codecText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = TextBackgroundColor.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                // Expressive bottom bar — full-width Queue | SleepTimer | Lyrics, no more button
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .windowInsetsPadding(
+                            WindowInsets.systemBars.only(
+                                WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                            ),
+                        ),
+                ) {
+                    val buttonHeight = 42.dp
+                    val iconSize = 20.dp
+
+                    // Queue button — expanded to fill
+                    Surface(
+                        onClick = { state.expandSoft() },
+                        shape = RoundedCornerShape(50),
+                        color = TextBackgroundColor.copy(alpha = 0.12f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(buttonHeight)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.queue_music),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
+                                tint = TextBackgroundColor
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Queue",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextBackgroundColor
+                            )
+                        }
+                    }
+
+                    // Sleep timer button — circular (kept as-is)
                     Surface(
                         onClick = {
-                            menuState.show {
-                                PlayerMenu(
-                                    mediaMetadata = mediaMetadata,
-                                    navController = navController,
-                                    playerBottomSheetState = playerBottomSheetState,
-                                    onShowDetailsDialog = {
-                                        mediaMetadata?.id?.let {
-                                            bottomSheetPageState.show {
-                                                ShowMediaInfo(it)
-                                            }
-                                        }
-                                    },
-                                    onDismiss = menuState::dismiss
-                                )
+                            if (sleepTimerEnabled) {
+                                playerConnection.service.sleepTimer.clear()
+                            } else {
+                                showSleepTimerDialog = true
                             }
                         },
                         shape = CircleShape,
-                        color = textButtonColor,
+                        color = TextBackgroundColor.copy(alpha = 0.12f),
                         modifier = Modifier.size(buttonHeight)
                     ) {
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.fillMaxSize()
                         ) {
+                            AnimatedContent(
+                                label = "sleepTimer",
+                                targetState = sleepTimerEnabled,
+                            ) { enabled ->
+                                if (enabled) {
+                                    Text(
+                                        text = makeTimeString(sleepTimerTimeLeft),
+                                        color = TextBackgroundColor,
+                                        fontSize = 9.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.basicMarquee()
+                                    )
+                                } else {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.bedtime),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(iconSize),
+                                        tint = TextBackgroundColor
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Lyrics button — expanded to fill
+                    Surface(
+                        onClick = { onShowLyrics() },
+                        shape = RoundedCornerShape(50),
+                        color = TextBackgroundColor.copy(alpha = 0.12f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(buttonHeight)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.more_vert),
+                                painter = painterResource(id = R.drawable.lyrics),
                                 contentDescription = null,
                                 modifier = Modifier.size(iconSize),
-                                tint = iconButtonColor
+                                tint = TextBackgroundColor
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Lyrics",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextBackgroundColor
                             )
                         }
                     }
