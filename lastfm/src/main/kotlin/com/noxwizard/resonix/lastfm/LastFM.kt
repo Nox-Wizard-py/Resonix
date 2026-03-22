@@ -13,8 +13,8 @@ import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.json
+import com.noxwizard.resonix.lastfm.utils.MD5
 import kotlinx.serialization.json.Json
-import java.security.MessageDigest
 
 object LastFM {
     var sessionKey: String? = null
@@ -37,7 +37,7 @@ object LastFM {
     private fun Map<String, String>.apiSig(secret: String): String {
         val sorted = toSortedMap()
         val toHash = sorted.entries.joinToString("") { it.key + it.value } + secret
-        val digest = MessageDigest.getInstance("MD5").digest(toHash.toByteArray())
+        val digest = MD5.hash(toHash.toByteArray(Charsets.UTF_8))
         return digest.joinToString("") { "%02x".format(it) }
     }
 
