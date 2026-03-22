@@ -192,9 +192,13 @@ class App : Application(), SingletonImageLoader.Factory {
     }
 
     private fun initializeLastFM() {
+        val xorKey = 0x55.toByte()
+        fun deobfuscate(bytes: ByteArray): String {
+            return String(bytes.map { (it.toInt() xor xorKey.toInt()).toByte() }.toByteArray())
+        }
         LastFM.initialize(
-            apiKey = BuildConfig.LASTFM_API_KEY,
-            secret = BuildConfig.LASTFM_SECRET
+            apiKeyProvider = { deobfuscate(BuildConfig.LASTFM_API_KEY) },
+            secretProvider = { deobfuscate(BuildConfig.LASTFM_SECRET) }
         )
         LastFM.sessionKey = dataStore[LastFMSessionKey]
     }
