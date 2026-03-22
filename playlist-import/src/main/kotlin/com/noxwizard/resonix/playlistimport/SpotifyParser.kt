@@ -84,9 +84,6 @@ object SpotifyParser {
             val playlistId = extractPlaylistId(url)
                 ?: throw IllegalArgumentException("Invalid Spotify playlist URL")
             
-            // Hardcoded config for Standard API
-            // val config = configProvider?.getSpotifyScraperConfig() ?: getDefaultConfig()
-            
             val allTracks = mutableListOf<ParsedTrack>()
             var playlistName: String? = null
             var continuationToken: String? = null
