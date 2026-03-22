@@ -127,7 +127,8 @@ object DiscordPresenceManager {
                     false
                 }
             } catch (ex: Exception) {
-                Timber.tag(logTag).e(ex, "updatePresence failed")
+                val safeMsg = ex.message?.replace(token, "***") ?: "Unknown error"
+                Timber.tag(logTag).e("updatePresence failed: %s", safeMsg)
                 false
             }
         }
@@ -183,10 +184,12 @@ object DiscordPresenceManager {
                     )
                     Timber.tag(logTag).d("initial updatePresence result=%s songId=%s", firstResult, firstSong?.song?.id)
                 } catch (e: Exception) {
-                    Timber.tag(logTag).e(e, "initial updatePresence failed")
+                    val safeMsg = e.message?.replace(token, "***") ?: "Unknown error"
+                    Timber.tag(logTag).e("initial updatePresence failed: %s", safeMsg)
                 }
             } catch (e: Exception) {
-                Timber.tag(logTag).e(e, "initial first-run failed")
+                val safeMsg = e.message?.replace(token, "***") ?: "Unknown error"
+                Timber.tag(logTag).e("initial first-run failed: %s", safeMsg)
             }
 
             while (isActive) {
@@ -209,7 +212,8 @@ object DiscordPresenceManager {
                     Timber.tag(logTag).d("updater cancelled")
                     break
                 } catch (e: Exception) {
-                    Timber.tag(logTag).e(e, "loop error → ${e.message}")
+                    val safeMsg = e.message?.replace(token, "***") ?: "Unknown error"
+                    Timber.tag(logTag).e("loop error → %s", safeMsg)
                 }
 
                 val delayMs = intervalProvider()
