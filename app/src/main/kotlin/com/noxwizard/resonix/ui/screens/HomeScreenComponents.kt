@@ -607,6 +607,7 @@ fun LazyListScope.GenreSection(
                     androidx.compose.foundation.layout.Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height((MoodAndGenresButtonHeight * 5) + 24.dp)
                             .padding(horizontal = 6.dp),
                         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)
                     ) {
