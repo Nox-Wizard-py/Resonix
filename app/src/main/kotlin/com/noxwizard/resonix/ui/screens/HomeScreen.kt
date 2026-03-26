@@ -134,6 +134,10 @@ import com.noxwizard.resonix.ui.menu.YouTubeSongMenu
 import com.noxwizard.resonix.ui.utils.SnapLayoutInfoProvider
 import com.noxwizard.resonix.utils.rememberPreference
 import com.noxwizard.resonix.viewmodels.HomeViewModel
+import com.noxwizard.resonix.constants.DynamicThemeKey
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.noxwizard.resonix.ui.component.LocalCategoryAccentCallback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -180,6 +184,10 @@ fun HomeScreen(
     }
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val pullRefreshState = rememberPullToRefreshState()
+
+    val (enableDynamicTheme) = rememberPreference(DynamicThemeKey, defaultValue = true)
+    val categoryAccentCallback = LocalCategoryAccentCallback.current
+    var selectedCategoryTitle by remember { mutableStateOf<String?>(null) }
 
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
@@ -526,10 +534,26 @@ fun HomeScreen(
                 ShimmerLoadingSection()
             }
 
-            explorePage?.moodAndGenres?.let { moodAndGenres ->
-                MoodAndGenresSection(
-                    moodAndGenres = moodAndGenres,
+            explorePage?.moodAndGenres?.let { items ->
+                MoodSection(
+                    items = items,
                     navController = navController,
+                    enableDynamicTheme = enableDynamicTheme,
+                    selectedCategoryTitle = selectedCategoryTitle,
+                    onCategorySelect = { title, color -> 
+                        selectedCategoryTitle = title
+                        categoryAccentCallback(color) 
+                    },
+                )
+                GenreSection(
+                    items = items,
+                    navController = navController,
+                    enableDynamicTheme = enableDynamicTheme,
+                    selectedCategoryTitle = selectedCategoryTitle,
+                    onCategorySelect = { title, color -> 
+                        selectedCategoryTitle = title
+                        categoryAccentCallback(color) 
+                    },
                 )
             }
 

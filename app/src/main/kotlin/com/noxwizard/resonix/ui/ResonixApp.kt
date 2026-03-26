@@ -64,6 +64,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -159,6 +161,7 @@ import com.noxwizard.resonix.ui.component.UpdateSheet
 import com.noxwizard.resonix.ui.utils.handleDeepLinkIntent
 import com.noxwizard.resonix.ui.component.rememberBottomSheetState
 import com.noxwizard.resonix.ui.component.shimmer.ShimmerTheme
+import com.noxwizard.resonix.ui.component.LocalCategoryAccentCallback
 import com.noxwizard.resonix.ui.menu.YouTubeSongMenu
 import com.noxwizard.resonix.ui.screens.Screens
 import com.noxwizard.resonix.ui.screens.navigationBuilder
@@ -296,6 +299,9 @@ fun ResonixApp(
         mutableStateOf(DefaultThemeColor)
     }
 
+    // Temporary accent override when user taps a Mood/Genre card
+    var categoryAccentOverride by remember { mutableStateOf<Color?>(null) }
+
     LaunchedEffect(playerConnection, enableDynamicTheme, isSystemInDarkTheme, paletteThemeColor) {
         val playerConnection = playerConnection
         if (!enableDynamicTheme || playerConnection == null) {
@@ -303,6 +309,8 @@ fun ResonixApp(
             return@LaunchedEffect
         }
         playerConnection.service.currentMediaMetadata.collectLatest { song ->
+            // Clear any Mood/Genre override when a song starts playing
+            categoryAccentOverride = null
             themeColor =
                 if (song != null) {
                     withContext(Dispatchers.IO) {
@@ -323,10 +331,23 @@ fun ResonixApp(
         }
     }
 
+    // If a category accent is active, it takes priority over the album-art color
+    val effectiveThemeColor = if (enableDynamicTheme && categoryAccentOverride != null) {
+        categoryAccentOverride!!
+    } else {
+        themeColor
+    }
+
+    val animatedThemeColor by animateColorAsState(
+        targetValue = effectiveThemeColor,
+        animationSpec = tween(durationMillis = 350),
+        label = "theme_color_anim"
+    )
+
     ResonixTheme(
         darkTheme = useDarkTheme,
         pureBlack = pureBlack,
-        themeColor = themeColor,
+        themeColor = animatedThemeColor,
         useSystemFont = useSystemFont,
     ) {
         BoxWithConstraints(
@@ -656,6 +677,7 @@ fun ResonixApp(
                 LocalSyncUtils provides syncUtils,
                 com.noxwizard.resonix.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                 com.noxwizard.resonix.ui.component.LocalMenuState provides menuState,
+                LocalCategoryAccentCallback provides { color -> categoryAccentOverride = color },
             ) {
                 Scaffold(
                     topBar = {

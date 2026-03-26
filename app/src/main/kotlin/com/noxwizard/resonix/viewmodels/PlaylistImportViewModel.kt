@@ -1,280 +1,256 @@
 package com.noxwizard.resonix.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.noxwizard.resonix.db.MusicDatabase
 import com.noxwizard.resonix.db.entities.PlaylistEntity
-import com.noxwizard.resonix.innertube.YouTube
-import com.noxwizard.resonix.innertube.models.SongItem
+import com.noxwizard.resonix.playlistimport.*
 import com.noxwizard.resonix.models.toMediaMetadata
-import com.noxwizard.resonix.playlistimport.ImportProgress
-import com.noxwizard.resonix.playlistimport.ParsedPlaylist
-import com.noxwizard.resonix.playlistimport.ParsedTrack
-import com.noxwizard.resonix.playlistimport.SpotifyParser
+import com.noxwizard.resonix.utils.YouTubeMatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-/**
- * ViewModel for playlist import functionality.
- * Handles Spotify URL imports with progress tracking and YouTube matching.
- */
 @HiltViewModel
 class PlaylistImportViewModel @Inject constructor(
     private val database: MusicDatabase,
-    private val authProvider: com.noxwizard.resonix.auth.SpotifyAuthProviderImpl
 ) : ViewModel() {
-    
-    // UI State
+
     private val _uiState = MutableStateFlow(PlaylistImportUiState())
     val uiState: StateFlow<PlaylistImportUiState> = _uiState.asStateFlow()
-    
-    init {
-        SpotifyParser.setAuthProvider(authProvider)
-    }
-    
-    /**
-     * Import a Spotify playlist with progress updates.
-     */
-    fun importSpotifyPlaylist(url: String) {
-        if (url.isBlank()) return
 
-        // Proactively check for Spotify auth if the URL is a Spotify one
-        if (SpotifyParser.isSpotifyUrl(url) && !authProvider.isAuthorized()) {
-            _uiState.update { it.copy(showSpotifyLoginDialog = true) }
+    private var importJob: Job? = null
+
+    /**
+     * Process user input — routes Spotify URLs to WebView, everything else to old pipeline.
+     */
+    fun processInput(input: String, context: Context) {
+        if (input.isBlank()) return
+
+        importJob?.cancel()
+        importJob = viewModelScope.launch {
+            _uiState.update { it.copy(
+                importState = ImportState.Parsing(),
+                errorMessage = null,
+                matchResults = emptyList(),
+                importComplete = false
+            )}
+
+            try {
+                val trimmed = input.trim()
+
+                val result = PlaylistImporter.import(trimmed, _uiState.value.playlistName.ifBlank { null })
+                handleImportResult(result)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    importState = ImportState.Failed(e.message ?: "Unknown error"),
+                    errorMessage = e.message
+                )}
+            }
+        }
+    }
+
+    private fun handleImportResult(result: ImportInput) {
+        when (result) {
+            is ImportInput.ParsedTracks -> {
+                _uiState.update { it.copy(
+                    parsedPlaylist = result.playlist,
+                    playlistName = it.playlistName.ifBlank { result.playlist.name }
+                )}
+                importJob = viewModelScope.launch { startMatching(result.playlist) }
+            }
+            is ImportInput.NeedsManualInput -> {
+                _uiState.update { it.copy(
+                    importState = ImportState.Idle,
+                    showTracklistDialog = true,
+                    generatedTracklist = result.tracklistText,
+                    playlistName = it.playlistName.ifBlank { result.playlistName }
+                )}
+            }
+        }
+    }
+
+    /**
+     * Import from manually pasted tracklist text.
+     */
+    fun importFromTracklist(text: String) {
+        if (text.isBlank()) return
+
+        _uiState.update { it.copy(showTracklistDialog = false) }
+
+        val playlist = TextParser.parseText(text, _uiState.value.playlistName.ifBlank { null })
+        if (playlist.tracks.isEmpty()) {
+            _uiState.update { it.copy(
+                importState = ImportState.Failed("No tracks found in the input"),
+                errorMessage = "Could not parse any tracks. Use format: Artist - Title"
+            )}
             return
         }
-        
-        viewModelScope.launch {
-            _uiState.update { it.copy(isImporting = true, statusMessage = "Starting import...") }
-            
-            try {
-                // Use the new infinite import with Flow
-                SpotifyParser.importFullPlaylist(url)
-                    .collect { progress ->
-                        when (progress) {
-                            is ImportProgress.Loading -> {
-                                _uiState.update { state ->
-                                    val total = progress.totalEstimate  // Store in local variable for smart cast
-                                    state.copy(
-                                        importProgress = if (total != null && total > 0) {
-                                            progress.importedCount.toFloat() / total
-                                        } else {
-                                            0.5f // Indeterminate progress
-                                        },
-                                        statusMessage = progress.message,
-                                        importedTracksCount = progress.importedCount
-                                    )
-                                }
-                            }
-                            
-                            is ImportProgress.Success -> {
-                                // Import successful, now match tracks to YouTube
-                                _uiState.update { it.copy(
-                                    parsedPlaylist = progress.playlist,
-                                    statusMessage = "Found ${progress.playlist.tracks.size} tracks. Matching to YouTube..."
-                                )}
-                                
-                                matchTracksToYouTube(progress.playlist)
-                            }
-                            
-                            is ImportProgress.Error -> {
-                                _uiState.update { state ->
-                                    state.copy(
-                                        isImporting = false,
-                                        statusMessage = "Error: ${progress.error.message}",
-                                        errorMessage = progress.error.message
-                                    )
-                                }
-                            }
-                        }
-                    }
-            } catch (e: Exception) {
-                _uiState.update { state ->
-                    state.copy(
-                        isImporting = false,
-                        statusMessage = "Error: ${e.message}",
-                        errorMessage = e.message
-                    )
-                }
-            }
+
+        _uiState.update { it.copy(
+            parsedPlaylist = playlist,
+            playlistName = it.playlistName.ifBlank { playlist.name }
+        )}
+
+        importJob?.cancel()
+        importJob = viewModelScope.launch {
+            startMatching(playlist)
         }
     }
-    
-    /**
-     * Match parsed tracks to YouTube songs.
-     */
-    private suspend fun matchTracksToYouTube(playlist: ParsedPlaylist) = withContext(Dispatchers.IO) {
-        val matched = mutableListOf<Pair<ParsedTrack, SongItem?>>()
-        
-        playlist.tracks.forEachIndexed { index, track ->
-            // Update progress
+
+    private suspend fun startMatching(playlist: ParsedPlaylist) {
+        val total = playlist.tracks.size
+
+        _uiState.update { it.copy(
+            importState = ImportState.Matching(0, total)
+        )}
+
+        YouTubeMatcher.matchAll(playlist.tracks).collect { results ->
+            val matchedCount = results.count { it.songItem != null }
+
             _uiState.update { state ->
                 state.copy(
-                    importProgress = (index + 1).toFloat() / playlist.tracks.size,
-                    statusMessage = "Matching: ${track.artist} - ${track.title}"
+                    importState = ImportState.Matching(results.size, total,
+                        results.lastOrNull()?.track?.let { t ->
+                            if (t.artist.isNotEmpty()) "${t.artist} - ${t.title}" else t.title
+                        } ?: ""
+                    ),
+                    matchResults = results,
+                    matchedCount = matchedCount,
+                    totalCount = total
                 )
             }
-            
-            // Search YouTube
-            val searchQuery = if (track.artist.isNotEmpty()) {
-                "${track.artist} ${track.title}"
-            } else {
-                track.title
-            }
-            
-            val ytResult = try {
-                YouTube.search(searchQuery, YouTube.SearchFilter.FILTER_SONG)
-                    .getOrNull()
-                    ?.items
-                    ?.filterIsInstance<SongItem>()
-                    ?.firstOrNull()
-            } catch (e: Exception) {
-                null
-            }
-            
-            matched.add(track to ytResult)
         }
-        
-        val matchCount = matched.count { it.second != null }
-        _uiState.update { state ->
-            state.copy(
-                matchedTracks = matched,
-                statusMessage = "Matched $matchCount of ${playlist.tracks.size} tracks",
-                isImporting = false,
-                importProgress = 1f,
-                showSaveConfirmationDialog = true // Auto-show confirmation dialog
-            )
-        }
+
+        val finalResults = _uiState.value.matchResults
+        val matchedCount = finalResults.count { it.songItem != null }
+
+        _uiState.update { it.copy(
+            importState = ImportState.Idle,
+            matchedCount = matchedCount,
+            totalCount = total,
+            showSaveDialog = matchedCount > 0
+        )}
     }
-    
-    /**
-     * Save matched tracks to a new playlist in the database.
-     */
-    fun savePlaylist(playlistName: String) {
-        val validTracks = _uiState.value.matchedTracks.filter { it.second != null }
-        if (validTracks.isEmpty()) {
+
+    fun savePlaylist(name: String) {
+        val validResults = _uiState.value.matchResults.filter { it.songItem != null }
+        if (validResults.isEmpty()) {
             _uiState.update { it.copy(errorMessage = "No matched tracks to save") }
             return
         }
-        
-        viewModelScope.launch(Dispatchers.IO) {
+
+        importJob?.cancel()
+        importJob = viewModelScope.launch(Dispatchers.IO) {
+            val total = validResults.size
             _uiState.update { it.copy(
-                isImporting = true,
-                statusMessage = "Creating playlist..."
+                importState = ImportState.Saving(0, total),
+                showSaveDialog = false
             )}
-            
+
             try {
-                // Create playlist with bookmarkedAt set so it appears in library
-                // (The playlists() query filters by bookmarkedAt IS NOT NULL)
                 val playlistEntity = PlaylistEntity(
-                    name = playlistName.ifBlank { "Imported Playlist" },
+                    name = name.ifBlank { "Imported Playlist" },
                     bookmarkedAt = java.time.LocalDateTime.now()
                 )
                 database.query { insert(playlistEntity) }
-                
-                // Add songs to database and playlist
+
                 val songIds = mutableListOf<String>()
-                validTracks.forEachIndexed { index, (_, songItem) ->
-                    songItem?.let { song ->
+                validResults.forEachIndexed { index, result ->
+                    result.songItem?.let { song ->
                         val mediaMetadata = song.toMediaMetadata()
                         database.query { insert(mediaMetadata) }
                         songIds.add(song.id)
                     }
-                    
-                    _uiState.update { state ->
-                        state.copy(
-                            importProgress = (index + 1).toFloat() / validTracks.size,
-                            statusMessage = "Adding track ${index + 1} of ${validTracks.size}"
-                        )
-                    }
+
+                    _uiState.update { it.copy(
+                        importState = ImportState.Saving(index + 1, total)
+                    )}
                 }
-                
-                // Add songs to playlist
+
                 val playlist = database.playlist(playlistEntity.id).firstOrNull()
                 if (playlist != null) {
                     database.addSongToPlaylist(playlist, songIds)
                 }
-                
-                // Give the database a moment to complete the transaction
-                // This ensures the Flow will pick up the changes
-                kotlinx.coroutines.delay(100)
-                
-                _uiState.update { state ->
-                    state.copy(
-                        isImporting = false,
-                        importComplete = true,
-                        statusMessage = "Playlist created with ${songIds.size} tracks!",
-                        createdPlaylistName = playlistEntity.name,
-                        shouldNavigateToLibrary = true,
-                        showSaveConfirmationDialog = false
-                    )
-                }
-                
+
+                _uiState.update { it.copy(
+                    importState = ImportState.Done(
+                        playlistName = playlistEntity.name,
+                        matchedCount = songIds.size,
+                        totalCount = _uiState.value.totalCount
+                    ),
+                    importComplete = true,
+                    createdPlaylistName = playlistEntity.name,
+                    shouldNavigateToLibrary = true
+                )}
+
             } catch (e: Exception) {
-                _uiState.update { state ->
-                    state.copy(
-                        isImporting = false,
-                        statusMessage = "Error saving: ${e.message}",
-                        errorMessage = e.message
-                    )
-                }
+                _uiState.update { it.copy(
+                    importState = ImportState.Failed(e.message ?: "Error saving playlist"),
+                    errorMessage = e.message
+                )}
             }
         }
     }
-    
-    /**
-     * Update the playlist name.
-     */
+
+    fun retryTrack(index: Int) {
+        val track = _uiState.value.matchResults.getOrNull(index)?.track ?: return
+
+        viewModelScope.launch {
+            val result = YouTubeMatcher.matchSingle(track, index)
+            val updatedResults = _uiState.value.matchResults.toMutableList()
+            updatedResults[index] = result
+            val matchedCount = updatedResults.count { it.songItem != null }
+
+            _uiState.update { it.copy(
+                matchResults = updatedResults,
+                matchedCount = matchedCount
+            )}
+        }
+    }
+
     fun updatePlaylistName(name: String) {
         _uiState.update { it.copy(playlistName = name) }
     }
-    
-    /**
-     * Reset the import state to start a new import.
-     */
-    fun resetState() {
-        _uiState.value = PlaylistImportUiState()
+
+    fun dismissTracklistDialog() {
+        _uiState.update { it.copy(showTracklistDialog = false) }
     }
-    
-    /**
-     * Clear error message after showing it.
-     */
+
+    fun dismissSaveDialog() {
+        _uiState.update { it.copy(showSaveDialog = false) }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    fun dismissLoginDialog() {
-        _uiState.update { it.copy(showSpotifyLoginDialog = false) }
-    }
-
-    fun dismissSaveDialog() {
-        _uiState.update { it.copy(showSaveConfirmationDialog = false) }
-    }
-    
     fun clearNavigationFlag() {
         _uiState.update { it.copy(shouldNavigateToLibrary = false) }
     }
+
+    fun resetState() {
+        importJob?.cancel()
+        _uiState.value = PlaylistImportUiState()
+    }
 }
 
-/**
- * UI state for playlist import screen.
- */
 data class PlaylistImportUiState(
-    val isImporting: Boolean = false,
-    val importProgress: Float = 0f,
-    val statusMessage: String = "",
-    val importedTracksCount: Int = 0,
+    val importState: ImportState = ImportState.Idle,
     val playlistName: String = "",
     val parsedPlaylist: ParsedPlaylist? = null,
-    val matchedTracks: List<Pair<ParsedTrack, SongItem?>> = emptyList(),
+    val matchResults: List<YouTubeMatcher.MatchResult> = emptyList(),
+    val matchedCount: Int = 0,
+    val totalCount: Int = 0,
     val importComplete: Boolean = false,
     val createdPlaylistName: String? = null,
     val errorMessage: String? = null,
-    val showSpotifyLoginDialog: Boolean = false,
-    val showSaveConfirmationDialog: Boolean = false,
+    val showTracklistDialog: Boolean = false,
+    val generatedTracklist: String = "",
+    val showSaveDialog: Boolean = false,
     val shouldNavigateToLibrary: Boolean = false
 )

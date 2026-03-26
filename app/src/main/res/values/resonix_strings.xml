@@ -244,7 +244,7 @@
     <string name="library_behavior">Library Behavior</string>
     <string name="library_behavior_subtitle">Sorting, grouping, and display options</string>
     <string name="import_playlists">Import Playlists</string>
-    <string name="import_playlists_subtitle">Sync from Spotify, Apple Music, or files</string>
+    <string name="import_playlists_subtitle">Import from text, M3U, or CSV files</string>
     <string name="content_subtitle">Lyrics and content provider</string>
     <string name="integrations">Integrations</string>
     <string name="integrations_subtitle">Connect to external services</string>

@@ -26,8 +26,6 @@ android {
         versionCode = 7
         versionName = "1.7.5-Wave-V"
         
-        manifestPlaceholders["appAuthRedirectScheme"] = "com.noxwizard.resonix"
-
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -40,15 +38,6 @@ android {
             ?: ""
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
-
-        val spotifyClientId = localProperties.getProperty("SPOTIFY_CLIENT_ID")?.takeIf { it.isNotEmpty() }
-            ?: System.getenv("SPOTIFY_CLIENT_ID")?.takeIf { it.isNotEmpty() }
-            ?: ""
-        val spotifyRedirectUri = localProperties.getProperty("SPOTIFY_REDIRECT_URI")?.takeIf { it.isNotEmpty() }
-            ?: System.getenv("SPOTIFY_REDIRECT_URI")?.takeIf { it.isNotEmpty() }
-            ?: "com.noxwizard.resonix://callback"
-        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClientId\"")
-        buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"$spotifyRedirectUri\"")
 
     }
 
@@ -246,7 +235,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
-    implementation(libs.appAuth)
+
     implementation(libs.ucrop)
 }
 

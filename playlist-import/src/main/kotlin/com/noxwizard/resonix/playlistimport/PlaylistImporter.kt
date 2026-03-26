@@ -2,41 +2,44 @@ package com.noxwizard.resonix.playlistimport
 
 /**
  * Main entry point for playlist importing.
- * Automatically detects the source and parses accordingly.
+ * Routes URL-based inputs to UrlExtractor, text inputs to TextParser.
  */
 object PlaylistImporter {
-    
+
     /**
-     * Import a playlist from URL or text input.
-     * Automatically detects the source type.
+     * Process user input and determine the import path.
+     *
+     * - URL input → attempts extraction via UrlExtractor
+     *   - Returns ParsedTracks if successful (≤100 tracks)
+     *   - Returns NeedsManualInput if >100 tracks or extraction fails
+     * - Text input → parses directly via TextParser
+     *   - Returns ParsedTracks
      */
-    suspend fun import(input: String): Result<ParsedPlaylist> {
+    suspend fun import(input: String, playlistName: String? = null): ImportInput {
         val trimmedInput = input.trim()
-        
+
         return when {
-            SpotifyParser.isSpotifyUrl(trimmedInput) -> {
-                SpotifyParser.parsePlaylist(trimmedInput)
+            TextParser.isUrl(trimmedInput) && UrlExtractor.isSupportedUrl(trimmedInput) -> {
+                UrlExtractor.extract(trimmedInput)
             }
-            // AppleMusicParser can be added here later
-            // AppleMusicParser.isAppleMusicUrl(trimmedInput) -> { ... }
             TextParser.isUrl(trimmedInput) -> {
-                // Unknown URL format
-                Result.failure(IllegalArgumentException("Unsupported URL format. Supported: Spotify"))
+                // Unsupported URL — tell user to paste tracklist
+                ImportInput.NeedsManualInput(
+                    tracklistText = "",
+                    playlistName = playlistName ?: "Imported Playlist"
+                )
             }
             else -> {
-                // Treat as text input
-                Result.success(TextParser.parseText(trimmedInput))
+                val playlist = TextParser.parseText(trimmedInput, playlistName)
+                if (playlist.tracks.isEmpty()) {
+                    ImportInput.NeedsManualInput(
+                        tracklistText = "",
+                        playlistName = playlistName ?: "Imported Playlist"
+                    )
+                } else {
+                    ImportInput.ParsedTracks(playlist)
+                }
             }
         }
-    }
-    
-    /**
-     * Get a list of supported import sources.
-     */
-    fun getSupportedSources(): List<String> {
-        return listOf(
-            "Spotify playlist URLs (open.spotify.com/playlist/...)",
-            "Text input (one track per line: 'Artist - Title')"
-        )
     }
 }

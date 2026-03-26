@@ -1,32 +1,37 @@
 package com.noxwizard.resonix.ui.screens.playlist
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.noxwizard.resonix.R
+import com.noxwizard.resonix.playlistimport.ImportState
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.utils.backToMain
+import com.noxwizard.resonix.utils.YouTubeMatcher
 import com.noxwizard.resonix.viewmodels.PlaylistImportViewModel
 
-/**
- * Screen for importing playlists from external platforms.
- * Supports Spotify URLs with infinite import (100+ tracks) and manual text input.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistImportScreen(
@@ -36,36 +41,27 @@ fun PlaylistImportScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+    val context = LocalContext.current
+
     var inputText by remember { mutableStateOf(TextFieldValue("")) }
-    
-    // Show error messages
+    val isWorking = uiState.importState !is ImportState.Idle &&
+            uiState.importState !is ImportState.Failed &&
+            uiState.importState !is ImportState.Done
+
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { error ->
             snackbarHostState.showSnackbar(error)
             viewModel.clearError()
         }
     }
-    
-    // Navigate to library after playlist creation
+
     LaunchedEffect(uiState.shouldNavigateToLibrary) {
         if (uiState.shouldNavigateToLibrary) {
             viewModel.clearNavigationFlag()
-            
-            // Show success message
-            uiState.createdPlaylistName?.let { playlistName ->
-                val trackCount = uiState.matchedTracks.count { it.second != null }
-                snackbarHostState.showSnackbar(
-                    message = "Playlist '$playlistName' created with $trackCount tracks",
-                    duration = SnackbarDuration.Short
-                )
-            }
-            
-            // Navigate back to main screen where user can see the playlist in library
             navController.navigateUp()
         }
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -75,10 +71,7 @@ fun PlaylistImportScreen(
                         onClick = navController::navigateUp,
                         onLongClick = navController::backToMain
                     ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null
-                        )
+                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -86,342 +79,485 @@ fun PlaylistImportScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            // Instructions
-            Text(
-                text = "Paste a Spotify playlist URL or enter track names (one per line, format: 'Artist - Title')",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Playlist name field
-            OutlinedTextField(
-                value = uiState.playlistName.ifBlank { 
-                    uiState.parsedPlaylist?.name ?: "" 
-                },
-                onValueChange = { viewModel.updatePlaylistName(it) },
-                label = { Text("Playlist Name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !uiState.isImporting
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Input field
-            OutlinedTextField(
-                value = inputText,
-                onValueChange = { inputText = it },
-                label = { Text("URL or Track List") },
-                placeholder = { Text("https://open.spotify.com/playlist/...\nor\nArtist - Title\nArtist - Title") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                enabled = !uiState.isImporting && !uiState.importComplete,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { 
-                    viewModel.importSpotifyPlaylist(inputText.text) 
-                })
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Import button
-            if (!uiState.importComplete && uiState.matchedTracks.isEmpty()) {
-                Button(
-                    onClick = { viewModel.importSpotifyPlaylist(inputText.text) },
-                    enabled = inputText.text.isNotBlank() && !uiState.isImporting,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (uiState.isImporting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(if (uiState.isImporting) "Importing..." else "Import")
-                }
-            }
-            
-            // Progress and status
-            AnimatedVisibility(visible = uiState.isImporting || uiState.statusMessage.isNotEmpty()) {
-                Column {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    if (uiState.isImporting) {
-                        LinearProgressIndicator(
-                            progress = { uiState.importProgress },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    
-                    Text(
-                        text = uiState.statusMessage,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    // Show track count during Spotify import with Flow-based progress
-                    if (uiState.importedTracksCount > 0 && uiState.matchedTracks.isEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${uiState.importedTracksCount} tracks imported from Spotify...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-            
-            // Matched tracks preview
-            if (uiState.matchedTracks.isNotEmpty() && !uiState.importComplete) {
-                Spacer(modifier = Modifier.height(24.dp))
-                
+            // ── Header ──
+            item {
                 Text(
-                    text = "Preview (${uiState.matchedTracks.count { it.second != null }} matched)",
-                    style = MaterialTheme.typography.titleMedium
+                    text = "Paste a playlist link or enter tracks manually (one per line)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Show first 10 tracks as preview
-                uiState.matchedTracks.take(10).forEach { (original, matched) ->
-                    Row(
+            }
+
+            // ── Playlist Name ──
+            item {
+                OutlinedTextField(
+                    value = uiState.playlistName,
+                    onValueChange = { viewModel.updatePlaylistName(it) },
+                    label = { Text("Playlist Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isWorking
+                )
+            }
+
+            // ── Input Field ──
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        label = { Text("Link or Tracklist") },
+                        placeholder = {
+                            Text("https://open.spotify.com/playlist/...\nor\nArtist - Song Title\nArtist - Song Title")
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(
-                                if (matched != null) R.drawable.check 
-                                else R.drawable.error
-                            ),
-                            contentDescription = null,
-                            tint = if (matched != null) 
-                                MaterialTheme.colorScheme.primary 
-                            else MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (original.artist.isNotEmpty()) 
-                                    "${original.artist} - ${original.title}" 
-                                else original.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1
-                            )
-                            if (matched != null) {
-                                Text(
-                                    text = "→ ${matched.title}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                if (uiState.matchedTracks.size > 10) {
+                            .height(180.dp),
+                        enabled = !isWorking && !uiState.importComplete,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            viewModel.processInput(inputText.text, context)
+                        })
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "... and ${uiState.matchedTracks.size - 10} more",
+                        text = "Note: Spotify link import is limited to 100 tracks per link. For larger playlists, please divide them into multiple playlists of 100 songs max.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Save button
-                Button(
-                    onClick = { 
-                        viewModel.savePlaylist(
-                            uiState.playlistName.ifBlank { 
-                                uiState.parsedPlaylist?.name ?: "Imported Playlist" 
-                            }
-                        )
-                    },
-                    enabled = !uiState.isImporting && uiState.matchedTracks.any { it.second != null },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Create Playlist")
+            }
+
+            // ── Import Button ──
+            if (!uiState.importComplete && uiState.matchResults.isEmpty()) {
+                item {
+                    Button(
+                        onClick = { viewModel.processInput(inputText.text, context) },
+                        enabled = inputText.text.isNotBlank() && !isWorking,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isWorking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(if (isWorking) "Processing..." else "Import")
+                    }
                 }
             }
-            
-            // Success state
-            if (uiState.importComplete) {
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+
+            // ── Progress Section ──
+            item {
+                AnimatedVisibility(
+                    visible = isWorking,
+                    enter = fadeIn(),
+                    exit = fadeOut()
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    ProgressSection(uiState.importState, uiState.matchResults.size, uiState.totalCount)
+                }
+            }
+
+            // ── Match Results ──
+            if (uiState.matchResults.isNotEmpty() && !uiState.importComplete) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.check),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Playlist Created!",
+                            text = "Results",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = uiState.statusMessage,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedButton(
-                    onClick = { navController.navigateUp() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Done")
-                }
-            }
-        }
-
-        if (uiState.showSpotifyLoginDialog) {
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissLoginDialog() },
-                title = { Text("Spotify Login Required") },
-                text = { Text("To import large playlists (100+ songs), you must link your Spotify account.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.dismissLoginDialog()
-                            navController.navigate("spotify_login")
-                        }
-                    ) {
-                        Text("Login")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { viewModel.dismissLoginDialog() }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
-
-        // Save Confirmation Dialog
-        if (uiState.showSaveConfirmationDialog) {
-            val matchCount = uiState.matchedTracks.count { it.second != null }
-            val totalCount = uiState.matchedTracks.size
-            val matchPercentage = if (totalCount > 0) (matchCount * 100) / totalCount else 0
-            var playlistNameInput by remember { 
-                mutableStateOf(uiState.parsedPlaylist?.name ?: "Imported Playlist") 
-            }
-
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissSaveDialog() },
-                title = { Text("Save Playlist?") },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Match statistics
-                        Text(
-                            text = "$matchCount of $totalCount tracks matched ($matchPercentage%)",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
+                            text = "${uiState.matchedCount} / ${uiState.totalCount} matched",
+                            style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
+                    }
+                }
 
-                        // Playlist name input
-                        OutlinedTextField(
-                            value = playlistNameInput,
-                            onValueChange = { playlistNameInput = it },
-                            label = { Text("Playlist Name") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
+                itemsIndexed(uiState.matchResults) { index, result ->
+                    MatchResultRow(
+                        result = result,
+                        onRetry = { viewModel.retryTrack(index) }
+                    )
+                }
+
+                // Save Button
+                if (uiState.importState is ImportState.Idle && uiState.matchedCount > 0) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                viewModel.savePlaylist(
+                                    uiState.playlistName.ifBlank {
+                                        uiState.parsedPlaylist?.name ?: "Imported Playlist"
+                                    }
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Create Playlist (${uiState.matchedCount} tracks)")
+                        }
+                    }
+                }
+            }
+
+            // ── Done State ──
+            if (uiState.importComplete) {
+                item {
+                    val doneState = uiState.importState as? ImportState.Done
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
                         )
-
-                        // Track preview
-                        Text(
-                            text = "Preview:",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            uiState.matchedTracks.take(5).forEach { (original, matched) ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(
-                                        painter = painterResource(
-                                            if (matched != null) R.drawable.check 
-                                            else R.drawable.error
-                                        ),
-                                        contentDescription = null,
-                                        tint = if (matched != null) 
-                                            MaterialTheme.colorScheme.primary 
-                                        else MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "${original.artist} - ${original.title}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                            if (uiState.matchedTracks.size > 5) {
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.check),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Text(
+                                text = "Playlist Created!",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            if (doneState != null) {
                                 Text(
-                                    text = "... and ${uiState.matchedTracks.size - 5} more",
+                                    text = "${doneState.matchedCount} of ${doneState.totalCount} tracks added to \"${doneState.playlistName}\"",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
                     }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.savePlaylist(playlistNameInput.ifBlank { 
-                                uiState.parsedPlaylist?.name ?: "Imported Playlist" 
-                            })
-                            viewModel.dismissSaveDialog()
-                        },
-                        enabled = matchCount > 0
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { navController.navigateUp() },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Create Playlist")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { viewModel.dismissSaveDialog() }) {
-                        Text("Cancel")
+                        Text("Done")
                     }
                 }
+            }
+
+            // ── Error State ──
+            if (uiState.importState is ImportState.Failed) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = (uiState.importState as ImportState.Failed).error,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            TextButton(onClick = { viewModel.processInput(inputText.text, context) }) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Tracklist Dialog (for >100 tracks or URL extraction fallback) ──
+        if (uiState.showTracklistDialog) {
+            TracklistDialog(
+                tracklistText = uiState.generatedTracklist,
+                onPasteAndImport = { text ->
+                    viewModel.importFromTracklist(text)
+                },
+                onDismiss = { viewModel.dismissTracklistDialog() },
+                context = context
+            )
+        }
+
+        // ── Save Confirmation Dialog ──
+        if (uiState.showSaveDialog) {
+            SaveDialog(
+                matchedCount = uiState.matchedCount,
+                totalCount = uiState.totalCount,
+                defaultName = uiState.playlistName.ifBlank {
+                    uiState.parsedPlaylist?.name ?: "Imported Playlist"
+                },
+                onSave = { name -> viewModel.savePlaylist(name) },
+                onDismiss = { viewModel.dismissSaveDialog() }
             )
         }
     }
+}
+
+@Composable
+private fun ProgressSection(
+    state: ImportState,
+    completed: Int,
+    total: Int
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        when (state) {
+            is ImportState.Parsing -> {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(
+                    text = state.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            is ImportState.Matching -> {
+                val progress = if (state.total > 0) state.current.toFloat() / state.total else 0f
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = "Matching ${state.current} / ${state.total}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (state.currentTrackName.isNotEmpty()) {
+                    Text(
+                        text = state.currentTrackName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            is ImportState.Saving -> {
+                val progress = if (state.total > 0) state.current.toFloat() / state.total else 0f
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = "Saving ${state.current} / ${state.total}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            else -> {}
+        }
+    }
+}
+
+@Composable
+private fun MatchResultRow(
+    result: YouTubeMatcher.MatchResult,
+    onRetry: () -> Unit
+) {
+    val isMatched = result.songItem != null
+    val scoreColor = when {
+        result.score >= 0.7f -> MaterialTheme.colorScheme.primary
+        result.score >= 0.4f -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.error
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Status icon
+        Icon(
+            painter = painterResource(
+                if (isMatched) R.drawable.check else R.drawable.close
+            ),
+            contentDescription = null,
+            tint = if (isMatched) scoreColor else MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(20.dp)
+        )
+
+        // Track info
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (result.track.artist.isNotEmpty())
+                    "${result.track.artist} - ${result.track.title}"
+                else result.track.title,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (isMatched && result.songItem != null) {
+                Text(
+                    text = "→ ${result.songItem.artists.joinToString { it.name }} - ${result.songItem.title}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        // Score or retry
+        if (isMatched) {
+            Text(
+                text = "${(result.score * 100).toInt()}%",
+                style = MaterialTheme.typography.labelSmall,
+                color = scoreColor,
+                fontWeight = FontWeight.Bold
+            )
+        } else {
+            TextButton(
+                onClick = onRetry,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+            ) {
+                Text("Retry", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TracklistDialog(
+    tracklistText: String,
+    onPasteAndImport: (String) -> Unit,
+    onDismiss: () -> Unit,
+    context: Context
+) {
+    var pastedText by remember { mutableStateOf(TextFieldValue("")) }
+    val hasGeneratedList = tracklistText.isNotBlank() &&
+            !tracklistText.startsWith("Could not")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Large Playlist Detected") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (hasGeneratedList) {
+                    Text(
+                        text = "This playlist has more than 100 tracks. Copy the tracklist below, then paste it back to import.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("tracklist", tracklistText))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("📋  Copy Tracklist")
+                    }
+                    HorizontalDivider()
+                } else {
+                    Text(
+                        text = "Paste your tracklist below (one track per line, format: Artist - Title)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                OutlinedTextField(
+                    value = pastedText,
+                    onValueChange = { pastedText = it },
+                    label = { Text("Paste tracklist here") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    placeholder = { Text("Artist - Title\nArtist - Title") }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onPasteAndImport(pastedText.text) },
+                enabled = pastedText.text.isNotBlank()
+            ) {
+                Text("Import")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SaveDialog(
+    matchedCount: Int,
+    totalCount: Int,
+    defaultName: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var nameInput by remember { mutableStateOf(defaultName) }
+    val matchPercentage = if (totalCount > 0) (matchedCount * 100) / totalCount else 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save Playlist?") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "$matchedCount of $totalCount tracks matched ($matchPercentage%)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                OutlinedTextField(
+                    value = nameInput,
+                    onValueChange = { nameInput = it },
+                    label = { Text("Playlist Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSave(nameInput.ifBlank { defaultName }) },
+                enabled = matchedCount > 0
+            ) {
+                Text("Create Playlist")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

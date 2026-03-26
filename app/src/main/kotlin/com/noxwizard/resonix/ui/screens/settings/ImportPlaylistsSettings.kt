@@ -66,12 +66,6 @@ fun ImportPlaylistsSettings(
         )
 
         PreferenceEntry(
-            title = { Text(stringResource(R.string.import_spotify)) },
-            icon = { Icon(painterResource(R.drawable.library_music), null) },
-            onClick = { navController.navigate("spotify_login") }
-        )
-
-        PreferenceEntry(
             title = { Text(stringResource(R.string.import_other_sources)) },
             icon = { Icon(painterResource(R.drawable.playlist_add), null) },
             onClick = { navController.navigate("playlist_import") }

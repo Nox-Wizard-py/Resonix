@@ -6,62 +6,68 @@ package com.noxwizard.resonix.playlistimport
  * - "Artist - Title"
  * - "Title by Artist"
  * - "Artist: Title"
+ * - "1. Artist - Title" (numbered)
  * - Just "Title" (no artist)
  */
 object TextParser {
-    
+
+    // Strip leading number + dot/paren: "1. ", "2) ", "03. "
+    private val NUMBERED_PREFIX = Regex("""^\s*\d+[.)]\s*""")
+
     private val DASH_PATTERN = Regex("""^\s*(.+?)\s*[-–—]\s*(.+?)\s*$""")
     private val BY_PATTERN = Regex("""^\s*(.+?)\s+by\s+(.+?)\s*$""", RegexOption.IGNORE_CASE)
     private val COLON_PATTERN = Regex("""^\s*(.+?)\s*:\s*(.+?)\s*$""")
-    
+
     /**
      * Parse a multi-line text input into a list of tracks.
      */
-    fun parseText(input: String): ParsedPlaylist {
+    fun parseText(input: String, playlistName: String? = null): ParsedPlaylist {
         val lines = input.lines()
             .map { it.trim() }
             .filter { it.isNotEmpty() }
-            .filter { !it.startsWith("#") } // Allow comments
-        
-        val tracks = lines.mapNotNull { line ->
-            parseLine(line)
-        }
-        
+            .filter { !it.startsWith("#") }
+
+        val tracks = lines.mapNotNull { line -> parseLine(line) }
+
         return ParsedPlaylist(
-            name = "Imported Playlist",
+            name = playlistName ?: "Imported Playlist",
             tracks = tracks,
             source = PlaylistSource.TEXT_INPUT
         )
     }
-    
+
     /**
      * Parse a single line into a track.
      */
     fun parseLine(line: String): ParsedTrack? {
         if (line.isBlank()) return null
-        
-        // Try "Artist - Title" format
-        DASH_PATTERN.find(line)?.let { match ->
+
+        // Strip numbered prefix: "1. Artist - Title" → "Artist - Title"
+        val cleaned = NUMBERED_PREFIX.replace(line, "").trim()
+        if (cleaned.isBlank()) return null
+
+        // Try "Artist - Title" format (with all dash variants)
+        DASH_PATTERN.find(cleaned)?.let { match ->
             val (artist, title) = match.destructured
             return ParsedTrack(title = title.trim(), artist = artist.trim())
         }
-        
+
         // Try "Title by Artist" format
-        BY_PATTERN.find(line)?.let { match ->
+        BY_PATTERN.find(cleaned)?.let { match ->
             val (title, artist) = match.destructured
             return ParsedTrack(title = title.trim(), artist = artist.trim())
         }
-        
+
         // Try "Artist: Title" format
-        COLON_PATTERN.find(line)?.let { match ->
+        COLON_PATTERN.find(cleaned)?.let { match ->
             val (artist, title) = match.destructured
             return ParsedTrack(title = title.trim(), artist = artist.trim())
         }
-        
+
         // If no pattern matches, treat entire line as title
-        return ParsedTrack(title = line.trim(), artist = "")
+        return ParsedTrack(title = cleaned, artist = "")
     }
-    
+
     /**
      * Check if input looks like a URL.
      */

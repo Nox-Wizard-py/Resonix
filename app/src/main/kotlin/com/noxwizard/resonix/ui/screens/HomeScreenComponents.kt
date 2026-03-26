@@ -9,12 +9,17 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -39,6 +44,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
@@ -74,6 +80,12 @@ import com.noxwizard.resonix.ui.menu.SongMenu
 import com.noxwizard.resonix.ui.utils.SnapLayoutInfoProvider
 import com.noxwizard.resonix.extensions.togglePlayPause
 import com.noxwizard.resonix.models.toMediaMetadata
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.min
 
@@ -498,46 +510,167 @@ fun LazyListScope.ShimmerLoadingSection() {
     }
 }
 
-// ─── Mood & Genres Section ────────────────────────────────────────
+// ─── Mood Section ──────────────────────────────────────────────────
 
 @OptIn(ExperimentalFoundationApi::class)
-fun LazyListScope.MoodAndGenresSection(
-    moodAndGenres: List<MoodAndGenres.Item>,
+fun LazyListScope.MoodSection(
+    items: List<MoodAndGenres.Item>,
     navController: NavController,
+    enableDynamicTheme: Boolean,
+    selectedCategoryTitle: String?,
+    onCategorySelect: (String, Color) -> Unit,
 ) {
-    item(key = "mood_genres_title", contentType = CONTENT_TYPE_HEADER) {
+    val moodItems = items.filter { moodColorMap.containsKey(it.title) }
+    if (moodItems.isEmpty()) return
+
+    item(key = "mood_title", contentType = CONTENT_TYPE_HEADER) {
         NavigationTitle(
-            title = stringResource(R.string.mood_and_genres),
-            onClick = {
-                navController.navigate("mood_and_genres")
-            },
+            title = "Mood",
             modifier = Modifier.animateItem()
         )
     }
-    item(key = "mood_genres_grid", contentType = CONTENT_TYPE_GRID) {
-        LazyHorizontalGrid(
-            rows = GridCells.Fixed(4),
-            contentPadding = PaddingValues(6.dp),
+
+    item(key = "mood_grid", contentType = CONTENT_TYPE_GRID) {
+        val rows = moodItems.chunked(2)
+        androidx.compose.foundation.layout.Column(
             modifier = Modifier
-                .height((MoodAndGenresButtonHeight + 12.dp) * 4 + 12.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)
         ) {
-            items(
-                count = moodAndGenres.size,
-                key = { index ->
-                    val item = moodAndGenres[index]
-                    "${item.endpoint.browseId ?: item.title}_$index"
+            rows.forEach { row ->
+                androidx.compose.foundation.layout.Row(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)
+                ) {
+                    row.forEach { moodItem ->
+                        val accent = moodColorMap[moodItem.title] ?: MaterialTheme.colorScheme.primary
+                        CategoryCard(
+                            title = moodItem.title,
+                            accentColor = accent,
+                            isSelected = selectedCategoryTitle == moodItem.title,
+                            onClick = {
+                                if (enableDynamicTheme) onCategorySelect(moodItem.title, accent)
+                                navController.navigate("youtube_browse/${moodItem.endpoint.browseId}?params=${moodItem.endpoint.params}")
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (row.size == 1) {
+                        androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                    }
                 }
-            ) { index ->
-                val item = moodAndGenres[index]
-                MoodAndGenresButton(
-                    title = item.title,
-                    onClick = {
-                        navController.navigate("youtube_browse/${item.endpoint.browseId}?params=${item.endpoint.params}")
-                    },
+            }
+        }
+    }
+}
+
+// ─── Genre Section ─────────────────────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
+fun LazyListScope.GenreSection(
+    items: List<MoodAndGenres.Item>,
+    navController: NavController,
+    enableDynamicTheme: Boolean,
+    selectedCategoryTitle: String?,
+    onCategorySelect: (String, Color) -> Unit,
+) {
+    val genreItems = items.filter { genreColorMap.containsKey(it.title) }
+    if (genreItems.isEmpty()) return
+
+    val pages = genreItems.chunked(10)
+
+    item(key = "genre_title", contentType = CONTENT_TYPE_HEADER) {
+        val pagerState = rememberPagerState(pageCount = { pages.size })
+        val coroutineScope = rememberCoroutineScope()
+        
+        NavigationTitle(
+            title = "Genres →",
+            onClick = {
+                coroutineScope.launch {
+                    val nextPage = (pagerState.currentPage + 1) % pages.size
+                    pagerState.animateScrollToPage(nextPage)
+                }
+            },
+            modifier = Modifier.animateItem()
+        )
+
+        androidx.compose.foundation.layout.Column {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                HorizontalPager(
+                    state = pagerState,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 48.dp),
+                    pageSpacing = 12.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) { page ->
+                    val pageItems = pages[page]
+                    val rows = pageItems.chunked(2)
+                    androidx.compose.foundation.layout.Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)
+                    ) {
+                        rows.forEach { row ->
+                            androidx.compose.foundation.layout.Row(
+                                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)
+                            ) {
+                                row.forEach { genreItem ->
+                                    val accent = genreColorMap[genreItem.title] ?: MaterialTheme.colorScheme.primary
+                                    CategoryCard(
+                                        title = genreItem.title,
+                                        accentColor = accent,
+                                        isSelected = selectedCategoryTitle == genreItem.title,
+                                        onClick = {
+                                            if (enableDynamicTheme) onCategorySelect(genreItem.title, accent)
+                                            navController.navigate("youtube_browse/${genreItem.endpoint.browseId}?params=${genreItem.endpoint.params}")
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                if (row.size == 1) {
+                                    androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Right-edge gradient fade
+                Box(
                     modifier = Modifier
-                        .padding(6.dp)
-                        .width(180.dp)
+                        .align(Alignment.CenterEnd)
+                        .width(48.dp)
+                        .fillMaxHeight()
+                        .matchParentSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background)
+                            )
+                        )
                 )
+            }
+
+            // Page Indicator
+            androidx.compose.foundation.layout.Row(
+                Modifier
+                    .height(24.dp)
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(pages.size) { iteration ->
+                    val isSelected = pagerState.currentPage == iteration
+                    val color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    val width by androidx.compose.animation.core.animateDpAsState(if (isSelected) 16.dp else 6.dp, label = "indicator")
+                    Box(
+                        modifier = Modifier
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .size(width = width, height = 6.dp)
+                    )
+                }
             }
         }
     }

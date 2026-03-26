@@ -8,11 +8,11 @@ data class ParsedTrack(
     val artist: String,
     val album: String? = null,
     val durationMs: Long? = null,
-    val originalId: String? = null // Original ID from source platform
+    val originalId: String? = null
 )
 
 /**
- * Result of parsing a playlist URL.
+ * Result of parsing a playlist.
  */
 data class ParsedPlaylist(
     val name: String,
@@ -23,47 +23,61 @@ data class ParsedPlaylist(
 )
 
 /**
- * Progress state for playlist imports.
- */
-sealed class ImportProgress {
-    data class Loading(
-        val importedCount: Int,
-        val totalEstimate: Int? = null,
-        val message: String = "Importing tracks..."
-    ) : ImportProgress()
-    
-    data class Success(val playlist: ParsedPlaylist) : ImportProgress()
-    data class Error(val error: Throwable) : ImportProgress()
-}
-
-/**
- * Configuration for Spotify scraper from Firebase Remote Config.
- */
-data class SpotifyScraperConfig(
-    val initialJsonPath: String,
-    val continuationTokenPath: String,
-    val apiEndpoint: String,
-    val maxTracksLimit: Int = 2000,
-    val batchSize: Int = 100,
-    val paginationType: String = "STANDARD_API", // "STANDARD_API" or "LEGACY"
-    val standardApiEndpoint: String = "https://api.spotify.com/v1/playlists/%s/tracks",
-    val guestTokenRegex: String = "[\"']accessToken[\"']\\s*:\\s*[\"']([^\"']+)[\"']"
-)
-
-/**
- * Interface for providing scraper configuration.
- * Implementations can use Firebase Remote Config or other sources.
- */
-interface ScraperConfigProvider {
-    fun getSpotifyScraperConfig(): SpotifyScraperConfig
-}
-
-/**
  * Supported playlist sources.
  */
 enum class PlaylistSource {
-    SPOTIFY,
-    APPLE_MUSIC,
     TEXT_INPUT,
+    URL_EXTRACT,
     UNKNOWN
+}
+
+/**
+ * Result of the initial import step.
+ * Either we got tracks directly, or we need the user to paste a tracklist manually.
+ */
+sealed class ImportInput {
+    data class ParsedTracks(val playlist: ParsedPlaylist) : ImportInput()
+    data class NeedsManualInput(
+        val tracklistText: String,
+        val playlistName: String
+    ) : ImportInput()
+}
+
+/**
+ * State for an individual track match attempt.
+ */
+sealed class TrackMatchState {
+    data object Pending : TrackMatchState()
+    data class Matched(
+        val score: Float,
+        val matchedTitle: String,
+        val matchedArtist: String,
+        val matchedId: String
+    ) : TrackMatchState()
+    data object NoMatch : TrackMatchState()
+    data class Error(val message: String) : TrackMatchState()
+}
+
+/**
+ * Real-time import progress state.
+ */
+sealed class ImportState {
+    data object Idle : ImportState()
+    data class Parsing(val message: String = "Parsing input...") : ImportState()
+
+    data class Matching(
+        val current: Int,
+        val total: Int,
+        val currentTrackName: String = ""
+    ) : ImportState()
+    data class Saving(
+        val current: Int,
+        val total: Int
+    ) : ImportState()
+    data class Done(
+        val playlistName: String,
+        val matchedCount: Int,
+        val totalCount: Int
+    ) : ImportState()
+    data class Failed(val error: String) : ImportState()
 }
