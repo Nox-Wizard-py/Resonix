@@ -246,31 +246,6 @@ fun DiscordSettings(
             isEnabled = isLoggedIn,
         )
 
-        // Add a refresh action to manually re-update Discord RPC
-        // PreferenceEntry(
-        //     title = { Text(stringResource(R.string.refresh)) },
-        //     description = stringResource(R.string.description_refresh),
-        //     icon = { Icon(painterResource(R.drawable.refresh), null) },
-        //     trailingContent = {
-        //         IconButton(onClick = {
-        //             // trigger update in background
-        //             coroutineScope.launch(Dispatchers.IO) {
-        //                 val token = discordToken
-        //                 if (token.isNotBlank()) {
-        //                     try {
-        //                         val rpc = DiscordRPC(context, token)
-        //                         song?.let { rpc.updateSong(it, position) }
-        //                     } catch (_: Exception) {
-        //                         // ignore
-        //                     }
-        //                 }
-        //             }
-        //         }) {
-        //             Icon(painterResource(R.drawable.update), contentDescription = null)
-        //         }
-        //     }
-        // )
-        
         // Discord presence image preferences (hoisted so refresh action can read them)
         val imageOptions = listOf("thumbnail", "artist", "appicon", "custom")
         val smallImageOptions = listOf("thumbnail", "artist", "appicon", "custom", "dontshow")
