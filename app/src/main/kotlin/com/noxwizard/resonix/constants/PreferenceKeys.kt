@@ -43,6 +43,8 @@ val ContentCountryKey = stringPreferencesKey("contentCountry")
 val EnableKugouKey = booleanPreferencesKey("enableKugou")
 val EnableLrcLibKey = booleanPreferencesKey("enableLrclib")
 val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
+val EnableSimpMusicKey = booleanPreferencesKey("enableSimpMusic")
+val EnableLyricsPlusKey = booleanPreferencesKey("enableLyricsPlus")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val ProxyEnabledKey = booleanPreferencesKey("proxyEnabled")
 val ProxyUrlKey = stringPreferencesKey("proxyUrl")
@@ -168,7 +170,21 @@ val PlaylistViewTypeKey = stringPreferencesKey("playlistViewType")
 
 val PlaylistEditLockKey = booleanPreferencesKey("playlistEditLock")
 val QuickPicksKey = stringPreferencesKey("discover")
-val PreferredLyricsProviderKey = stringPreferencesKey("lyricsProvider")
+val LyricsProviderOrderKey = stringPreferencesKey("lyricsProviderOrder")
+
+val LyricsRomanizeList = stringPreferencesKey("lyricsRomanizeList")
+val LyricsRomanizeAsMainKey = booleanPreferencesKey("lyricsRomanizeAsMain")
+val LyricsRomanizeCyrillicByLineKey = booleanPreferencesKey("lyricsRomanizeCyrillicByLine")
+val LyricsRomanizeJapaneseKey = booleanPreferencesKey("lyricsRomanizeJapanese")
+val LyricsRomanizeKoreanKey = booleanPreferencesKey("lyricsRomanizeKorean")
+
+val AITranslationEnabledKey = booleanPreferencesKey("aiTranslationEnabled")
+val AITranslationServiceKey = stringPreferencesKey("aiTranslationService")
+val DeepLAuthKeyKey = stringPreferencesKey("deeplAuthKey")
+val MistralApiKeyKey = stringPreferencesKey("mistralApiKey")
+val MistralModelKey = stringPreferencesKey("mistralModel")
+val OpenRouterApiKeyKey = stringPreferencesKey("openRouterApiKey")
+val OpenRouterModelKey = stringPreferencesKey("openRouterModel")
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
 
 val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
@@ -316,11 +332,7 @@ enum class QuickPicks {
     LAST_LISTEN,
 }
 
-enum class PreferredLyricsProvider {
-    LRCLIB,
-    KUGOU,
-    BETTER_LYRICS,
-}
+
 
 enum class PlayerButtonsStyle {
     DEFAULT,
@@ -374,8 +386,6 @@ val ShowLyricsKey = booleanPreferencesKey("showLyrics")
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
 val LyricsScrollKey = booleanPreferencesKey("lyricsScrollKey")
-val LyricsRomanizeJapaneseKey = booleanPreferencesKey("lyricsRomanizeJapanese")
-val LyricsRomanizeKoreanKey = booleanPreferencesKey("lyricsRomanizeKorean")
 val TranslateLyricsKey = booleanPreferencesKey("translateLyrics")
 
 val PlayerVolumeKey = floatPreferencesKey("playerVolume")

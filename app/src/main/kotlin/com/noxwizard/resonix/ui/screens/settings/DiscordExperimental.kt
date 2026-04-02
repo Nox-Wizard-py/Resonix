@@ -8,6 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -39,16 +42,21 @@ fun DiscordExperimental(
                 }
             )
 
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .padding(inner.calculateBottomPadding())
-                    .padding(bottom = 80.dp) // extra space for mini player
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 80.dp, start = 16.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                item {
+                Spacer(Modifier.height(80.dp))
+
+                Material3PreferenceGroup {
                     Text(
                         text = stringResource(R.string.translator_options),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp)
                     )
 
                     val (translatorEnabled, onTranslatorEnabledChange) =
@@ -132,16 +140,13 @@ fun DiscordExperimental(
                     }
                 }
 
-                item {
-                    Spacer(Modifier.height(16.dp))
+                Material3PreferenceGroup {
                     Text(
                         text = stringResource(R.string.discord_button_options),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp)
                     )
-                }
-
-                item {
                     val (button1Label, onButton1LabelChange) =
                         rememberPreference(
                             key = DiscordActivityButton1LabelKey,

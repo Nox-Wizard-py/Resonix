@@ -1,8 +1,10 @@
 package com.noxwizard.resonix.ui.screens.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -34,10 +36,10 @@ import com.noxwizard.resonix.constants.PauseSearchHistoryKey
 import com.noxwizard.resonix.ui.component.DefaultDialog
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.PreferenceEntry
-import com.noxwizard.resonix.ui.component.PreferenceGroupTitle
 import com.noxwizard.resonix.ui.component.SwitchPreference
 import com.noxwizard.resonix.ui.utils.backToMain
 import com.noxwizard.resonix.utils.rememberPreference
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,18 +135,20 @@ fun PrivacySettings(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Top
                 )
-            )
+            ).height(8.dp)
         )
 
-        PreferenceGroupTitle(
+        Material3PreferenceGroup(
             title = stringResource(R.string.listen_history)
-        )
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.pause_listen_history)) },
@@ -158,9 +162,11 @@ fun PrivacySettings(
             onClick = { showClearListenHistoryDialog = true },
         )
 
-        PreferenceGroupTitle(
+        }
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.search_history)
-        )
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.pause_search_history)) },
@@ -174,9 +180,11 @@ fun PrivacySettings(
             onClick = { showClearSearchHistoryDialog = true },
         )
 
-        PreferenceGroupTitle(
+        }
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.misc),
-        )
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.disable_screenshot)) },
@@ -185,6 +193,8 @@ fun PrivacySettings(
             checked = disableScreenshot,
             onCheckedChange = onDisableScreenshotChange,
         )
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(

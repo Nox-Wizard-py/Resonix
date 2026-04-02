@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,7 +51,6 @@ import com.noxwizard.resonix.ui.component.DefaultDialog
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.ListPreference
 import com.noxwizard.resonix.ui.component.PreferenceEntry
-import com.noxwizard.resonix.ui.component.PreferenceGroupTitle
 import com.noxwizard.resonix.ui.utils.backToMain
 import com.noxwizard.resonix.ui.utils.formatFileSize
 import com.noxwizard.resonix.utils.rememberPreference
@@ -143,12 +145,13 @@ fun StorageSettings(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
-            .padding(12.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
-            )
+            ).height(8.dp)
         )
 
         // --- Section: Downloads ---
@@ -277,6 +280,7 @@ fun StorageSettings(
                 }
             )
         }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(
@@ -304,14 +308,12 @@ fun CacheCard(
     actions: @Composable () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         ),
-        shape = MaterialTheme.shapes.large
+        shape = RoundedCornerShape(24.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -482,6 +482,14 @@ fun HomeScreen(
                 )
             }
 
+            homePage?.sections?.find { it.title.contains("community", ignoreCase = true) }?.let { communitySection ->
+                CommunityCarouselSection(
+                    section = communitySection,
+                    navController = navController,
+                    playerConnection = playerConnection,
+                )
+            }
+
             keepListening?.takeIf { it.isNotEmpty() }?.let { keepListening ->
                 KeepListeningSection(
                     keepListening = keepListening,

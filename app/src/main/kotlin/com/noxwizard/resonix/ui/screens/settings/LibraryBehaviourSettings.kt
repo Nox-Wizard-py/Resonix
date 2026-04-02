@@ -1,12 +1,16 @@
 package com.noxwizard.resonix.ui.screens.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -27,6 +31,7 @@ import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.SwitchPreference
 import com.noxwizard.resonix.ui.utils.backToMain
 import com.noxwizard.resonix.utils.rememberPreference
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,14 +64,20 @@ fun LibraryBehaviourSettings(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Top
                 )
-            )
+            ).height(8.dp)
         )
+
+        Material3PreferenceGroup(
+            title = stringResource(R.string.library_behavior)
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.new_library_design)) },
@@ -103,6 +114,8 @@ fun LibraryBehaviourSettings(
             checked = showCachedPlaylist,
             onCheckedChange = onShowCachedPlaylistChange
         )
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(

@@ -111,7 +111,7 @@ fun UpdateScreen(
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
-            )
+            ).height(8.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -119,8 +119,9 @@ fun UpdateScreen(
         // Version info card
         Card(
             modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             ),
         ) {
             Column(modifier = Modifier.padding(20.dp)) {

@@ -62,6 +62,7 @@ import com.noxwizard.resonix.utils.GlobalLog
 import com.noxwizard.resonix.LocalPlayerConnection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 import kotlin.math.roundToInt
 
 // single GlobalLog import above
@@ -96,7 +97,14 @@ fun DebugSettings(
             )
         }
     ) { innerPadding: androidx.compose.foundation.layout.PaddingValues ->
-        Column(Modifier.padding(innerPadding).padding(16.dp).verticalScroll(rememberScrollState())) {
+        Column(
+            Modifier
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Material3PreferenceGroup {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.show_discord_debug_ui)) },
                 description = stringResource(R.string.enable_discord_debug_lines),
@@ -128,6 +136,7 @@ fun DebugSettings(
                     Switch(checked = showCodecOnPlayer, onCheckedChange = onShowCodecOnPlayerChange)
                 }
             )
+            }
 
             if (showDevDebug) {
                 // Show manager status lines (observe flows so UI updates)
@@ -136,11 +145,12 @@ fun DebugSettings(
                 val lastStart: String = lastStartTs?.let { makeTimeString(it) } ?: "-"
                 val lastEnd: String = lastEndTs?.let { makeTimeString(it) } ?: "-"
 
-                PreferenceEntry(
-                    title = { Text(if (DiscordPresenceManager.isRunning()) stringResource(R.string.presence_manager_running) else stringResource(R.string.presence_manager_stopped)) },
-                    description = stringResource(id = R.string.debug_last_rpc_times, lastStart, lastEnd),
-                    icon = { Icon(painterResource(R.drawable.info), null) }
-                )
+                Material3PreferenceGroup(title = "Discord RPC") {
+                    PreferenceEntry(
+                        title = { Text(if (DiscordPresenceManager.isRunning()) stringResource(R.string.presence_manager_running) else stringResource(R.string.presence_manager_stopped)) },
+                        description = stringResource(id = R.string.debug_last_rpc_times, lastStart, lastEnd),
+                        icon = { Icon(painterResource(R.drawable.info), null) }
+                    )
 
                 // Log panel with filters, search, and share — Logra-inspired UI
                 val allLogs by GlobalLog.logs.collectAsState()
@@ -178,7 +188,7 @@ fun DebugSettings(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 500.dp)
-                        .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(14.dp))
+                        .background(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), shape = RoundedCornerShape(24.dp))
                 ) {
                     Column(Modifier.padding(8.dp)) {
                         // Top action row: left = filters, right = sort dropdown
@@ -379,6 +389,7 @@ fun DebugSettings(
                 LaunchedEffect(filtered.size) {
                     if (filtered.isNotEmpty()) listState.animateScrollToItem(filtered.size - 1)
                 }
+                }
             }
             
             // Nerd Stats Section
@@ -409,8 +420,8 @@ fun DebugSettings(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(14.dp)
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(24.dp)
                         )
                         .padding(16.dp)
                 ) {
@@ -499,6 +510,7 @@ fun DebugSettings(
                     }
                 }
             }
+            Spacer(Modifier.height(32.dp))
         }
     }
 }

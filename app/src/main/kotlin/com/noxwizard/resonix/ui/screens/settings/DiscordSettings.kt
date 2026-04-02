@@ -38,7 +38,6 @@ import com.noxwizard.resonix.constants.*
 import com.noxwizard.resonix.db.entities.Song
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.PreferenceEntry
-import com.noxwizard.resonix.ui.component.PreferenceGroupTitle
 import com.noxwizard.resonix.ui.component.SwitchPreference
 import com.noxwizard.resonix.ui.component.ListItem
 import com.noxwizard.resonix.ui.utils.backToMain
@@ -58,6 +57,7 @@ import com.noxwizard.resonix.utils.DiscordRPC
 import com.noxwizard.resonix.utils.getPresenceIntervalMillis
 import kotlinx.coroutines.*
 import com.noxwizard.resonix.utils.ArtworkStorage
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 enum class ActivitySource { ARTIST, ALBUM, SONG, APP }
 
@@ -136,6 +136,22 @@ fun DiscordSettings(
 
     val isLoggedIn = remember(discordToken) { discordToken.isNotEmpty() }
 
+    // Hoisted to function scope: used across multiple groups and in RichPresence
+    val imageOptions = listOf("thumbnail", "artist", "appicon", "custom")
+    val smallImageOptions = listOf("thumbnail", "artist", "appicon", "custom", "dontshow")
+    val (largeImageType, onLargeImageTypeChange) = rememberPreference(key = DiscordLargeImageTypeKey, defaultValue = "thumbnail")
+    val (largeImageCustomUrl, onLargeImageCustomUrlChange) = rememberPreference(key = DiscordLargeImageCustomUrlKey, defaultValue = "")
+    val (smallImageType, onSmallImageTypeChange) = rememberPreference(key = DiscordSmallImageTypeKey, defaultValue = "artist")
+    val (smallImageCustomUrl, onSmallImageCustomUrlChange) = rememberPreference(key = DiscordSmallImageCustomUrlKey, defaultValue = "")
+    val (nameSource, onNameSourceChange) = rememberEnumPreference(key = DiscordActivityNameKey, defaultValue = ActivitySource.APP)
+    val (detailsSource, onDetailsSourceChange) = rememberEnumPreference(key = DiscordActivityDetailsKey, defaultValue = ActivitySource.SONG)
+    val (stateSource, onStateSourceChange) = rememberEnumPreference(key = DiscordActivityStateKey, defaultValue = ActivitySource.ARTIST)
+    val (button1Enabled, onButton1EnabledChange) = rememberPreference(key = DiscordActivityButton1EnabledKey, defaultValue = true)
+    val (button1Label, onButton1LabelChange) = rememberPreference(key = DiscordActivityButton1LabelKey, defaultValue = "Listen on YouTube Music")
+    val (button2Enabled, onButton2EnabledChange) = rememberPreference(key = DiscordActivityButton2EnabledKey, defaultValue = true)
+    val (button2Label, onButton2LabelChange) = rememberPreference(key = DiscordActivityButton2LabelKey, defaultValue = "Listen on Resonix")
+    val (activityType, onActivityTypeChange) = rememberPreference(key = DiscordActivityTypeKey, defaultValue = "LISTENING")
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
@@ -145,11 +161,13 @@ fun DiscordSettings(
                     LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
                 )
                 .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
-            )
+            ).height(8.dp)
         )
 
     // Developer debug moved to DebugSettings (Settings -> Misc)
@@ -182,13 +200,7 @@ fun DiscordSettings(
             }
         }
 
-        Text(
-            text = stringResource(R.string.account),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        Material3PreferenceGroup(title = stringResource(R.string.account)) {
 
     var showLogoutConfirm by remember { mutableStateOf(false) }
 
@@ -230,14 +242,9 @@ fun DiscordSettings(
                     }
                 )
             }
+        }
 
-        Text(
-            text = stringResource(R.string.options),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        Material3PreferenceGroup(title = stringResource(R.string.options)) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.enable_discord_rpc)) },
@@ -271,27 +278,6 @@ fun DiscordSettings(
         //     }
         // )
         
-        // Discord presence image preferences (hoisted so refresh action can read them)
-        val imageOptions = listOf("thumbnail", "artist", "appicon", "custom")
-        val smallImageOptions = listOf("thumbnail", "artist", "appicon", "custom", "dontshow")
-
-        val (largeImageType, onLargeImageTypeChange) = rememberPreference(
-            key = DiscordLargeImageTypeKey,
-            defaultValue = "thumbnail"
-     )
-        val (largeImageCustomUrl, onLargeImageCustomUrlChange) = rememberPreference(
-            key = DiscordLargeImageCustomUrlKey,
-            defaultValue = ""
-     )
-        val (smallImageType, onSmallImageTypeChange) = rememberPreference(
-            key = DiscordSmallImageTypeKey,
-            defaultValue = "artist"
-     )
-        val (smallImageCustomUrl, onSmallImageCustomUrlChange) = rememberPreference(
-            key = DiscordSmallImageCustomUrlKey,
-            defaultValue = ""
-     )
-
         // When large/small image selection changes, clear any stored artwork for the current song
         LaunchedEffect(largeImageType, smallImageType) {
             ArtworkStorage.removeBySongId(context, song?.song?.id ?: return@LaunchedEffect)
@@ -519,25 +505,10 @@ if (intervalSelection == "Custom") {
         }
     }
 }
+        }
 
         // PREVIEW HEADING
-        Text(
-            text = stringResource(R.string.preview),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-
-        val (nameSource, onNameSourceChange) = rememberEnumPreference(
-            key = DiscordActivityNameKey, defaultValue = ActivitySource.APP
-        )
-        val (detailsSource, onDetailsSourceChange) = rememberEnumPreference(
-            key = DiscordActivityDetailsKey, defaultValue = ActivitySource.SONG
-        )
-        val (stateSource, onStateSourceChange) = rememberEnumPreference(
-            key = DiscordActivityStateKey, defaultValue = ActivitySource.ARTIST
-        )
+        Material3PreferenceGroup(title = stringResource(R.string.preview)) {
 
         ActivitySourceDropdown(
             title = stringResource(R.string.discord_activity_name),
@@ -558,29 +529,6 @@ if (intervalSelection == "Custom") {
             onChange = onStateSourceChange
         )
 
-        val (button1Label, onButton1LabelChange) = rememberPreference(
-            key = DiscordActivityButton1LabelKey,
-            defaultValue = "Listen on YouTube Music"
-        )
-        val (button1Enabled, onButton1EnabledChange) = rememberPreference(
-            key = DiscordActivityButton1EnabledKey,
-            defaultValue = true
-        )
-        val (button2Label, onButton2LabelChange) = rememberPreference(
-            key = DiscordActivityButton2LabelKey,
-            defaultValue = "Listen on Resonix"
-        )
-        val (button2Enabled, onButton2EnabledChange) = rememberPreference(
-            key = DiscordActivityButton2EnabledKey,
-            defaultValue = true
-        )
-
-
-    // Activity type selection
-        val (activityType, onActivityTypeChange) = rememberPreference(
-            key = DiscordActivityTypeKey,
-            defaultValue = "LISTENING"
-        )
         val activityOptions = listOf("PLAYING", "STREAMING", "LISTENING", "WATCHING", "COMPETING")
 
         var showWhenPaused by rememberPreference(
@@ -622,14 +570,10 @@ if (intervalSelection == "Custom") {
             }
         }
 
+        }
+
     // Group button related preferences
-    Text(
-        text = stringResource(R.string.discord_image_options),
-        style = MaterialTheme.typography.headlineSmall,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    )
+        Material3PreferenceGroup(title = stringResource(R.string.discord_image_options)) {
 
         val largeTextOptions = listOf("song", "artist", "album", "app", "custom", "dontshow")
 
@@ -765,6 +709,7 @@ if (smallImageType == "custom") {
         onValueChange = onSmallImageCustomUrlChange,
     )
 }
+        }
 
     // Compute whether the player is currently playing so the preview progress can run.
     val playerIsPlayingForPreview = playerConnection.player.playWhenReady && playbackState == STATE_READY
@@ -784,6 +729,7 @@ if (smallImageType == "custom") {
         button2Enabled = button2Enabled,
         isPlaying = playerConnection.player.isPlaying
     )
+        Spacer(Modifier.height(32.dp))
 }
 
     TopAppBar(

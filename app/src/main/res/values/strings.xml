@@ -623,5 +623,17 @@
     <string name="theme_presets_title">Quick Presets</string>
     <string name="create_custom_theme">Create Custom Theme</string>
     <string name="copy">Copy</string>
-</resources>
+    
+    <!-- Lyrics Settings Additions -->
+    <string name="lyrics_providers">Lyrics Providers</string>
+    <string name="lyrics_romanize_title">Romanization</string>
+    <string name="lyrics_romanization_title">Lyrics Romanization</string>
+    <string name="lyrics_romanize_as_main">Show Romanized as Main Lyrics</string>
+    <string name="line_by_line_option_title">Format line by line</string>
+    
+    <!-- AI Translation Settings -->
+    <string name="ai_translation_title">AI Translation</string>
+    <string name="ai_translation_enable">Enable AI Translation</string>
+    <string name="ai_translation_service">Translation Service</string>
 
+</resources>

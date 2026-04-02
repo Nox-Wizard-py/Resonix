@@ -80,6 +80,7 @@ import com.noxwizard.resonix.ui.screens.settings.PlayerStyleSettings
 import com.noxwizard.resonix.ui.screens.settings.HighResAudioSettings
 import com.noxwizard.resonix.ui.screens.settings.LibraryBehaviourSettings
 import com.noxwizard.resonix.ui.screens.settings.ImportPlaylistsSettings
+import com.noxwizard.resonix.ui.screens.settings.LyricsProviderPriorityScreen
 import com.noxwizard.resonix.ui.utils.ShowMediaInfo
 import com.noxwizard.resonix.utils.rememberEnumPreference
 import com.noxwizard.resonix.utils.rememberPreference
@@ -311,6 +312,15 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/content") {
         ContentSettings(navController, scrollBehavior)
+    }
+    composable("settings/lyrics_providers") {
+        com.noxwizard.resonix.ui.screens.settings.LyricsProvidersSettings(navController, scrollBehavior)
+    }
+    composable("settings/lyrics_provider_priority") {
+        LyricsProviderPriorityScreen(navController, scrollBehavior)
+    }
+    composable("settings/lyrics_romanization") {
+        com.noxwizard.resonix.ui.screens.settings.RomanizationSettings(navController, scrollBehavior)
     }
     composable("settings/player") {
         PlayerSettings(navController, scrollBehavior)

@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,12 +24,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.noxwizard.resonix.LocalPlayerAwareWindowInsets
 import com.noxwizard.resonix.R
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.PreferenceEntry
 import com.noxwizard.resonix.ui.utils.backToMain
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,15 +61,18 @@ fun ImportPlaylistsSettings(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Top
                 )
-            )
+            ).height(8.dp)
         )
 
+        Material3PreferenceGroup {
         PreferenceEntry(
             title = { Text(stringResource(R.string.import_other_sources)) },
             icon = { Icon(painterResource(R.drawable.playlist_add), null) },
@@ -86,6 +94,8 @@ fun ImportPlaylistsSettings(
                 csvLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "*/*"))
             }
         )
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(

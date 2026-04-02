@@ -84,6 +84,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
@@ -441,7 +443,7 @@ fun LazyListScope.HomePageSections(
     navController: NavController,
     ytGridItem: @Composable (YTItem) -> Unit,
 ) {
-    homePage.sections.forEachIndexed { index, section ->
+    homePage.sections.filter { !it.title.contains("community", ignoreCase = true) }.forEachIndexed { index, section ->
         item(key = "header_${section.title}_$index", contentType = CONTENT_TYPE_HEADER) {
             NavigationTitle(
                 title = section.title,
@@ -705,6 +707,71 @@ fun LazyListScope.MoodAndGenresShimmerSection() {
                     }
                 }
             }
+        }
+    }
+}
+
+// ─── Community Carousel Section ───────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
+fun LazyListScope.CommunityCarouselSection(
+    section: HomePage.Section,
+    navController: NavController,
+    playerConnection: com.noxwizard.resonix.playback.PlayerConnection,
+) {
+    item(key = "header_community_carousel", contentType = CONTENT_TYPE_HEADER) {
+        NavigationTitle(
+            title = section.title,
+            modifier = Modifier.animateItem()
+        )
+    }
+
+    item(key = "list_community_carousel", contentType = CONTENT_TYPE_LIST) {
+        val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { section.items.size })
+        
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            contentPadding = PaddingValues(start = 16.dp, end = 48.dp),
+            pageSpacing = 16.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
+            
+            com.noxwizard.resonix.ui.component.CommunityPlaylistCard(
+                item = section.items[page],
+                navController = navController,
+                playerConnection = playerConnection,
+                modifier = Modifier
+                    .zIndex(-page.toFloat())
+                    .graphicsLayer {
+                        val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                        
+                        if (pageOffset > 0f) {
+                            // Page is sliding left out of focus
+                            alpha = 1f - pageOffset.coerceIn(0f, 1f)
+                            scaleX = 1f
+                            scaleY = 1f
+                            translationX = 0f
+                        } else {
+                            // Page is centered or stacked to the right
+                            val absOffset = kotlin.math.abs(pageOffset)
+                            
+                            val scale = 1f - (absOffset * 0.1f).coerceAtMost(0.3f)
+                            scaleX = scale
+                            scaleY = scale
+                            
+                            alpha = 1f - (absOffset * 0.2f).coerceAtMost(0.6f)
+                            
+                            // Normal laid out distance from center card
+                            val normalDistance = size.width + 16.dp.toPx()
+                            // Peeking amount shown from behind
+                            val peekWidth = 32.dp.toPx() 
+                            // How much to pull back entirely
+                            val compensate = normalDistance - peekWidth
+                            
+                            translationX = -(absOffset * compensate)
+                        }
+                    }
+            )
         }
     }
 }

@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -64,13 +66,14 @@ import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.PlayerSliderTrack
 import com.noxwizard.resonix.ui.component.WaveformSlider
 import com.noxwizard.resonix.ui.component.SwitchPreference
-import com.noxwizard.resonix.ui.component.ThumbnailCornerRadiusSelectorButton
+import com.noxwizard.resonix.ui.component.ThumbnailCornerRadiusModal
 import com.noxwizard.resonix.ui.utils.backToMain
 import com.noxwizard.resonix.utils.rememberEnumPreference
 import com.noxwizard.resonix.utils.rememberPreference
 import me.saket.squiggles.SquigglySlider
 import kotlin.math.roundToInt
 import timber.log.Timber
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,6 +124,10 @@ fun PlayerStyleSettings(
     }
 
     var showSliderOptionDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var showCornerRadiusDialog by rememberSaveable {
         mutableStateOf(false)
     }
 
@@ -347,8 +354,17 @@ fun PlayerStyleSettings(
     Column(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Spacer(
+            Modifier.windowInsetsPadding(
+                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
+            ).height(8.dp)
+        )
+
+        Material3PreferenceGroup(title = stringResource(R.string.player_style)) {
         EnumListPreference(
             title = { Text(stringResource(R.string.player_design_style)) },
             icon = { Icon(painterResource(R.drawable.palette), null) },
@@ -394,12 +410,23 @@ fun PlayerStyleSettings(
             },
         )
 
-        ThumbnailCornerRadiusSelectorButton(
-            modifier = Modifier.padding(16.dp),
-            onRadiusSelected = { selectedRadius ->
-                Timber.tag("Thumbnail").d("Radius Selector: $selectedRadius")
-            }
+        PreferenceEntry(
+            title = { Text(stringResource(R.string.custom_radius)) },
+            description = "${thumbnailCornerRadius.toInt()}dp",
+            icon = { Icon(painterResource(R.drawable.image), null) },
+            onClick = { showCornerRadiusDialog = true },
         )
+
+        if (showCornerRadiusDialog) {
+            ThumbnailCornerRadiusModal(
+                initialRadius = thumbnailCornerRadius,
+                onDismiss = { showCornerRadiusDialog = false },
+                onRadiusSelected = { newRadius ->
+                    onThumbnailCornerRadiusChange(newRadius)
+                    showCornerRadiusDialog = false
+                }
+            )
+        }
 
         EnumListPreference(
             title = { Text(stringResource(R.string.player_background_style)) },
@@ -522,6 +549,8 @@ fun PlayerStyleSettings(
                 onClick = { showSensitivityDialog = true }
             )
         }
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(

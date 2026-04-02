@@ -23,6 +23,11 @@ import com.noxwizard.resonix.constants.AudioQuality
 import com.noxwizard.resonix.constants.AudioQualityKey
 import com.noxwizard.resonix.ui.component.EnumListPreference
 import com.noxwizard.resonix.ui.component.IconButton
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.unit.dp
 import com.noxwizard.resonix.ui.utils.backToMain
 import com.noxwizard.resonix.utils.rememberEnumPreference
 
@@ -41,15 +46,18 @@ fun HighResAudioSettings(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Top
                 )
-            )
+            ).height(8.dp)
         )
 
+        Material3PreferenceGroup {
         EnumListPreference(
             title = { Text(stringResource(R.string.audio_quality)) },
             icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
@@ -65,6 +73,8 @@ fun HighResAudioSettings(
                 }
             }
         )
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(

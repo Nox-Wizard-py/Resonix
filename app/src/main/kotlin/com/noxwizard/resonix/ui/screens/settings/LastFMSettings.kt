@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -57,9 +58,9 @@ import com.noxwizard.resonix.constants.ScrobbleMinSongDurationKey
 import com.noxwizard.resonix.constants.ScrobbleDelaySecondsKey
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.PreferenceEntry
-import com.noxwizard.resonix.ui.component.PreferenceGroupTitle
 import com.noxwizard.resonix.ui.component.SwitchPreference
 import com.noxwizard.resonix.ui.utils.backToMain
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 import com.noxwizard.resonix.utils.rememberPreference
 import com.noxwizard.resonix.utils.reportException
 import com.noxwizard.resonix.lastfm.LastFM
@@ -266,18 +267,20 @@ fun LastFMSettings(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Top
                 )
-            )
+            ).height(8.dp)
         )
 
-        PreferenceGroupTitle(
+        Material3PreferenceGroup(
             title = stringResource(R.string.account),
-        )
+        ) {
 
         PreferenceEntry(
             title = {
@@ -307,10 +310,11 @@ fun LastFMSettings(
                 }
             },
         )
+        }
 
-        PreferenceGroupTitle(
+        Material3PreferenceGroup(
             title = stringResource(R.string.options),
-        )
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.enable_scrobbling)) },
@@ -325,10 +329,11 @@ fun LastFMSettings(
             onCheckedChange = onUseNowPlayingChange,
             isEnabled = isLoggedIn && lastfmScrobbling,
         )
+        }
 
-        PreferenceGroupTitle(
+        Material3PreferenceGroup(
             title = stringResource(R.string.scrobbling_configuration)
-        )
+        ) {
 
         var showMinTrackDurationDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -506,6 +511,8 @@ fun LastFMSettings(
             description = "${scrobbleDelaySeconds}s",
             onClick = { showScrobbleDelaySecondsDialog = true }
         )
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(

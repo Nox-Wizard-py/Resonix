@@ -222,7 +222,9 @@ dependencies {
     implementation(project(":playlist-import"))
 
     implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
     implementation(libs.ktor.serialization.json)
+    implementation(libs.ktor.client.content.negotiation)
 
     coreLibraryDesugaring(libs.desugaring)
 

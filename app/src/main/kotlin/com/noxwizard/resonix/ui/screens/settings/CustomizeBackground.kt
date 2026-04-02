@@ -37,6 +37,7 @@ import com.noxwizard.resonix.constants.PlayerCustomContrastKey
 import com.noxwizard.resonix.constants.PlayerCustomImageUriKey
 import com.noxwizard.resonix.constants.PlayerCustomBlurKey
 import com.noxwizard.resonix.utils.rememberPreference
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -176,33 +177,35 @@ fun CustomizeBackground(
                     }
                 }
             }
-            Button(onClick = { launcher.launch(arrayOf("image/*")) }, modifier = Modifier.fillMaxWidth()) {
+            Material3PreferenceGroup(title = stringResource(R.string.settings)) {
+            Button(onClick = { launcher.launch(arrayOf("image/*")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Text(stringResource(R.string.add_image))
             }
 
-            Text(stringResource(R.string.blur))
+            Text(stringResource(R.string.blur), modifier = Modifier.padding(horizontal = 16.dp))
             Slider(
                 value = blur,
                 onValueChange = onBlurChange,
                 valueRange = 0f..50f,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             )
 
-            Text(stringResource(R.string.contrast))
+            Text(stringResource(R.string.contrast), modifier = Modifier.padding(horizontal = 16.dp))
             Slider(
                 value = contrast,
                 onValueChange = onContrastChange,
                 valueRange = 0.5f..2f,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             )
 
-            Text(stringResource(R.string.brightness))
+            Text(stringResource(R.string.brightness), modifier = Modifier.padding(horizontal = 16.dp))
             Slider(
                 value = brightness,
                 onValueChange = onBrightnessChange,
                 valueRange = 0.5f..2f,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             )
+            }
 
             FilledTonalButton(
                 onClick = {

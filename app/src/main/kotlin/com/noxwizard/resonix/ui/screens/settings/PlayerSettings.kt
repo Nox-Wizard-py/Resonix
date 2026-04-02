@@ -1,10 +1,14 @@
 package com.noxwizard.resonix.ui.screens.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,12 +45,12 @@ import com.noxwizard.resonix.ui.component.ArtistSeparatorsDialog
 import com.noxwizard.resonix.ui.component.EnumListPreference
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.PreferenceEntry
-import com.noxwizard.resonix.ui.component.PreferenceGroupTitle
 import com.noxwizard.resonix.ui.component.SliderPreference
 import com.noxwizard.resonix.ui.component.SwitchPreference
 import com.noxwizard.resonix.ui.utils.backToMain
 import com.noxwizard.resonix.utils.rememberEnumPreference
 import com.noxwizard.resonix.utils.rememberPreference
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,18 +128,20 @@ fun PlayerSettings(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Top
                 )
-            )
+            ).height(8.dp)
         )
 
-        PreferenceGroupTitle(
+        Material3PreferenceGroup(
             title = stringResource(R.string.player)
-        )
+        ) {
 
 
         SwitchPreference(
@@ -175,9 +181,11 @@ fun PlayerSettings(
             onCheckedChange = onSeekExtraSeconds
         )
 
-        PreferenceGroupTitle(
+        }
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.queue)
-        )
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.persistent_queue)) },
@@ -219,9 +227,11 @@ fun PlayerSettings(
             onCheckedChange = onAutoSkipNextOnErrorChange
         )
 
-        PreferenceGroupTitle(
+        }
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.misc)
-        )
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.stop_music_on_task_clear)) },
@@ -236,6 +246,8 @@ fun PlayerSettings(
             icon = { Icon(painterResource(R.drawable.artist), null) },
             onClick = { showArtistSeparatorsDialog = true }
         )
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(

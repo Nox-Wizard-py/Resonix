@@ -1,11 +1,16 @@
 package com.noxwizard.resonix.ui.component
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -37,11 +42,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import com.noxwizard.resonix.R
 import kotlin.math.roundToInt
 
@@ -58,38 +66,42 @@ fun PreferenceEntry(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier =
-        modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(
                 enabled = isEnabled && onClick != null,
                 onClick = onClick ?: {},
-            ).alpha(if (isEnabled) 1f else 0.5f)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            )
+            .padding(vertical = 12.dp, horizontal = 16.dp),
     ) {
         if (icon != null) {
             Box(
-                modifier = Modifier.padding(horizontal = 4.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .alpha(if (isEnabled) 1f else 0.5f),
+                contentAlignment = Alignment.Center
             ) {
                 icon()
             }
-
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(16.dp))
         }
 
         Column(
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).alpha(if (isEnabled) 1f else 0.4f),
         ) {
             ProvideTextStyle(MaterialTheme.typography.titleMedium) {
                 title()
             }
 
             if (description != null) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -97,9 +109,20 @@ fun PreferenceEntry(
         }
 
         if (trailingContent != null) {
-            Spacer(Modifier.width(12.dp))
-
-            trailingContent()
+            Spacer(Modifier.width(16.dp))
+            Box(Modifier.alpha(if (isEnabled) 1f else 0.4f)) {
+                trailingContent()
+            }
+        }
+        
+        if (onClick != null && trailingContent == null) {
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                painter = painterResource(id = R.drawable.lucide_chevron_right),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp).alpha(if (isEnabled) 1f else 0.4f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -347,4 +370,32 @@ fun PreferenceGroupTitle(
     )
 }
 
-
+@Composable
+fun Material3PreferenceGroup(
+    title: String? = null,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        title?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
+            )
+        }
+        
+        Card(
+            modifier = Modifier.fillMaxWidth().animateContentSize(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(content = content)
+        }
+    }
+}

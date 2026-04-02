@@ -101,7 +101,6 @@ import com.noxwizard.resonix.ui.component.ListPreference
 import com.noxwizard.resonix.ui.component.PlayerSliderTrack
 import com.noxwizard.resonix.ui.component.WaveformSlider
 import com.noxwizard.resonix.ui.component.PreferenceEntry
-import com.noxwizard.resonix.ui.component.PreferenceGroupTitle
 import com.noxwizard.resonix.ui.component.SwitchPreference
 import com.noxwizard.resonix.ui.component.ThumbnailCornerRadiusSelectorButton
 import com.noxwizard.resonix.ui.utils.backToMain
@@ -110,6 +109,7 @@ import com.noxwizard.resonix.utils.rememberPreference
 import me.saket.squiggles.SquigglySlider
 import kotlin.math.roundToInt
 import timber.log.Timber
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -207,11 +207,15 @@ fun AppearanceSettings(
     Column(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        PreferenceGroupTitle(
+        Spacer(Modifier.height(8.dp))
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.theme),
-        )
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.enable_dynamic_theme)) },
@@ -269,9 +273,11 @@ fun AppearanceSettings(
 
 
 
-        PreferenceGroupTitle(
+        }
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.lyrics),
-        )
+        ) {
 
         EnumListPreference(
             title = { Text(stringResource(R.string.lyrics_text_position)) },
@@ -464,9 +470,11 @@ fun AppearanceSettings(
             onClick = { showLyricsLineSpacingDialog = true }
         )
 
-        PreferenceGroupTitle(
+        }
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.misc),
-        )
+        ) {
 
         EnumListPreference(
             title = { Text(stringResource(R.string.default_open_tab)) },
@@ -545,9 +553,11 @@ fun AppearanceSettings(
             },
         )
 
-        PreferenceGroupTitle(
+        }
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.auto_playlists)
-        )
+        ) {
 
         SwitchPreference(
             title = { Text(stringResource(R.string.show_liked_playlist)) },
@@ -577,6 +587,8 @@ fun AppearanceSettings(
             onCheckedChange = onShowCachedPlaylistChange
         )
     }
+    Spacer(Modifier.height(32.dp))
+}
 
     TopAppBar(
         title = { Text(stringResource(R.string.appearance)) },

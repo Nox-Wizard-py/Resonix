@@ -1,10 +1,14 @@
 package com.noxwizard.resonix.ui.screens.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,7 +26,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import com.noxwizard.resonix.LocalPlayerAwareWindowInsets
 import com.noxwizard.resonix.R
-import com.noxwizard.resonix.ui.component.PreferenceGroupTitle
 import com.noxwizard.resonix.constants.ListenBrainzEnabledKey
 import com.noxwizard.resonix.constants.ListenBrainzTokenKey
 import com.noxwizard.resonix.ui.component.IconButton
@@ -32,6 +35,7 @@ import com.noxwizard.resonix.ui.component.SwitchPreference
 import com.noxwizard.resonix.ui.component.TextFieldDialog
 import com.noxwizard.resonix.ui.utils.backToMain
 import com.noxwizard.resonix.utils.rememberPreference
+import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,18 +54,20 @@ fun IntegrationScreen(
         Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Top
                 )
-            )
+            ).height(8.dp)
         )
 
-        PreferenceGroupTitle(
+        Material3PreferenceGroup(
                 title = stringResource(R.string.general),
-            )
+            ) {
 
         PreferenceEntry(
             title = { Text(stringResource(R.string.discord_integration)) },
@@ -71,9 +77,11 @@ fun IntegrationScreen(
             },
         )
 
-        PreferenceGroupTitle(
+        }
+
+        Material3PreferenceGroup(
             title = stringResource(R.string.scrobbling),
-        )
+        ) {
 
         PreferenceEntry(
             title = { Text(stringResource(R.string.lastfm_integration)) },
@@ -94,6 +102,8 @@ fun IntegrationScreen(
             icon = { Icon(painterResource(R.drawable.token), null) },
             onClick = { showListenBrainzTokenEditor.value = true },
         )
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     TopAppBar(

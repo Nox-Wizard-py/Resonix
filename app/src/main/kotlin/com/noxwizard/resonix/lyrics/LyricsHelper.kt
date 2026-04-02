@@ -2,10 +2,7 @@ package com.noxwizard.resonix.lyrics
 
 import android.content.Context
 import android.util.LruCache
-import com.noxwizard.resonix.constants.PreferredLyricsProvider
-import com.noxwizard.resonix.constants.PreferredLyricsProviderKey
 import com.noxwizard.resonix.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
-import com.noxwizard.resonix.extensions.toEnum
 import com.noxwizard.resonix.models.MediaMetadata
 import com.noxwizard.resonix.utils.dataStore
 import com.noxwizard.resonix.utils.reportException
@@ -30,45 +27,15 @@ constructor(
     @ApplicationContext private val context: Context,
     private val networkConnectivity: NetworkConnectivityObserver,
 ) {
-    private var lyricsProviders =
-        listOf(
-            BetterLyricsProvider,
-            LrcLibLyricsProvider,
-            KuGouLyricsProvider,
-            YouTubeSubtitleLyricsProvider,
-            YouTubeLyricsProvider
-        )
+    private var lyricsProviders = LyricsProviderRegistry.getOrderedProviders("")
 
     val preferred =
         context.dataStore.data
             .map {
-                it[PreferredLyricsProviderKey].toEnum(PreferredLyricsProvider.LRCLIB)
+                it[com.noxwizard.resonix.constants.LyricsProviderOrderKey] ?: ""
             }.distinctUntilChanged()
             .map {
-                lyricsProviders =
-                    when (it) {
-                        PreferredLyricsProvider.BETTER_LYRICS -> listOf(
-                            BetterLyricsProvider,
-                            LrcLibLyricsProvider,
-                            KuGouLyricsProvider,
-                            YouTubeSubtitleLyricsProvider,
-                            YouTubeLyricsProvider
-                        )
-                        PreferredLyricsProvider.LRCLIB -> listOf(
-                            LrcLibLyricsProvider,
-                            BetterLyricsProvider,
-                            KuGouLyricsProvider,
-                            YouTubeSubtitleLyricsProvider,
-                            YouTubeLyricsProvider
-                        )
-                        PreferredLyricsProvider.KUGOU -> listOf(
-                            KuGouLyricsProvider,
-                            BetterLyricsProvider,
-                            LrcLibLyricsProvider,
-                            YouTubeSubtitleLyricsProvider,
-                            YouTubeLyricsProvider
-                        )
-                    }
+                lyricsProviders = LyricsProviderRegistry.getOrderedProviders(it)
             }
 
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
