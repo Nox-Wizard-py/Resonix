@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -26,7 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.noxwizard.resonix.R
 
@@ -46,25 +51,56 @@ fun StarDialog(
         text = {
             Column {
                 Text(
-                    text = "Welcome to Resonix!\n\nThis is your custom personalized version of Metrolist, crafted by Nox Wizard.\n\nEnjoy your music!",
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                            append("Welcome to Resonix 🌙\n\n")
+                        }
+                        append("Thank you for being part of the Luna-I release.\n\n")
+                        append("Resonix is your personalized music experience, carefully crafted by ")
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                            append("Nox Wizard")
+                        }
+                        append(" to bring style, discovery, and seamless listening together.\n\n")
+                        append("Explore dynamic themes, curated moods, and a player designed around your vibe.\n\n")
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                            append("Join our Telegram community")
+                        }
+                        append(" for updates, feature previews, and to share feedback with fellow listeners.\n\n")
+                        append("Enjoy the music. Let the night play on.")
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
         },
         confirmButton = {
-            FilledTonalButton(
-                onClick = {
-                    onStar() // Just dismiss/continue
-                },
-                colors = ButtonDefaults.buttonColors(),
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.star),
-                    contentDescription = "Cool",
-                    modifier = Modifier.size(18.dp)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FilledTonalButton(
+                    onClick = {
+                        onStar() // Just dismiss/continue
+                    },
+                    colors = ButtonDefaults.buttonColors(),
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.star),
+                        contentDescription = "Cool",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(text = "Awesome")
+                }
                 Spacer(modifier = Modifier.size(8.dp))
-                Text(text = "Awesome")
+                FilledTonalIconButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/Resonix_Music_App"))
+                        context.startActivity(intent)
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_telegram),
+                        contentDescription = "Telegram",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         },
         dismissButton = {
