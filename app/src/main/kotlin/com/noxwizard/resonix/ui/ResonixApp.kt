@@ -3,6 +3,7 @@ package com.noxwizard.resonix.ui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -424,7 +425,7 @@ fun ResonixApp(
                     onActiveChange(false)
                     // URL Encoding handled inside OnlineSearchScreen in previous logic.
                     // But here we are at top level. 
-                    navController.navigate("search/${URLEncoder.encode(it, "UTF-8")}")
+                    navController.navigate("search/${Uri.encode(it)}")
                     if (context.dataStore[PauseSearchHistoryKey] != true) {
                         database.query {
                             insert(SearchHistory(query = it))
@@ -510,15 +511,7 @@ fun ResonixApp(
 
             LaunchedEffect(navBackStackEntry) {
                 if (navBackStackEntry?.destination?.route?.startsWith("search/") == true) {
-                    val searchQuery =
-                        withContext(Dispatchers.IO) {
-                            val argQuery = navBackStackEntry?.arguments?.getString("query")!!
-                            if (argQuery.contains("%")) {
-                                URLDecoder.decode(argQuery, "UTF-8")
-                            } else {
-                                argQuery
-                            }
-                        }
+                    val searchQuery = navBackStackEntry?.arguments?.getString("query")!!
                     onQueryChange(
                         TextFieldValue(
                             searchQuery,

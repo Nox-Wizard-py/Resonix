@@ -3,6 +3,7 @@ package com.noxwizard.resonix.ui
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import android.net.Uri
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -199,9 +200,7 @@ fun ResonixSearchBar(
                         onQueryChange = onQueryChange,
                         navController = navController,
                         onSearch = {
-                            navController.navigate(
-                                "search/${URLEncoder.encode(it, "UTF-8")}"
-                            )
+                            navController.navigate("search/${Uri.encode(it)}")
                             // Note: onSearch lambda in MainActivity handled history insertion.
                             // We need to pass that responsibility or replicate it.
                             // Here we are inside the Screen, so replicating is fine given dependencies.
