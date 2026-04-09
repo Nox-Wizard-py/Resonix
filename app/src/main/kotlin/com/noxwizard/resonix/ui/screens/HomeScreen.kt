@@ -570,6 +570,7 @@ fun HomeScreen(
             }
             }
 
+            // ── Shuffle FAB ───────────────────────────────────────────────────────────
             HideOnScrollFAB(
                 visible = allLocalItems.isNotEmpty() || allYtItems.isNotEmpty(),
                 lazyListState = lazylistState,
@@ -609,6 +610,15 @@ fun HomeScreen(
                         }
                     }
                 }
+            )
+
+            // ── Mic / Recognition FAB — sits above shuffle ────────────────────────────
+            HideOnScrollFAB(
+                visible = true,
+                lazyListState = lazylistState,
+                icon = R.drawable.ic_mic,
+                offsetY = 76.dp,
+                onClick = { navController.navigate("recognition") }
             )
 
             Indicator(
