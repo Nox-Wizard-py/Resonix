@@ -81,14 +81,15 @@ class MusicDatabase(
         Event::class,
         RelatedSongMap::class,
         SetVideoIdEntity::class,
-        PlayCountEntity::class
+        PlayCountEntity::class,
+        com.noxwizard.resonix.db.entities.RecognitionHistory::class
     ],
     views = [
         SortedSongArtistMap::class,
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 26,
+    version = 27,
     exportSchema = true,
     // AutoMigrations commented out for fresh Resonix install - not needed since there's no existing database to migrate
     /*
@@ -136,7 +137,8 @@ abstract class InternalDatabase : RoomDatabase() {
                         MIGRATION_22_24,  // Direct migration path for users upgrading from v22 to v24
                         MIGRATION_21_24,  // Direct migration path for users upgrading from v21 to v24
                         MIGRATION_24_25,  // Add perceptualLoudnessDb column for audio normalization
-                        MIGRATION_25_26   // Add customThumbnailPath column for custom playlist covers
+                        MIGRATION_25_26,  // Add customThumbnailPath column for custom playlist covers
+                        MIGRATION_26_27   // Add recognition_history table
                     )
                     .fallbackToDestructiveMigration()
                     .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -779,6 +781,15 @@ val MIGRATION_25_26 =
             if (!columnExists) {
                 db.execSQL("ALTER TABLE playlist ADD COLUMN customThumbnailPath TEXT DEFAULT NULL")
             }
+        }
+    }
+
+val MIGRATION_26_27 =
+    object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `recognition_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `coverArtUrl` TEXT, `timestamp` INTEGER NOT NULL)"
+            )
         }
     }
 

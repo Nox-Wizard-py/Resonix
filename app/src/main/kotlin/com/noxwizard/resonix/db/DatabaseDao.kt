@@ -1393,6 +1393,19 @@ interface DatabaseDao {
     fun checkpoint() {
         raw("PRAGMA wal_checkpoint(FULL)".toSQLiteQuery())
     }
+
+    // Recognition History
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecognitionHistory(history: com.noxwizard.resonix.db.entities.RecognitionHistory)
+
+    @Query("SELECT * FROM recognition_history ORDER BY timestamp DESC")
+    fun getAllRecognitionHistory(): kotlinx.coroutines.flow.Flow<List<com.noxwizard.resonix.db.entities.RecognitionHistory>>
+
+    @Delete
+    suspend fun deleteRecognitionHistory(history: com.noxwizard.resonix.db.entities.RecognitionHistory)
+
+    @Query("DELETE FROM recognition_history")
+    suspend fun clearRecognitionHistory()
 }
 
 
