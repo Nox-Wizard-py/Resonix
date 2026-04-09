@@ -56,6 +56,7 @@ import com.noxwizard.resonix.ui.screens.playlist.PlaylistImportScreen
 import com.noxwizard.resonix.ui.screens.playlist.TopPlaylistScreen
 import com.noxwizard.resonix.ui.screens.playlist.CachePlaylistScreen
 import com.noxwizard.resonix.ui.screens.search.OnlineSearchResult
+import com.noxwizard.resonix.ui.screens.recognition.RecognitionScreen
 import com.noxwizard.resonix.ui.screens.settings.AboutScreen
 import com.noxwizard.resonix.ui.screens.settings.AccountSettings
 import com.noxwizard.resonix.ui.screens.settings.AppearanceSettings
@@ -101,6 +102,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("history") {
         HistoryScreen(navController)
+    }
+    composable("recognition_history") {
+        com.noxwizard.resonix.ui.screens.recognition.RecognitionHistoryScreen(navController)
     }
     composable("stats") {
         StatsScreen(navController)
@@ -297,6 +301,9 @@ fun NavGraphBuilder.navigationBuilder(
         ),
     ) {
         YouTubeBrowseScreen(navController)
+    }
+    composable("recognition") {
+        RecognitionScreen(navController)
     }
     composable("settings") {
         SettingsScreen(navController, scrollBehavior, latestVersionName)
