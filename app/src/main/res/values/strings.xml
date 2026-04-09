@@ -636,4 +636,14 @@
     <string name="ai_translation_enable">Enable AI Translation</string>
     <string name="ai_translation_service">Translation Service</string>
 
+    <!-- Music Recognition -->
+    <string name="recognize_music">Recognize Music</string>
+    <string name="recognition_notification_listening">Listening for music…</string>
+    <string name="recognition_notification_processing">Processing audio…</string>
+    <string name="recognition_notification_no_match">No match found</string>
+    <string name="recognition_notification_failed">Recognition failed</string>
+    <string name="listen_on_metrolist">Listen on Resonix</string>
+    <string name="recognition_notification_channel_name">Music Recognition</string>
+    <string name="recognition_notification_channel_desc">Notifications for music recognition state</string>
+
 </resources>
