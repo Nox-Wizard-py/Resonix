@@ -11,6 +11,7 @@ data class Track(
     val duration: Double,
     val plainLyrics: String?,
     val syncedLyrics: String?,
+    val albumName: String? = null,
 )
 
 internal fun List<Track>.bestMatchingFor(duration: Int): Track? {
