@@ -39,6 +39,11 @@ android {
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
 
+        val recognitionBackendUrl = localProperties.getProperty("RECOGNITION_BACKEND_URL")?.takeIf { it.isNotEmpty() }
+            ?: System.getenv("RECOGNITION_BACKEND_URL")?.takeIf { it.isNotEmpty() }
+            ?: "https://resonix-0pvb.onrender.com" // Android emulator localhost fallback
+        buildConfigField("String", "RECOGNITION_BACKEND_URL", "\"$recognitionBackendUrl\"")
+
     }
 
     flavorDimensions += "abi"
@@ -220,6 +225,8 @@ dependencies {
     implementation(project(":betterlyrics"))
     implementation(project(":kizzy"))
     implementation(project(":playlist-import"))
+    implementation(project(":shazamkit"))
+    implementation("androidx.media3:media3-common:1.8.0")
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
