@@ -148,5 +148,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val ACTION_LIBRARY = "com.noxwizard.resonix.LIBRARY"
         const val ACTION_SEARCH = "com.noxwizard.resonix.SEARCH"
+        const val ACTION_RECOGNITION = "com.noxwizard.resonix.RECOGNITION"
+        const val EXTRA_AUTO_START_RECOGNITION = "extra_auto_start_recognition"
     }
 }
