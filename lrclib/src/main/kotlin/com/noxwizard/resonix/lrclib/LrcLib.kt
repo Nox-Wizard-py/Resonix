@@ -42,7 +42,7 @@ object LrcLib {
         }
     }
 
-    private suspend fun queryLyrics(
+    suspend fun queryLyrics(
         artist: String,
         title: String,
         album: String? = null,

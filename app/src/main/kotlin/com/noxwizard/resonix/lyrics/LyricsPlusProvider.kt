@@ -17,14 +17,14 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable
-private data class LyricLineResponse(
+data class LyricLineResponse(
     val time: Long,
     val duration: Long,
     val text: String,
 )
 
 @Serializable
-private data class LyricsPlusResponse(
+data class LyricsPlusResponse(
     val type: String? = null,
     val lyrics: List<LyricLineResponse>? = null,
     val cached: String? = null,
@@ -74,7 +74,7 @@ object LyricsPlusProvider : LyricsProvider {
         if (response.status == HttpStatusCode.OK) response.body<LyricsPlusResponse>() else null
     }.getOrNull()
 
-    private suspend fun fetchLyrics(
+    suspend fun fetchLyrics(
         title: String,
         artist: String,
         duration: Int,
