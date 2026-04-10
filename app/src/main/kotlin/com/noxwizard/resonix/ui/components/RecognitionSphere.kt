@@ -248,7 +248,6 @@ fun RecognitionSphere(
             particles.sortBy { it.sz }
 
             // ── Draw ──────────────────────────────────────────────────────
-            drawRect(Color.Black)
 
             // Outer bloom glow
             val bloomR = baseRadius * 2.5f
