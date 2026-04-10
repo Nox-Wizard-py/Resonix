@@ -38,7 +38,7 @@ fun VerticalWaveformSlider(
     seed: Int,
     modifier: Modifier = Modifier,
     activeColor: Color = Color.White,
-    inactiveColor: Color = Color.White.copy(alpha = 0.3f),
+    inactiveColor: Color = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant,
     trackHeight: Dp = 60.dp,
     barWidth: Dp = 3.dp,
     barGap: Dp = 2.dp,

@@ -29,7 +29,7 @@ object PlayerSliderColors {
             activeTrackColor = activeColor,
             activeTickColor = activeColor,
             thumbColor = activeColor,
-            inactiveTrackColor = Color.White.copy(alpha = inactiveAlpha)
+            inactiveTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = inactiveAlpha)
         )
     }
 
@@ -73,7 +73,7 @@ object PlayerSliderColors {
         return SliderDefaults.colors(
             activeTrackColor = buttonColor,
             activeTickColor = buttonColor,
-            inactiveTrackColor = Color.White.copy(alpha = Config.INACTIVE_TRACK_ALPHA)
+            inactiveTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = Config.INACTIVE_TRACK_ALPHA)
         )
     }
 
@@ -105,7 +105,7 @@ object PlayerSliderColors {
         val DEFAULT_ACTIVE_COLOR = Color(0xFF1976D2)
         
         /** Default inactive color when no theme color is available */
-        val DEFAULT_INACTIVE_COLOR = Color.White.copy(alpha = INACTIVE_TRACK_ALPHA)
+        val DEFAULT_INACTIVE_COLOR = Color.Gray.copy(alpha = 0.3f)
     }
 }
 

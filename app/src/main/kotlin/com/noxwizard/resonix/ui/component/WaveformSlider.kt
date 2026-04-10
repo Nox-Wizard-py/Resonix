@@ -50,7 +50,7 @@ fun WaveformSlider(
     modifier: Modifier = Modifier,
     isPlaying: Boolean = false,
     activeColor: Color = Color.White,
-    inactiveColor: Color = Color.White.copy(alpha = 0.3f),
+    inactiveColor: Color = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant,
     thumbColor: Color = activeColor, // Kept for API compatibility
     trackHeight: Dp = 60.dp,
 ) {

@@ -1176,7 +1176,7 @@ fun BottomSheetPlayer(
                         },
                         isPlaying = isPlaying,
                         activeColor = textButtonColor,
-                        inactiveColor = Color.White.copy(alpha = 0.15f),
+                        inactiveColor = textButtonColor.copy(alpha = if (isSystemInDarkTheme()) 0.2f else 0.35f),
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
                     )
                 }
@@ -1198,7 +1198,7 @@ fun BottomSheetPlayer(
                         },
                         seed = songSeed,
                         activeColor = textButtonColor,
-                        inactiveColor = Color.White.copy(alpha = 0.15f),
+                        inactiveColor = textButtonColor.copy(alpha = if (isSystemInDarkTheme()) 0.2f else 0.35f),
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
                     )
                 }

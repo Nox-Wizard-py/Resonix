@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -746,7 +747,7 @@ fun LyricsScreen(
                                         },
                                         isPlaying = isPlaying,
                                         activeColor = textBackgroundColor,
-                                        inactiveColor = Color.White.copy(alpha = 0.15f),
+                                        inactiveColor = textBackgroundColor.copy(alpha = if (isSystemInDarkTheme()) 0.2f else 0.35f),
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
@@ -767,7 +768,7 @@ fun LyricsScreen(
                                         },
                                         seed = songSeed,
                                         activeColor = textBackgroundColor,
-                                        inactiveColor = Color.White.copy(alpha = 0.15f),
+                                        inactiveColor = textBackgroundColor.copy(alpha = if (isSystemInDarkTheme()) 0.2f else 0.35f),
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
@@ -1119,7 +1120,7 @@ fun LyricsScreen(
                                     },
                                     isPlaying = isPlaying,
                                     activeColor = textBackgroundColor,
-                                    inactiveColor = Color.White.copy(alpha = 0.15f),
+                                    inactiveColor = textBackgroundColor.copy(alpha = if (isSystemInDarkTheme()) 0.2f else 0.35f),
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -1140,7 +1141,7 @@ fun LyricsScreen(
                                     },
                                     seed = songSeed,
                                     activeColor = textBackgroundColor,
-                                    inactiveColor = Color.White.copy(alpha = 0.15f),
+                                    inactiveColor = textBackgroundColor.copy(alpha = if (isSystemInDarkTheme()) 0.2f else 0.35f),
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
