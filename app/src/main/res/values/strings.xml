@@ -628,6 +628,7 @@
     <string name="lyrics_providers">Lyrics Providers</string>
     <string name="lyrics_romanize_title">Romanization</string>
     <string name="lyrics_romanization_title">Lyrics Romanization</string>
+    <string name="lyrics_romanization_desc">Convert foreign scripts into pronounceable alphabet characters</string>
     <string name="lyrics_romanize_as_main">Show Romanized as Main Lyrics</string>
     <string name="line_by_line_option_title">Format line by line</string>
     
@@ -646,4 +647,34 @@
     <string name="recognition_notification_channel_name">Music Recognition</string>
     <string name="recognition_notification_channel_desc">Notifications for music recognition state</string>
 
+    <string name="ai_lyrics_translation">AI lyrics translation</string>
+    <string name="ai_lyrics_translation_desc">Configure AI models to translate foreign lyrics</string>
+    <string name="ai_translating_lyrics">Translating lyrics…</string>
+    <string name="ai_lyrics_translated">Lyrics translated</string>
+    <string name="ai_provider">Provider</string>
+    <string name="ai_base_url">Base URL</string>
+    <string name="ai_api_key">API key</string>
+    <string name="ai_model">Model</string>
+    <string name="ai_translation_mode">Translation mode</string>
+    <string name="ai_target_language">Target language</string>
+    <string name="ai_setup_guide">API credentials</string>
+    <string name="ai_translation_literal">Translation</string>
+    <string name="ai_translation_literal_desc">Translates the meaning into the target language</string>
+    <string name="ai_translation_transcribed">Transcription</string>
+    <string name="ai_translation_transcribed_desc">Converts pronunciation into the target script</string>
+    <string name="ai_api_key_required">API key required</string>
+    <string name="ai_error_api_key_required">An API key is required</string>
+    <string name="ai_error_no_lyrics">No lyrics to translate</string>
+    <string name="ai_error_lyrics_empty">Lyrics are empty</string>
+    <string name="ai_error_language_required">A target language is required</string>
+    <string name="ai_error_unexpected">Unexpected translation result</string>
+    <string name="ai_error_unknown">An unknown error occurred</string>
+    <string name="ai_error_translation_failed">Translation failed</string>
+    <string name="ai_provider_help">Get API keys</string>
+    <string name="ai_provider_openrouter_help">Visit https://openrouter.ai for free and paid models\nYou can supply specific model identifiers not in the list using the custom input field</string>
+    <string name="ai_system_prompt">System prompt</string>
+    <string name="ai_system_prompt_desc">Custom instructions sent to the AI model. Leave empty to use the default prompt</string>
+    <string name="ai_system_prompt_placeholder">Use {lineCount} as a placeholder for the number of lines to translate</string>
+    <string name="ai_system_prompt_default">Default</string>
+    <string name="ai_system_prompt_reset">Reset to default</string>
 </resources>
