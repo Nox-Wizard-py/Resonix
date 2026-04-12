@@ -15,6 +15,7 @@
     "express-rate-limit": "^7.2.0",
     "form-data": "^4.0.0",
     "multer": "^1.4.5-lts.1",
+    "ws": "^8.20.0",
     "yt-dlp-wrap": "^2.3.12"
   },
   "devDependencies": {
