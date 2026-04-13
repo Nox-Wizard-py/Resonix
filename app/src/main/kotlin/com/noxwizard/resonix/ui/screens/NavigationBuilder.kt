@@ -329,6 +329,9 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/lyrics_romanization") {
         com.noxwizard.resonix.ui.screens.settings.RomanizationSettings(navController, scrollBehavior)
     }
+    composable("settings/ai_lyrics_translation") {
+        com.noxwizard.resonix.ui.screens.settings.AiLyricsTranslationSettings(navController)
+    }
     composable("settings/player") {
         PlayerSettings(navController, scrollBehavior)
     }
