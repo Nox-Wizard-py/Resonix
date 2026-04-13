@@ -178,13 +178,16 @@ val LyricsRomanizeCyrillicByLineKey = booleanPreferencesKey("lyricsRomanizeCyril
 val LyricsRomanizeJapaneseKey = booleanPreferencesKey("lyricsRomanizeJapanese")
 val LyricsRomanizeKoreanKey = booleanPreferencesKey("lyricsRomanizeKorean")
 
-val AITranslationEnabledKey = booleanPreferencesKey("aiTranslationEnabled")
-val AITranslationServiceKey = stringPreferencesKey("aiTranslationService")
-val DeepLAuthKeyKey = stringPreferencesKey("deeplAuthKey")
-val MistralApiKeyKey = stringPreferencesKey("mistralApiKey")
-val MistralModelKey = stringPreferencesKey("mistralModel")
-val OpenRouterApiKeyKey = stringPreferencesKey("openRouterApiKey")
+val AiProviderKey = stringPreferencesKey("aiProvider")
+val OpenRouterApiKey = stringPreferencesKey("openRouterApiKey")
+val OpenRouterBaseUrlKey = stringPreferencesKey("openRouterBaseUrl")
 val OpenRouterModelKey = stringPreferencesKey("openRouterModel")
+val TranslateLanguageKey = stringPreferencesKey("translateLanguage")
+val TranslateModeKey = stringPreferencesKey("translateMode")
+val AiSystemPromptKey = stringPreferencesKey("aiSystemPrompt")
+
+const val DEFAULT_AI_SYSTEM_PROMPT = ""
+
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
 
 val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
