@@ -14,8 +14,8 @@ sealed class Screens(
 ) {
     object Home : Screens(
         titleId = R.string.home,
-        iconIdInactive = R.drawable.home_outlined,
-        iconIdActive = R.drawable.home_filled,
+        iconIdInactive = R.drawable.home_app_logo_24,
+        iconIdActive = R.drawable.home_app_logo_fill_24,
         route = "home"
     )
 
@@ -28,8 +28,8 @@ sealed class Screens(
 
     object Library : Screens(
         titleId = R.string.filter_library,
-        iconIdInactive = R.drawable.library_music_outlined,
-        iconIdActive = R.drawable.library_music_filled,
+        iconIdInactive = R.drawable.widgets_24,
+        iconIdActive = R.drawable.widgets_fill_24,
         route = "library"
     )
 

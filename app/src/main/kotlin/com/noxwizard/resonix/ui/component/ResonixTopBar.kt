@@ -166,19 +166,19 @@ fun ResonixTopBar(
             actions = {
                 IconButton(onClick = { navController.navigate("history") }) {
                     Icon(
-                        painter = painterResource(R.drawable.history),
+                        painter = painterResource(R.drawable.music_history_24),
                         contentDescription = stringResource(R.string.history)
                     )
                 }
                 IconButton(onClick = { navController.navigate("stats") }) {
                     Icon(
-                        painter = painterResource(R.drawable.stats),
+                        painter = painterResource(R.drawable.analytics_24),
                         contentDescription = stringResource(R.string.stats)
                     )
                 }
                 IconButton(onClick = { navController.navigate("new_release") }) {
                     Icon(
-                        painter = painterResource(R.drawable.notifications_unread),
+                        painter = painterResource(R.drawable.app_badging_24),
                         contentDescription = stringResource(R.string.new_release_albums)
                     )
                 }
@@ -198,7 +198,7 @@ fun ResonixTopBar(
                             )
                         } else {
                             Icon(
-                                painter = painterResource(R.drawable.account),
+                                painter = painterResource(R.drawable.identity_platform_24),
                                 contentDescription = stringResource(R.string.account),
                                 modifier = Modifier.size(24.dp)
                             )

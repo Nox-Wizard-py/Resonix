@@ -616,7 +616,7 @@ fun HomeScreen(
             HideOnScrollFAB(
                 visible = true,
                 lazyListState = lazylistState,
-                icon = R.drawable.ic_mic,
+                icon = R.drawable.mic_24,
                 offsetY = 76.dp,
                 onClick = { navController.navigate("recognition") }
             )
