@@ -208,8 +208,15 @@ fun ContentSettings(
                 )
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.lyrics_romanization_title)) },
+                    description = stringResource(R.string.lyrics_romanization_desc),
                     icon = { Icon(painterResource(R.drawable.translate), null) },
                     onClick = { navController.navigate("settings/lyrics_romanization") }
+                )
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.ai_lyrics_translation)) },
+                    description = stringResource(R.string.ai_lyrics_translation_desc),
+                    icon = { Icon(painterResource(R.drawable.translate), null) },
+                    onClick = { navController.navigate("settings/ai_lyrics_translation") }
                 )
             }
             Spacer(Modifier.height(16.dp))

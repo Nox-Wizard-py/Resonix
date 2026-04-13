@@ -29,8 +29,6 @@ import com.noxwizard.resonix.R
 import com.noxwizard.resonix.constants.LyricsRomanizeAsMainKey
 import com.noxwizard.resonix.constants.LyricsRomanizeCyrillicByLineKey
 import com.noxwizard.resonix.constants.LyricsRomanizeList
-import com.noxwizard.resonix.constants.AITranslationEnabledKey
-import com.noxwizard.resonix.constants.AITranslationServiceKey
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.Material3SettingsGroup
 import com.noxwizard.resonix.ui.component.Material3SettingsItem
@@ -95,16 +93,6 @@ fun RomanizationSettings(
         defaultValue = false
     )
 
-    // AI Translation
-    val (aiTranslation, onAiTranslationChange) = rememberPreference(
-        AITranslationEnabledKey,
-        defaultValue = false
-    )
-    val (aiTranslationService, onAiTranslationServiceChange) = rememberPreference(
-        AITranslationServiceKey,
-        defaultValue = "Mistral"
-    )
-
     val checkboxesList: MutableList<Material3SettingsItem> = mutableListOf()
 
     Column(
@@ -130,30 +118,6 @@ fun RomanizationSettings(
                 onCheckedChange = onLyricsRomanizeCyrillicByLineChange,
                 icon = { Icon(painterResource(R.drawable.info), null) }
             )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Material3PreferenceGroup(
-            title = stringResource(R.string.ai_translation_title)
-        ) {
-            SwitchPreference(
-                title = { Text(stringResource(R.string.ai_translation_enable)) },
-                checked = aiTranslation,
-                onCheckedChange = onAiTranslationChange,
-                icon = { Icon(painterResource(R.drawable.translate), null) }
-            )
-            
-            if (aiTranslation) {
-                ListPreference(
-                    title = { Text(stringResource(R.string.ai_translation_service)) },
-                    icon = { Icon(painterResource(R.drawable.lucide_settings), null) },
-                    selectedValue = aiTranslationService,
-                    values = listOf("DeepL", "Mistral", "OpenRouter"),
-                    valueText = { it },
-                    onValueSelected = onAiTranslationServiceChange,
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
