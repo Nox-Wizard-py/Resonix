@@ -37,7 +37,13 @@ function resolveDuplicateName(base, users) {
  */
 function addClient(roomCode, clientId, ws, initialUsername) {
     if (!rooms.has(roomCode)) {
-        rooms.set(roomCode, { hostClientId: null, clients: new Map() });
+        rooms.set(roomCode, {
+            hostClientId: null,
+            clients: new Map(),
+            globalVolume: 1.0,
+            playbackPermission: 'Everyone',
+            timingOffsetMs: 0
+        });
     }
     const room = rooms.get(roomCode);
 
@@ -72,6 +78,15 @@ function getRoomOfClient(clientId) {
     return clientRoomMap.get(clientId);
 }
 
+/** Update room-level settings (volume, permission, nudge) */
+function updateRoomSettings(roomCode, settings) {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+    if (settings.globalVolume !== undefined) room.globalVolume = settings.globalVolume;
+    if (settings.playbackPermission !== undefined) room.playbackPermission = settings.playbackPermission;
+    if (settings.timingOffsetMs !== undefined) room.timingOffsetMs = settings.timingOffsetMs;
+}
+
 /** Disable or enable temp control for a client */
 function toggleTempControl(roomCode, targetClientId) {
     const room = rooms.get(roomCode);
@@ -98,13 +113,15 @@ function broadcast(roomCode, message, excludeClientId = null) {
     }
 }
 
-/** Get serializable state */
 function getRoomState(roomCode) {
     const room = rooms.get(roomCode);
     if (!room) return null;
     return {
         roomCode,
         hostId: room.hostClientId,
+        globalVolume: room.globalVolume ?? 1.0,
+        playbackPermission: room.playbackPermission ?? 'Everyone',
+        timingOffsetMs: room.timingOffsetMs ?? 0,
         users: Array.from(room.clients.values()).map(c => ({
             userId: c.clientId,
             username: c.username,
@@ -137,5 +154,6 @@ module.exports = {
     destroyRoomIfEmpty,
     getRoomState,
     toggleTempControl,
+    updateRoomSettings,
     resolveDuplicateName
 };

@@ -192,6 +192,23 @@ function handleMessage(clientId, raw, ws) {
             break;
         }
 
+        case 'update_room_settings': {
+            const roomCode = roomManager.getRoomOfClient(clientId);
+            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
+
+            roomManager.updateRoomSettings(roomCode, {
+                globalVolume: msg.globalVolume,
+                playbackPermission: msg.playbackPermission,
+                timingOffsetMs: msg.timingOffsetMs
+            });
+
+            roomManager.broadcast(roomCode, {
+                type: 'room_updated',
+                state: roomManager.getRoomState(roomCode)
+            });
+            break;
+        }
+
         default:
             console.warn(`[sync] unknown message type: ${msg.type} from ${clientId}`);
     }

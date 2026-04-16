@@ -12,6 +12,14 @@ const { createServer } = require('http');
 const { WebSocketServer } = require('ws');
 const { handleMessage, handleDisconnect } = require('./sync/syncHandler');
 
+// Maps server-assigned connectionId → app-provided userId
+const connectionToUserId = new Map();
+
+// Allow syncHandler to register the resolved userId per connection
+function registerUserId(connectionId, userId) {
+    connectionToUserId.set(connectionId, userId);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -46,14 +54,33 @@ const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', (ws) => {
-    const clientId = require('crypto').randomUUID();
-    console.log(`[sync] client connected: ${clientId}`);
+    const connectionId = require('crypto').randomUUID();
+    console.log(`[sync] client connected: ${connectionId}`);
 
-    ws.on('message', (data) => handleMessage(clientId, data.toString(), ws));
-    ws.on('close', () => handleDisconnect(clientId));
+    ws.on('message', (data) => {
+        const raw = data.toString();
+        // Peek at userId before full dispatch so we can register the mapping
+        try {
+            const msg = JSON.parse(raw);
+            if (msg.type === 'join_room' && msg.userId) {
+                connectionToUserId.set(connectionId, msg.userId);
+            }
+        } catch {}
+        const resolvedId = connectionToUserId.get(connectionId) || connectionId;
+        handleMessage(resolvedId, raw, ws);
+    });
+
+    ws.on('close', () => {
+        const resolvedId = connectionToUserId.get(connectionId) || connectionId;
+        handleDisconnect(resolvedId);
+        connectionToUserId.delete(connectionId);
+    });
+    
     ws.on('error', (err) => {
-        console.error(`[sync] error (${clientId}):`, err.message);
-        handleDisconnect(clientId);
+        console.error(`[sync] error (${connectionId}):`, err.message);
+        const resolvedId = connectionToUserId.get(connectionId) || connectionId;
+        handleDisconnect(resolvedId);
+        connectionToUserId.delete(connectionId);
     });
 });
 
