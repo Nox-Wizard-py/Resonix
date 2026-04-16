@@ -21,16 +21,33 @@ function getRoom(roomCode) {
     return rooms.get(roomCode);
 }
 
+function resolveDuplicateName(base, users) {
+    let candidate = base;
+    let count = 2;
+    while (users.some(u => u.username === candidate)) {
+        candidate = `${base} (${count})`;
+        count++;
+    }
+    return candidate;
+}
+
 /**
  * Add [clientId] + their WebSocket to [roomCode].
  * Creates the room entry if it does not exist yet.
  */
-function addClient(roomCode, clientId, ws) {
+function addClient(roomCode, clientId, ws, initialUsername) {
     if (!rooms.has(roomCode)) {
         rooms.set(roomCode, { hostClientId: null, clients: new Map() });
     }
-    rooms.get(roomCode).clients.set(clientId, ws);
+    const room = rooms.get(roomCode);
+
+    const existingUsers = Array.from(room.clients.values());
+    const resolvedName = resolveDuplicateName(initialUsername, existingUsers);
+
+    room.clients.set(clientId, { ws, username: resolvedName, hasTempControl: false, clientId });
     clientRoomMap.set(clientId, roomCode);
+    
+    return resolvedName;
 }
 
 /** Mark [clientId] as the host of [roomCode]. */
@@ -55,7 +72,15 @@ function getRoomOfClient(clientId) {
     return clientRoomMap.get(clientId);
 }
 
-// ── Broadcast ─────────────────────────────────────────────────────────────────
+/** Disable or enable temp control for a client */
+function toggleTempControl(roomCode, targetClientId) {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+    const client = room.clients.get(targetClientId);
+    if (client) {
+        client.hasTempControl = !client.hasTempControl;
+    }
+}
 
 /**
  * Serialize [message] as JSON and send it to every client in [roomCode],
@@ -66,10 +91,27 @@ function broadcast(roomCode, message, excludeClientId = null) {
     const room = rooms.get(roomCode);
     if (!room) return;
     const json = JSON.stringify(message);
-    for (const [clientId, ws] of room.clients) {
+    for (const [clientId, clientData] of room.clients) {
         if (clientId === excludeClientId) continue;
-        if (ws.readyState === ws.OPEN) ws.send(json);
+        const ws = clientData.ws;
+        if (ws.readyState === 1 /* OPEN */) ws.send(json);
     }
+}
+
+/** Get serializable state */
+function getRoomState(roomCode) {
+    const room = rooms.get(roomCode);
+    if (!room) return null;
+    return {
+        roomCode,
+        hostId: room.hostClientId,
+        users: Array.from(room.clients.values()).map(c => ({
+            userId: c.clientId,
+            username: c.username,
+            isHost: c.clientId === room.hostClientId,
+            hasTempControl: c.hasTempControl
+        }))
+    };
 }
 
 /**
@@ -93,4 +135,7 @@ module.exports = {
     getRoomOfClient,
     broadcast,
     destroyRoomIfEmpty,
+    getRoomState,
+    toggleTempControl,
+    resolveDuplicateName
 };

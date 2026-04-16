@@ -33,33 +33,120 @@ function handleMessage(clientId, raw, ws) {
 
     switch (msg.type) {
 
-        case 'JOIN': {
-            const { roomCode } = msg;
-            if (!roomCode) {
-                console.warn(`[sync] JOIN missing roomCode from ${clientId}`);
-                return;
-            }
+        case 'join_room': {
+            const { roomCode, username, userId } = msg;
+            if (!roomCode || !username) return;
 
-            roomManager.addClient(roomCode, clientId, ws);
+            const finalClientId = userId || clientId;
+            const resolvedName = roomManager.addClient(roomCode, finalClientId, ws, username);
             const room = roomManager.getRoom(roomCode);
 
             // First client in the room becomes the host
             if (room.clients.size === 1) {
-                roomManager.setHost(roomCode, clientId);
+                roomManager.setHost(roomCode, finalClientId);
             }
 
-            // Send room state snapshot to the joining client
-            if (ws.readyState === ws.OPEN) {
+            // Broadcast new room state
+            const state = roomManager.getRoomState(roomCode);
+            roomManager.broadcast(roomCode, {
+                type: 'room_updated',
+                state
+            });
+
+            // Tell joining user their resolved name
+            if (ws.readyState === 1) {
                 ws.send(JSON.stringify({
-                    type: 'ROOM_STATE',
-                    roomCode,
-                    hostClientId: room.hostClientId,
-                    isPlaying: false,
-                    positionMs: 0,
+                    type: 'join_success',
+                    resolvedName
                 }));
             }
+            break;
+        }
 
-            console.log(`[sync] ${clientId} joined room ${roomCode} | clients: ${room.clients.size}`);
+        case 'leave_room': {
+            const roomCode = roomManager.getRoomOfClient(clientId);
+            if (!roomCode) return;
+
+            const isHost = roomManager.isHost(roomCode, clientId);
+            roomManager.removeClient(roomCode, clientId);
+
+            if (isHost) {
+                roomManager.broadcast(roomCode, { type: 'room_closed' });
+                // Destroy room immediately if host leaves
+                const room = roomManager.getRoom(roomCode);
+                if (room) {
+                    for (const clientData of room.clients.values()) {
+                        roomManager.removeClient(roomCode, clientData.clientId);
+                    }
+                }
+                roomManager.destroyRoomIfEmpty(roomCode);
+            } else {
+                roomManager.destroyRoomIfEmpty(roomCode);
+                
+                // If room still exists, broadcast updated state
+                if (roomManager.getRoom(roomCode)) {
+                    roomManager.broadcast(roomCode, {
+                        type: 'room_updated',
+                        state: roomManager.getRoomState(roomCode)
+                    });
+                }
+            }
+            break;
+        }
+
+        case 'transfer_host': {
+            const roomCode = roomManager.getRoomOfClient(clientId);
+            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
+            
+            const { newHostId } = msg;
+            if (newHostId) {
+                roomManager.setHost(roomCode, newHostId);
+                roomManager.broadcast(roomCode, {
+                    type: 'room_updated',
+                    state: roomManager.getRoomState(roomCode)
+                });
+            }
+            break;
+        }
+
+        case 'kick_user': {
+            const roomCode = roomManager.getRoomOfClient(clientId);
+            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
+            
+            const { targetUserId } = msg;
+            if (targetUserId) {
+                const room = roomManager.getRoom(roomCode);
+                if (room) {
+                    const clientNode = room.clients.get(targetUserId);
+                    if (clientNode) {
+                        try {
+                            if (clientNode.ws.readyState === 1) {
+                                clientNode.ws.send(JSON.stringify({ type: 'kicked' }));
+                            }
+                        } catch(e) {}
+                    }
+                }
+                roomManager.removeClient(roomCode, targetUserId);
+                roomManager.broadcast(roomCode, {
+                    type: 'room_updated',
+                    state: roomManager.getRoomState(roomCode)
+                });
+            }
+            break;
+        }
+
+        case 'temp_control': {
+            const roomCode = roomManager.getRoomOfClient(clientId);
+            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
+
+            const { targetUserId } = msg;
+            if (targetUserId) {
+                roomManager.toggleTempControl(roomCode, targetUserId);
+                roomManager.broadcast(roomCode, {
+                    type: 'room_updated',
+                    state: roomManager.getRoomState(roomCode)
+                });
+            }
             break;
         }
 
@@ -81,38 +168,27 @@ function handleMessage(clientId, raw, ws) {
             break;
         }
 
-        case 'PLAY':
-        case 'SEEK': {
+        case 'playback_sync': {
             const roomCode = roomManager.getRoomOfClient(clientId);
-            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
+            if (!roomCode) return;
+            const room = roomManager.getRoom(roomCode);
+            if (!room) return;
 
-            const serverTimeToExecute = Date.now() + SCHEDULE_OFFSET_MS;
-            roomManager.broadcast(roomCode, {
-                type: 'SCHEDULED_ACTION',
-                serverTimeToExecute,
-                scheduledAction: {
-                    type: 'PLAY',
-                    trackTimeSeconds: msg.trackTimeSeconds,
-                    audioSource: msg.audioSource,
-                },
-            }, clientId); // exclude the host — it plays back locally
-            break;
-        }
+            // Only host or user with temp_control can trigger playback_sync
+            const isHost = roomManager.isHost(roomCode, clientId);
+            const clientData = room.clients.get(clientId);
+            const hasTempControl = clientData ? clientData.hasTempControl : false;
 
-        case 'PAUSE': {
-            const roomCode = roomManager.getRoomOfClient(clientId);
-            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
-
-            const serverTimeToExecute = Date.now() + SCHEDULE_OFFSET_MS;
-            roomManager.broadcast(roomCode, {
-                type: 'SCHEDULED_ACTION',
-                serverTimeToExecute,
-                scheduledAction: {
-                    type: 'PAUSE',
-                    trackTimeSeconds: msg.trackTimeSeconds,
-                    audioSource: msg.audioSource,
-                },
-            }, clientId);
+            if (isHost || hasTempControl) {
+                const serverTimeToExecute = Date.now() + SCHEDULE_OFFSET_MS;
+                roomManager.broadcast(roomCode, {
+                    type: 'playback_sync',
+                    playbackEvent: msg.playbackEvent,
+                    trackId: msg.trackId,
+                    positionMs: msg.positionMs,
+                    serverTimeToExecute
+                }, clientId); // Exclude the sender
+            }
             break;
         }
 
@@ -129,8 +205,28 @@ function handleMessage(clientId, raw, ws) {
 function handleDisconnect(clientId) {
     const roomCode = roomManager.getRoomOfClient(clientId);
     if (!roomCode) return;
+    
+    const isHost = roomManager.isHost(roomCode, clientId);
     roomManager.removeClient(roomCode, clientId);
-    roomManager.destroyRoomIfEmpty(roomCode);
+
+    if (isHost) {
+        roomManager.broadcast(roomCode, { type: 'room_closed' });
+        const room = roomManager.getRoom(roomCode);
+        if (room) {
+            for (const clientData of room.clients.values()) {
+                roomManager.removeClient(roomCode, clientData.clientId);
+            }
+        }
+        roomManager.destroyRoomIfEmpty(roomCode);
+    } else {
+        roomManager.destroyRoomIfEmpty(roomCode);
+        if (roomManager.getRoom(roomCode)) {
+            roomManager.broadcast(roomCode, {
+                type: 'room_updated',
+                state: roomManager.getRoomState(roomCode)
+            });
+        }
+    }
     console.log(`[sync] ${clientId} disconnected from room ${roomCode}`);
 }
 
