@@ -16,6 +16,12 @@ const roomManager = require('./roomManager');
 // Execution window added to every scheduled action (ms).
 const SCHEDULE_OFFSET_MS = 200;
 
+// Grace period (ms) before a host-disconnected room is destroyed.
+const HOST_GRACE_PERIOD_MS = 30_000;
+
+// Track pending host-reconnect timers: roomCode → NodeJS.Timeout
+const hostGraceTimers = new Map();
+
 /**
  * Dispatch an inbound WebSocket message for [clientId].
  *
@@ -38,6 +44,24 @@ function handleMessage(clientId, raw, ws) {
             if (!roomCode || !username) return;
 
             const finalClientId = userId || clientId;
+
+            // If there's a pending host-grace timer for this room and this is the original host reconnecting
+            if (hostGraceTimers.has(roomCode)) {
+                const room = roomManager.getRoom(roomCode);
+                if (room && room.pendingHostId === finalClientId) {
+                    clearTimeout(hostGraceTimers.get(roomCode));
+                    hostGraceTimers.delete(roomCode);
+                    room.pendingHostId = null;
+                    // Restore as host
+                    roomManager.addClient(roomCode, finalClientId, ws, username);
+                    roomManager.setHost(roomCode, finalClientId);
+                    const state = roomManager.getRoomState(roomCode);
+                    roomManager.broadcast(roomCode, { type: 'room_updated', state });
+                    if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'join_success', resolvedName: username }));
+                    break;
+                }
+            }
+
             const resolvedName = roomManager.addClient(roomCode, finalClientId, ws, username);
             const room = roomManager.getRoom(roomCode);
 
@@ -48,17 +72,11 @@ function handleMessage(clientId, raw, ws) {
 
             // Broadcast new room state
             const state = roomManager.getRoomState(roomCode);
-            roomManager.broadcast(roomCode, {
-                type: 'room_updated',
-                state
-            });
+            roomManager.broadcast(roomCode, { type: 'room_updated', state });
 
             // Tell joining user their resolved name
             if (ws.readyState === 1) {
-                ws.send(JSON.stringify({
-                    type: 'join_success',
-                    resolvedName
-                }));
+                ws.send(JSON.stringify({ type: 'join_success', resolvedName }));
             }
             break;
         }
@@ -194,7 +212,14 @@ function handleMessage(clientId, raw, ws) {
 
         case 'update_room_settings': {
             const roomCode = roomManager.getRoomOfClient(clientId);
-            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
+            if (!roomCode) return;
+
+            // Allow host OR temp-control user to update settings
+            const room = roomManager.getRoom(roomCode);
+            const isHostUser = roomManager.isHost(roomCode, clientId);
+            const clientData = room ? room.clients.get(clientId) : null;
+            const hasTempControl = clientData ? clientData.hasTempControl : false;
+            if (!isHostUser && !hasTempControl) return;
 
             roomManager.updateRoomSettings(roomCode, {
                 globalVolume: msg.globalVolume,
@@ -221,20 +246,43 @@ function handleMessage(clientId, raw, ws) {
  */
 function handleDisconnect(clientId) {
     const roomCode = roomManager.getRoomOfClient(clientId);
-    if (!roomCode) return;
-    
+    if (!roomCode) return; // already removed (e.g. explicit leave_room before socket closed)
+
     const isHost = roomManager.isHost(roomCode, clientId);
     roomManager.removeClient(roomCode, clientId);
 
     if (isHost) {
-        roomManager.broadcast(roomCode, { type: 'room_closed' });
         const room = roomManager.getRoom(roomCode);
-        if (room) {
-            for (const clientData of room.clients.values()) {
-                roomManager.removeClient(roomCode, clientData.clientId);
+        if (!room) return;
+
+        // Start a grace period — give the host 30 seconds to reconnect before destroying the room
+        room.pendingHostId = clientId;
+        console.log(`[sync] host ${clientId} lost. Grace period started for room ${roomCode}`);
+
+        const timer = setTimeout(() => {
+            hostGraceTimers.delete(roomCode);
+            const r = roomManager.getRoom(roomCode);
+            if (!r) return;
+
+            // Pick next guest as new host if any, else close room
+            const remaining = Array.from(r.clients.values());
+            if (remaining.length > 0) {
+                const newHost = remaining[0];
+                roomManager.setHost(roomCode, newHost.clientId);
+                r.pendingHostId = null;
+                roomManager.broadcast(roomCode, {
+                    type: 'room_updated',
+                    state: roomManager.getRoomState(roomCode)
+                });
+                console.log(`[sync] host grace expired. New host: ${newHost.clientId}`);
+            } else {
+                roomManager.broadcast(roomCode, { type: 'room_closed' });
+                roomManager.destroyRoomIfEmpty(roomCode);
+                console.log(`[sync] host grace expired. Room ${roomCode} closed (empty).`);
             }
-        }
-        roomManager.destroyRoomIfEmpty(roomCode);
+        }, HOST_GRACE_PERIOD_MS);
+
+        hostGraceTimers.set(roomCode, timer);
     } else {
         roomManager.destroyRoomIfEmpty(roomCode);
         if (roomManager.getRoom(roomCode)) {
