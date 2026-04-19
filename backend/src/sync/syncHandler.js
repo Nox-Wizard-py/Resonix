@@ -26,8 +26,11 @@ function handleMessage(clientId, raw, ws) {
 
     switch (msg.type) {
         case 'create_room': {
-            const { roomCode, username } = msg;
+            const { roomCode, username, userId } = msg;
             if (!roomCode || !username) return;
+
+            // Use client-provided userId so the Android localUserId matches backend state
+            const resolvedId = userId || ws.id;
 
             if (!ROOM_CODE_REGEX.test(roomCode)) {
                 if (ws.readyState === 1) {
@@ -40,7 +43,7 @@ function handleMessage(clientId, raw, ws) {
                 return;
             }
 
-            const room = roomManager.createRoom(roomCode, ws, username);
+            const room = roomManager.createRoom(roomCode, ws, username, resolvedId);
             if (!room) {
                 if (ws.readyState === 1) {
                     ws.send(JSON.stringify({
@@ -66,8 +69,10 @@ function handleMessage(clientId, raw, ws) {
         }
 
         case 'join_room': {
-            const { roomCode, username } = msg;
+            const { roomCode, username, userId } = msg;
             if (!roomCode || !username) return;
+
+            const resolvedId = userId || ws.id;
 
             console.log("JOIN_ATTEMPT:", roomCode);
             console.log("ROOM_EXISTS:", roomManager.rooms.has(roomCode));
@@ -96,7 +101,7 @@ function handleMessage(clientId, raw, ws) {
                 return;
             }
 
-            roomManager.joinRoom(roomCode, ws, username);
+            roomManager.joinRoom(roomCode, ws, username, resolvedId);
 
             if (ws.readyState === 1) {
                 ws.send(JSON.stringify({

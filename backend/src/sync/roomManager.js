@@ -19,7 +19,7 @@ function getRoomSockets(roomCode) {
 /**
  * Creates a room instance. ONLY called by "create_room".
  */
-function createRoom(roomCode, socket, username) {
+function createRoom(roomCode, socket, username, userId) {
     if (rooms.has(roomCode)) return null;
 
     const room = {
@@ -28,7 +28,7 @@ function createRoom(roomCode, socket, username) {
         playbackPermission: "Everyone",
         timingOffsetMs: 0,
         users: [{
-            id: socket.id,
+            id: userId || socket.id,
             name: username || "Unknown",
             role: "host"
         }]
@@ -43,12 +43,12 @@ function createRoom(roomCode, socket, username) {
 /**
  * Adds a user to an existing room. ONLY called by "join_room".
  */
-function joinRoom(roomCode, socket, username) {
+function joinRoom(roomCode, socket, username, userId) {
     const room = rooms.get(roomCode);
     if (!room) return null;
 
     room.users.push({
-        id: socket.id,
+        id: userId || socket.id,
         name: username || "Unknown",
         role: "guest"
     });
