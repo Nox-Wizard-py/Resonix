@@ -1,159 +1,130 @@
 /**
- * roomManager.js — In-memory room state for ResonixSync.
- *
- * All state is held in two Maps:
- *   rooms        : roomCode → { hostClientId, clients: Map<clientId, ws> }
- *   clientRoomMap: clientId → roomCode   (reverse lookup for fast disconnect)
- *
- * No persistence — server restart clears all rooms.
+ * roomManager.js — Strict Map-based room storage for ResonixSync.
  */
 
-/** @type {Map<string, { hostClientId: string|null, clients: Map<string, import('ws')> }>} */
+// roomCode -> { code: string, users: [ { id: string, name: string, role: "host" | "guest" } ] }
 const rooms = new Map();
 
-/** @type {Map<string, string>} clientId → roomCode */
-const clientRoomMap = new Map();
+// roomCode -> Set<WebSocket>
+const roomSockets = new Map();
 
-// ── Room accessors ────────────────────────────────────────────────────────────
-
-/** Return the room object for [roomCode], or undefined if it does not exist. */
 function getRoom(roomCode) {
     return rooms.get(roomCode);
 }
 
-function resolveDuplicateName(base, users) {
-    let candidate = base;
-    let count = 2;
-    while (users.some(u => u.username === candidate)) {
-        candidate = `${base} (${count})`;
-        count++;
-    }
-    return candidate;
+function getRoomSockets(roomCode) {
+    return roomSockets.get(roomCode);
 }
 
 /**
- * Add [clientId] + their WebSocket to [roomCode].
- * Creates the room entry if it does not exist yet.
+ * Creates a room instance. ONLY called by "create_room".
  */
-function addClient(roomCode, clientId, ws, initialUsername) {
-    if (!rooms.has(roomCode)) {
-        rooms.set(roomCode, {
-            hostClientId: null,
-            clients: new Map(),
-            globalVolume: 1.0,
-            playbackPermission: 'Everyone',
-            timingOffsetMs: 0
-        });
-    }
-    const room = rooms.get(roomCode);
+function createRoom(roomCode, socket, username) {
+    if (rooms.has(roomCode)) return null;
 
-    const existingUsers = Array.from(room.clients.values());
-    const resolvedName = resolveDuplicateName(initialUsername, existingUsers);
+    const room = {
+        code: roomCode,
+        globalVolume: 1.0,
+        playbackPermission: "Everyone",
+        timingOffsetMs: 0,
+        users: [{
+            id: socket.id,
+            name: username || "Unknown",
+            role: "host"
+        }]
+    };
 
-    room.clients.set(clientId, { ws, username: resolvedName, hasTempControl: false, clientId });
-    clientRoomMap.set(clientId, roomCode);
+    rooms.set(roomCode, room);
+    roomSockets.set(roomCode, new Set([socket]));
     
-    return resolvedName;
-}
-
-/** Mark [clientId] as the host of [roomCode]. */
-function setHost(roomCode, clientId) {
-    const room = rooms.get(roomCode);
-    if (room) room.hostClientId = clientId;
-}
-
-/** Return true if [clientId] is the current host of [roomCode]. */
-function isHost(roomCode, clientId) {
-    return rooms.get(roomCode)?.hostClientId === clientId;
-}
-
-/** Remove [clientId] from [roomCode] and erase the reverse lookup entry. */
-function removeClient(roomCode, clientId) {
-    rooms.get(roomCode)?.clients.delete(clientId);
-    clientRoomMap.delete(clientId);
-}
-
-/** Return the room code that [clientId] is currently in, or undefined. */
-function getRoomOfClient(clientId) {
-    return clientRoomMap.get(clientId);
-}
-
-/** Update room-level settings (volume, permission, nudge) */
-function updateRoomSettings(roomCode, settings) {
-    const room = rooms.get(roomCode);
-    if (!room) return;
-    if (settings.globalVolume !== undefined) room.globalVolume = settings.globalVolume;
-    if (settings.playbackPermission !== undefined) room.playbackPermission = settings.playbackPermission;
-    if (settings.timingOffsetMs !== undefined) room.timingOffsetMs = settings.timingOffsetMs;
-}
-
-/** Disable or enable temp control for a client */
-function toggleTempControl(roomCode, targetClientId) {
-    const room = rooms.get(roomCode);
-    if (!room) return;
-    const client = room.clients.get(targetClientId);
-    if (client) {
-        client.hasTempControl = !client.hasTempControl;
-    }
+    return room;
 }
 
 /**
- * Serialize [message] as JSON and send it to every client in [roomCode],
- * optionally skipping [excludeClientId].
- * Guards with ws.readyState === ws.OPEN before every send.
+ * Adds a user to an existing room. ONLY called by "join_room".
  */
-function broadcast(roomCode, message, excludeClientId = null) {
-    const room = rooms.get(roomCode);
-    if (!room) return;
-    const json = JSON.stringify(message);
-    for (const [clientId, clientData] of room.clients) {
-        if (clientId === excludeClientId) continue;
-        const ws = clientData.ws;
-        if (ws.readyState === 1 /* OPEN */) ws.send(json);
-    }
-}
-
-function getRoomState(roomCode) {
+function joinRoom(roomCode, socket, username) {
     const room = rooms.get(roomCode);
     if (!room) return null;
-    return {
-        roomCode,
-        hostId: room.hostClientId,
-        globalVolume: room.globalVolume ?? 1.0,
-        playbackPermission: room.playbackPermission ?? 'Everyone',
-        timingOffsetMs: room.timingOffsetMs ?? 0,
-        users: Array.from(room.clients.values()).map(c => ({
-            userId: c.clientId,
-            username: c.username,
-            isHost: c.clientId === room.hostClientId,
-            hasTempControl: c.hasTempControl
-        }))
-    };
+
+    room.users.push({
+        id: socket.id,
+        name: username || "Unknown",
+        role: "guest"
+    });
+
+    if (!roomSockets.has(roomCode)) {
+        roomSockets.set(roomCode, new Set());
+    }
+    roomSockets.get(roomCode).add(socket);
+
+    return room;
 }
 
 /**
- * Delete [roomCode] from the rooms Map if it has no remaining clients.
- * Should be called after every removeClient().
+ * Broadcasts room state to all sockets in the room.
  */
-function destroyRoomIfEmpty(roomCode) {
+function broadcastRoom(roomCode) {
     const room = rooms.get(roomCode);
-    if (room && room.clients.size === 0) {
-        rooms.delete(roomCode);
-        console.log(`[sync] room destroyed: ${roomCode}`);
+    const sockets = roomSockets.get(roomCode);
+    if (!room || !sockets) return;
+
+    const payload = JSON.stringify({
+        type: "room_updated",
+        roomCode: room.code,
+        users: room.users,
+        // Include hostId for backward compatibility or future use if needed, 
+        // but the prompt says users should be IDENTICAL.
+        // We might need to keep some other state like volume if we want to preserve features,
+        // but I will stick to the requested structure first.
+        state: room // Some client code expects "state" object
+    });
+
+    sockets.forEach(s => {
+        if (s.readyState === 1 /* OPEN */) {
+            s.send(payload);
+        }
+    });
+}
+
+function removeSocketFromRoom(socket) {
+    for (const [roomCode, sockets] of roomSockets.entries()) {
+        if (sockets.has(socket)) {
+            sockets.delete(socket);
+            const room = rooms.get(roomCode);
+            if (!room) continue;
+
+            room.users = room.users.filter(u => u.id !== socket.id);
+
+            // If host leaves → close room
+            const hostExists = room.users.some(u => u.role === "host");
+
+            if (!hostExists) {
+                rooms.delete(roomCode);
+                roomSockets.delete(roomCode);
+
+                sockets.forEach(s => {
+                    if (s.readyState === 1) {
+                        s.send(JSON.stringify({ type: "room_closed" }));
+                    }
+                });
+                return { roomCode, closed: true };
+            }
+
+            broadcastRoom(roomCode);
+            return { roomCode, closed: false };
+        }
     }
+    return null;
 }
 
 module.exports = {
+    rooms,
+    roomSockets,
     getRoom,
-    addClient,
-    setHost,
-    isHost,
-    removeClient,
-    getRoomOfClient,
-    broadcast,
-    destroyRoomIfEmpty,
-    getRoomState,
-    toggleTempControl,
-    updateRoomSettings,
-    resolveDuplicateName
+    getRoomSockets,
+    createRoom,
+    joinRoom,
+    broadcastRoom,
+    removeSocketFromRoom
 };

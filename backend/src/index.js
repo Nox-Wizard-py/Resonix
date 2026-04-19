@@ -72,14 +72,14 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
         const resolvedId = connectionToUserId.get(connectionId) || connectionId;
-        handleDisconnect(resolvedId);
+        handleDisconnect(resolvedId, ws);
         connectionToUserId.delete(connectionId);
     });
     
     ws.on('error', (err) => {
         console.error(`[sync] error (${connectionId}):`, err.message);
         const resolvedId = connectionToUserId.get(connectionId) || connectionId;
-        handleDisconnect(resolvedId);
+        handleDisconnect(resolvedId, ws);
         connectionToUserId.delete(connectionId);
     });
 });
