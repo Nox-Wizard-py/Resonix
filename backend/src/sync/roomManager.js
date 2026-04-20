@@ -30,9 +30,13 @@ function createRoom(roomCode, socket, username, userId) {
         users: [{
             id: userId || socket.id,
             name: username || "Unknown",
-            role: "host"
+            role: "host",
+            joinedAt: Date.now()
         }]
     };
+    
+    // Store the custom userId on the socket so we can identify them when they disconnect
+    socket.userId = userId || socket.id;
 
     rooms.set(roomCode, room);
     roomSockets.set(roomCode, new Set([socket]));
@@ -50,8 +54,11 @@ function joinRoom(roomCode, socket, username, userId) {
     room.users.push({
         id: userId || socket.id,
         name: username || "Unknown",
-        role: "guest"
+        role: "guest",
+        joinedAt: Date.now()
     });
+
+    socket.userId = userId || socket.id;
 
     if (!roomSockets.has(roomCode)) {
         roomSockets.set(roomCode, new Set());
@@ -94,12 +101,13 @@ function removeSocketFromRoom(socket) {
             const room = rooms.get(roomCode);
             if (!room) continue;
 
-            room.users = room.users.filter(u => u.id !== socket.id);
+            const targetId = socket.userId || socket.id;
+            const leavingUser = room.users.find(u => u.id === targetId);
+            const wasHost = leavingUser && leavingUser.role === "host";
+            
+            room.users = room.users.filter(u => u.id !== targetId);
 
-            // If host leaves → close room
-            const hostExists = room.users.some(u => u.role === "host");
-
-            if (!hostExists) {
+            if (room.users.length === 0) {
                 rooms.delete(roomCode);
                 roomSockets.delete(roomCode);
 
@@ -109,6 +117,24 @@ function removeSocketFromRoom(socket) {
                     }
                 });
                 return { roomCode, closed: true };
+            }
+
+            if (wasHost) {
+                // FIFO Host Selection: The user with the earliest joinedAt becomes host
+                const newHost = room.users.sort((a, b) => a.joinedAt - b.joinedAt)[0];
+                newHost.role = "host";
+
+                // Broadcast host transferred event to all remaining clients
+                const transferPayload = JSON.stringify({
+                    type: "host_transferred",
+                    newHostId: newHost.id,
+                    users: room.users
+                });
+                sockets.forEach(s => {
+                    if (s.readyState === 1) {
+                        s.send(transferPayload);
+                    }
+                });
             }
 
             broadcastRoom(roomCode);
