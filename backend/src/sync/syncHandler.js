@@ -158,6 +158,79 @@ function handleMessage(clientId, raw, ws) {
         }
 
         // Add other cases if needed, but the focus is on sync fixes
+        case 'transfer_host': {
+            console.log("ACTION: transfer_host by socketId", ws.id);
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender || sender.role !== "host") return;
+            
+            const targetUser = room.users.find(u => u.id === msg.targetUserId);
+            if (targetUser) {
+                room.users.forEach(u => u.role = "guest");
+                targetUser.role = "host";
+                roomManager.broadcastRoom(room.code);
+            }
+            break;
+        }
+
+        case 'grant_sudo': {
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender || sender.role !== "host") return;
+            
+            const targetUser = room.users.find(u => u.id === msg.targetUserId);
+            if (targetUser && targetUser.role === "guest") {
+                targetUser.role = "sudo";
+                roomManager.broadcastRoom(room.code);
+            } else if (targetUser && targetUser.role === "sudo") {
+                targetUser.role = "guest"; // toggle behavior if necessary, or just explicit grant/revoke
+                roomManager.broadcastRoom(room.code);
+            }
+            break;
+        }
+
+        case 'kick_user': {
+            console.log("ACTION: kick_user targetId", msg.targetUserId);
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender || sender.role !== "host") return;
+
+            const targetIndex = room.users.findIndex(u => u.id === msg.targetUserId);
+            if (targetIndex !== -1 && room.users[targetIndex].role !== "host") {
+                room.users.splice(targetIndex, 1);
+                
+                // Disconnect the kicked client natively
+                const sockets = roomManager.getRoomSockets(room.code);
+                if (sockets) {
+                    for (const s of sockets) {
+                        if ((s.userId || s.id) === msg.targetUserId) {
+                            s.send(JSON.stringify({ type: "kicked" }));
+                            roomManager.removeSocketFromRoom(s);
+                            break;
+                        }
+                    }
+                }
+                roomManager.broadcastRoom(room.code);
+            }
+            break;
+        }
+
+        case 'set_playback_permission': {
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender || sender.role !== "host") return;
+
+            if (msg.mode === "everyone" || msg.mode === "host_only") {
+                room.playbackPermission = msg.mode;
+                roomManager.broadcastRoom(room.code);
+            }
+            break;
+        }
+
     }
 }
 
