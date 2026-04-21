@@ -39,7 +39,7 @@ const downloadLimiter = rateLimit({
 app.use('/api/download', downloadLimiter, downloadRouter);
 app.use('/api/lyrics', lyricsRouter);
 
-app.get('/health', (_, res) => res.json({ status: 'ok', service: 'resonix-backend' }));
+app.get('/health', (_, res) => res.status(200).send('OK'));
 
 // ── Error Handler ─────────────────────────────────────────────────────────────
 
