@@ -137,6 +137,22 @@ function handleMessage(clientId, raw, ws) {
             const room = findRoomBySocket(ws);
             if (!room) return;
 
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender) return;
+
+            function isAuthorized(user, room) {
+                return (
+                    user.role === "host" ||
+                    user.role === "sudo" ||
+                    room.playbackPermission === "everyone"
+                );
+            }
+
+            if (!isAuthorized(sender, room)) {
+                console.log("[BLOCKED] Unauthorized playback attempt:", sender.id);
+                return;
+            }
+
             // Broadcast to others in the room
             const sockets = roomManager.getRoomSockets(room.code);
             if (!sockets) return;
