@@ -25,7 +25,7 @@ function createRoom(roomCode, socket, username, userId) {
     const room = {
         code: roomCode,
         globalVolume: 1.0,
-        playbackPermission: "Everyone",
+        playbackPermission: "host_only",
         timingOffsetMs: 0,
         users: [{
             id: userId || socket.id,
