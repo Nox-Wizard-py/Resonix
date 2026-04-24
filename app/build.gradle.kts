@@ -187,6 +187,7 @@ dependencies {
     implementation(libs.compose.ui.util)
     implementation(libs.compose.ui.tooling)
     implementation(libs.compose.animation)
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
     implementation(libs.compose.reorderable)
 
     implementation(libs.viewmodel)
@@ -226,6 +227,7 @@ dependencies {
     implementation(project(":kizzy"))
     implementation(project(":playlist-import"))
     implementation(project(":shazamkit"))
+    implementation(project(":resonix-sync"))
     implementation("androidx.media3:media3-common:1.8.0")
 
     implementation(libs.ktor.client.core)
@@ -244,8 +246,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
-
     implementation(libs.ucrop)
+
+    // Listen Together QR & Scanning
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
