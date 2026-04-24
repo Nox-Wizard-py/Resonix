@@ -115,6 +115,19 @@ fun NavGraphBuilder.navigationBuilder(
     composable("account") {
         AccountScreen(navController, scrollBehavior)
     }
+    composable("listen_together") {
+        ListenTogetherScreen(navController)
+    }
+    composable("listen_together_host_room") {
+        ListenTogetherHostRoomScreen(navController)
+    }
+    composable("listen_together_guest_room") {
+        // Reuses the same screen — role-awareness is driven by ListenTogetherSessionManager.isHost
+        ListenTogetherHostRoomScreen(navController)
+    }
+    composable("listen_together_qr_scanner") {
+        ListenTogetherQrScannerScreen(navController)
+    }
     composable("new_release") {
         NewReleaseScreen(navController, scrollBehavior)
     }

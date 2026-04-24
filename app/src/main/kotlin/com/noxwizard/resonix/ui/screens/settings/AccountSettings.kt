@@ -216,6 +216,27 @@ fun AccountSettings(
                 }
             }
 
+            // Social Section
+            SettingsSection(title = "Social") {
+                SettingsClickableItem(
+                    icon = painterResource(R.drawable.lucide_headphones),
+                    title = "Listen Together",
+                    subtitle = "Music in perfect sync",
+                    onClick = {
+                        onClose()
+                        if (com.noxwizard.resonix.ui.screens.ListenTogetherSessionManager.isActive) {
+                            if (com.noxwizard.resonix.ui.screens.ListenTogetherSessionManager.isHost) {
+                                navController.navigate("listen_together_host_room")
+                            } else {
+                                navController.navigate("listen_together_guest_room")
+                            }
+                        } else {
+                            navController.navigate("listen_together")
+                        }
+                    }
+                )
+            }
+
             // Sync & Integration Section
             SettingsSection(title = stringResource(R.string.integration)) {
                 SettingsClickableItem(

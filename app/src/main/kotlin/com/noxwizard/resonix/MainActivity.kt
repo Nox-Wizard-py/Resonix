@@ -25,6 +25,7 @@ import com.noxwizard.resonix.utils.Updater
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
+import com.resonix.sync.ResonixSync
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -73,6 +74,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ResonixSync.init(
+            context = applicationContext,
+            serverUrl = "wss://resonix-0pvb.onrender.com/ws"
+        )
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
         // Handle initial intent
@@ -130,6 +135,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        ResonixSync.destroy()
         playerConnection = null
     }
 

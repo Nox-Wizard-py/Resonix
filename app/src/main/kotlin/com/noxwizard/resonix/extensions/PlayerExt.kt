@@ -11,6 +11,20 @@ import com.noxwizard.resonix.models.MediaMetadata
 import java.util.ArrayDeque
 
 fun Player.togglePlayPause() {
+    val roomState = com.noxwizard.resonix.playback.ListenTogetherManager.roomState.value
+    if (roomState != null) {
+        val user = roomState.users.find { it.userId == com.noxwizard.resonix.playback.ListenTogetherManager.localUserId }
+        val isHost = user?.isHost == true
+        val isSudo = user?.hasTempControl == true
+        val isEveryoneAllowed = roomState.playbackPermission == com.noxwizard.resonix.ui.screens.PlaybackPermission.Everyone
+        val canControl = isHost || isSudo || isEveryoneAllowed
+        android.util.Log.d("AUTH_UI", "role=${if (isHost) "host" else if (isSudo) "sudo" else "guest"} canControl=$canControl permission=${roomState.playbackPermission}")
+        if (!canControl) {
+            volume = if (volume > 0f) 0f else 1f
+            return
+        }
+    }
+
     if (!playWhenReady && playbackState == Player.STATE_IDLE) {
         prepare()
     }

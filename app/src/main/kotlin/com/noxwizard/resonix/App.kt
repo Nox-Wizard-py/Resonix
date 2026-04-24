@@ -63,6 +63,11 @@ class App : Application(), SingletonImageLoader.Factory {
             Timber.plant(com.noxwizard.resonix.utils.GlobalLogTree())
         } catch (_: Exception) {}
 
+        // Init listen together manager to wire navigation events
+        com.noxwizard.resonix.playback.ListenTogetherManager.init(
+            BuildConfig.RECOGNITION_BACKEND_URL.replace("http", "ws") + "/ws"
+        )
+
         // ✅ PHASE 2: Defer heavy config to background
         applicationScope.launch(Dispatchers.Default) {
             initializeYouTubeConfig()
