@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM
 import androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM
 import androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
@@ -20,11 +22,16 @@ import com.noxwizard.resonix.playback.queues.Queue
 import com.noxwizard.resonix.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import com.noxwizard.resonix.ui.screens.PlaybackPermission
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerConnection(
@@ -35,6 +42,36 @@ class PlayerConnection(
 ) : Player.Listener {
     val service = binder.service
     val player = service.player
+    private val appContext = context.applicationContext
+    private val connectionScope = scope
+
+    private var _roomVolume: Float = 1f
+    val roomVolume: Float get() = _roomVolume
+    var isMuted: Boolean = false
+    val isMutedFlow = MutableStateFlow(false)
+
+    fun setRoomVolume(value: Float) {
+        if (blockIfGuest()) return
+        _roomVolume = value
+        player.volume = if (isMuted) 0f else _roomVolume
+        ListenTogetherManager.updateGlobalVolume(value)
+    }
+
+    fun toggleMuteLocal() {
+        isMuted = !isMuted
+        isMutedFlow.value = isMuted
+        player.volume = if (isMuted) 0f else _roomVolume
+    }
+
+    private fun blockIfGuest(): Boolean {
+        if (!ListenTogetherManager.canControlPlayback()) {
+            connectionScope.launch(Dispatchers.Main) {
+                Toast.makeText(appContext, "Playback controlled by host", Toast.LENGTH_SHORT).show()
+            }
+            return true
+        }
+        return false
+    }
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val playWhenReady = MutableStateFlow(player.playWhenReady)
@@ -69,6 +106,7 @@ class PlayerConnection(
 
     val canSkipPrevious = MutableStateFlow(true)
     val canSkipNext = MutableStateFlow(true)
+    val canControlFlow = MutableStateFlow(true)
 
     val error = MutableStateFlow<PlaybackException?>(null)
     val waitingForNetworkConnection = service.waitingForNetworkConnection
@@ -85,9 +123,27 @@ class PlayerConnection(
         currentMediaItemIndex.value = player.currentMediaItemIndex
         shuffleModeEnabled.value = player.shuffleModeEnabled
         repeatMode.value = player.repeatMode
+
+        connectionScope.launch {
+            ListenTogetherManager.roomState.collect { roomState ->
+                updateCanSkipPreviousAndNext()
+                updateCanControl()
+                // Apply remote room volume (host-set global volume)
+                val remoteVolume = roomState?.globalVolume ?: 1f
+                if (remoteVolume != _roomVolume) {
+                    _roomVolume = remoteVolume
+                    player.volume = if (isMuted) 0f else _roomVolume
+                }
+            }
+        }
+    }
+
+    private fun updateCanControl() {
+        canControlFlow.value = ListenTogetherManager.canControlPlayback()
     }
 
     fun playQueue(queue: Queue) {
+        if (blockIfGuest()) return
         service.playQueue(queue)
     }
 
@@ -98,12 +154,14 @@ class PlayerConnection(
     fun playNext(item: MediaItem) = playNext(listOf(item))
 
     fun playNext(items: List<MediaItem>) {
+        if (blockIfGuest()) return
         service.playNext(items)
     }
 
     fun addToQueue(item: MediaItem) = addToQueue(listOf(item))
 
     fun addToQueue(items: List<MediaItem>) {
+        if (blockIfGuest()) return
         service.addToQueue(items)
     }
 
@@ -112,10 +170,10 @@ class PlayerConnection(
     }
 
     fun seekToNext() {
+        if (blockIfGuest()) return
         player.seekToNext()
         player.prepare()
         player.playWhenReady = true
-        // Immediately restart the Discord presence updater so it picks up the new track without waiting
         try {
             com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager.restart()
         } catch (_: Exception) {
@@ -123,14 +181,95 @@ class PlayerConnection(
     }
 
     fun seekToPrevious() {
+        if (blockIfGuest()) return
         player.seekToPrevious()
         player.prepare()
         player.playWhenReady = true
-        // Immediately restart the Discord presence updater so it picks up the new track without waiting
         try {
             com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager.restart()
         } catch (_: Exception) {
         }
+    }
+
+    fun togglePlayPause() {
+        if (blockIfGuest()) return
+        if (player.isPlaying) player.pause() else player.play()
+    }
+
+    fun play() {
+        if (blockIfGuest()) return
+        player.play()
+    }
+
+    fun pause() {
+        if (blockIfGuest()) return
+        player.pause()
+    }
+
+    fun setShuffleModeEnabled(enabled: Boolean) {
+        if (blockIfGuest()) return
+        player.shuffleModeEnabled = enabled
+    }
+
+    fun toggleRepeatMode() {
+        if (blockIfGuest()) return
+        val newMode = when (player.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
+            else -> Player.REPEAT_MODE_OFF
+        }
+        player.repeatMode = newMode
+    }
+
+    fun setRepeatMode(mode: Int) {
+        if (blockIfGuest()) return
+        player.repeatMode = mode
+    }
+
+    fun seekTo(position: Long) {
+        if (blockIfGuest()) return
+        player.seekTo(position)
+    }
+
+    fun seekTo(windowIndex: Int, positionMs: Long) {
+        if (blockIfGuest()) return
+        player.seekTo(windowIndex, positionMs)
+    }
+
+    fun seekToDefaultPosition(windowIndex: Int) {
+        if (blockIfGuest()) return
+        player.seekToDefaultPosition(windowIndex)
+    }
+
+    fun setPlayWhenReady(playWhenReady: Boolean) {
+        if (blockIfGuest()) return
+        player.playWhenReady = playWhenReady
+    }
+
+    fun seekToPreviousMediaItem() {
+        if (blockIfGuest()) return
+        player.seekToPreviousMediaItem()
+    }
+
+    fun removeMediaItem(index: Int) {
+        if (blockIfGuest()) return
+        player.removeMediaItem(index)
+    }
+
+    fun addMediaItem(item: MediaItem) {
+        if (blockIfGuest()) return
+        player.addMediaItem(item)
+    }
+
+    fun moveMediaItem(currentIndex: Int, newIndex: Int) {
+        if (blockIfGuest()) return
+        player.moveMediaItem(currentIndex, newIndex)
+    }
+
+    fun setShuffleOrder(shuffleOrder: DefaultShuffleOrder) {
+        if (blockIfGuest()) return
+        (player as? ExoPlayer)?.setShuffleOrder(shuffleOrder)
     }
 
     override fun onPlaybackStateChanged(state: Int) {
@@ -186,15 +325,21 @@ class PlayerConnection(
     }
 
     private fun updateCanSkipPreviousAndNext() {
+        val roomState = com.noxwizard.resonix.playback.ListenTogetherManager.roomState.value
+        val canControl = if (roomState != null) {
+            val user = roomState.users.find { it.userId == com.noxwizard.resonix.playback.ListenTogetherManager.localUserId }
+            user != null && (user.isHost || user.hasTempControl || roomState.playbackPermission == com.noxwizard.resonix.ui.screens.PlaybackPermission.Everyone)
+        } else true
+
         if (!player.currentTimeline.isEmpty) {
             val window =
                 player.currentTimeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
-            canSkipPrevious.value = player.isCommandAvailable(COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) ||
+            canSkipPrevious.value = canControl && (player.isCommandAvailable(COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) ||
                     !window.isLive ||
-                    player.isCommandAvailable(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-            canSkipNext.value = window.isLive &&
+                    player.isCommandAvailable(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM))
+            canSkipNext.value = canControl && (window.isLive &&
                     window.isDynamic ||
-                    player.isCommandAvailable(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                    player.isCommandAvailable(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM))
         } else {
             canSkipPrevious.value = false
             canSkipNext.value = false
