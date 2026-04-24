@@ -139,6 +139,8 @@ import com.noxwizard.resonix.constants.SliderStyle
 import com.noxwizard.resonix.constants.SliderStyleKey
 import com.noxwizard.resonix.extensions.togglePlayPause
 import com.noxwizard.resonix.extensions.toggleRepeatMode
+import com.noxwizard.resonix.playback.ListenTogetherManager
+import com.noxwizard.resonix.ui.screens.PlaybackPermission
 import com.noxwizard.resonix.models.MediaMetadata
 import com.noxwizard.resonix.ui.component.BottomSheet
 import com.noxwizard.resonix.ui.component.BottomSheetState
@@ -254,6 +256,8 @@ fun BottomSheetPlayer(
 
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
+    val canControl by playerConnection.canControlFlow.collectAsState()
+    val isMuted by playerConnection.isMutedFlow.collectAsState()
 
     val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.DEFAULT)
 
@@ -1091,17 +1095,24 @@ fun BottomSheetPlayer(
 
             Spacer(Modifier.height(12.dp))
 
+            val roomState by com.noxwizard.resonix.playback.ListenTogetherManager.roomState.collectAsState()
+            val canControl = remember(roomState) {
+                if (roomState == null) return@remember true
+                val user = roomState?.users?.find { it.userId == com.noxwizard.resonix.playback.ListenTogetherManager.localUserId }
+                user != null && (user.isHost || user.hasTempControl || roomState?.playbackPermission == com.noxwizard.resonix.ui.screens.PlaybackPermission.Everyone)
+            }
+
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
                     Slider(
                         value = (sliderPosition ?: position).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                         onValueChange = {
-                            sliderPosition = it.toLong()
+                            if (canControl) sliderPosition = it.toLong()
                         },
                         onValueChangeFinished = {
                             sliderPosition?.let {
-                                playerConnection.player.seekTo(it)
+                                playerConnection.seekTo(it)
                                 position = it
                             }
                             sliderPosition = null
@@ -1116,11 +1127,11 @@ fun BottomSheetPlayer(
                         value = (sliderPosition ?: position).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                         onValueChange = {
-                            sliderPosition = it.toLong()
+                            if (canControl) sliderPosition = it.toLong()
                         },
                         onValueChangeFinished = {
                             sliderPosition?.let {
-                                playerConnection.player.seekTo(it)
+                                playerConnection.seekTo(it)
                                 position = it
                             }
                             sliderPosition = null
@@ -1140,11 +1151,11 @@ fun BottomSheetPlayer(
                         value = (sliderPosition ?: position).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                         onValueChange = {
-                            sliderPosition = it.toLong()
+                            if (canControl) sliderPosition = it.toLong()
                         },
                         onValueChangeFinished = {
                             sliderPosition?.let {
-                                playerConnection.player.seekTo(it)
+                                playerConnection.seekTo(it)
                                 position = it
                             }
                             sliderPosition = null
@@ -1165,11 +1176,11 @@ fun BottomSheetPlayer(
                         value = (sliderPosition ?: position).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                         onValueChange = {
-                            sliderPosition = it.toLong()
+                            if (canControl) sliderPosition = it.toLong()
                         },
                         onValueChangeFinished = {
                             sliderPosition?.let {
-                                playerConnection.player.seekTo(it)
+                                playerConnection.seekTo(it)
                                 position = it
                             }
                             sliderPosition = null
@@ -1187,11 +1198,11 @@ fun BottomSheetPlayer(
                         value = (sliderPosition ?: position).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                         onValueChange = {
-                            sliderPosition = it.toLong()
+                            if (canControl) sliderPosition = it.toLong()
                         },
                         onValueChangeFinished = {
                             sliderPosition?.let {
-                                playerConnection.player.seekTo(it)
+                                playerConnection.seekTo(it)
                                 position = it
                             }
                             sliderPosition = null
@@ -1272,11 +1283,13 @@ fun BottomSheetPlayer(
 
                             FilledIconButton(
                                 onClick = {
-                                    if (playbackState == STATE_ENDED) {
-                                        playerConnection.player.seekTo(0, 0)
-                                        playerConnection.player.playWhenReady = true
+                                    if (!canControl) {
+                                        playerConnection.toggleMuteLocal()
+                                    } else if (playbackState == STATE_ENDED) {
+                                        playerConnection.seekTo(0, 0)
+                                        playerConnection.setPlayWhenReady(true)
                                     } else {
-                                        playerConnection.player.togglePlayPause()
+                                        playerConnection.togglePlayPause()
                                     }
                                 },
                                 colors = IconButtonDefaults.filledIconButtonColors(
@@ -1298,6 +1311,7 @@ fun BottomSheetPlayer(
                                         painter = painterResource(
                                             when {
                                                 playbackState == STATE_ENDED -> R.drawable.replay
+                                                !canControl -> if (!isMuted) R.drawable.volume_up else R.drawable.volume_off
                                                 isPlaying -> R.drawable.pause
                                                 else -> R.drawable.play
                                             }
@@ -1347,10 +1361,13 @@ fun BottomSheetPlayer(
                         ) {
                             // Shuffle button
                             Surface(
-                                onClick = { playerConnection.player.shuffleModeEnabled = !playerConnection.player.shuffleModeEnabled },
+                                onClick = {
+                                    if (canControl) playerConnection.setShuffleModeEnabled(!playerConnection.player.shuffleModeEnabled)
+                                },
+                                enabled = canControl,
                                 shape = RoundedCornerShape(16.dp),
                                 color = Color.Transparent,
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(48.dp).alpha(if (canControl) 1f else 0.5f)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
@@ -1385,11 +1402,13 @@ fun BottomSheetPlayer(
                             // Play/Pause - Large prominent center button
                             Surface(
                                 onClick = {
-                                    if (playbackState == STATE_ENDED) {
-                                        playerConnection.player.seekTo(0, 0)
-                                        playerConnection.player.playWhenReady = true
+                                    if (!canControl) {
+                                        playerConnection.toggleMuteLocal()
+                                    } else if (playbackState == STATE_ENDED) {
+                                        playerConnection.seekTo(0, 0)
+                                        playerConnection.setPlayWhenReady(true)
                                     } else {
-                                        playerConnection.player.togglePlayPause()
+                                        playerConnection.togglePlayPause()
                                     }
                                 },
                                 shape = RoundedCornerShape(50),
@@ -1408,6 +1427,7 @@ fun BottomSheetPlayer(
                                             painter = painterResource(
                                                 when {
                                                     playbackState == STATE_ENDED -> R.drawable.replay
+                                                    !canControl -> if (!isMuted) R.drawable.volume_up else R.drawable.volume_off
                                                     isPlaying -> R.drawable.pause
                                                     else -> R.drawable.play
                                                 }
@@ -1440,10 +1460,11 @@ fun BottomSheetPlayer(
                             
                             // Repeat button
                             Surface(
-                                onClick = { playerConnection.player.toggleRepeatMode() },
+                                onClick = { if (canControl) playerConnection.toggleRepeatMode() },
+                                enabled = canControl,
                                 shape = RoundedCornerShape(16.dp),
                                 color = Color.Transparent,
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(48.dp).alpha(if (canControl) 1f else 0.5f)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
@@ -1506,13 +1527,14 @@ fun BottomSheetPlayer(
                             ) {
                                 Surface(
                                     onClick = {
-                                        playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled
+                                        if (canControl) playerConnection.setShuffleModeEnabled(!shuffleModeEnabled)
                                     },
+                                    enabled = canControl,
                                     shape = RoundedCornerShape(smallRadius),
                                     color = TextBackgroundColor.copy(
                                         alpha = if (shuffleModeEnabled) 0.2f else 0.08f
                                     ),
-                                    modifier = Modifier.size(small)
+                                    modifier = Modifier.size(small).alpha(if (canControl) 1f else 0.5f)
                                 ) {
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
@@ -1557,11 +1579,13 @@ fun BottomSheetPlayer(
                             // Center: Play/Pause
                             Surface(
                                 onClick = {
-                                    if (playbackState == STATE_ENDED) {
-                                        playerConnection.player.seekTo(0, 0)
-                                        playerConnection.player.playWhenReady = true
+                                    if (!canControl) {
+                                        playerConnection.toggleMuteLocal()
+                                    } else if (playbackState == STATE_ENDED) {
+                                        playerConnection.seekTo(0, 0)
+                                        playerConnection.setPlayWhenReady(true)
                                     } else {
-                                        playerConnection.player.togglePlayPause()
+                                        playerConnection.togglePlayPause()
                                     }
                                 },
                                 shape = RoundedCornerShape(28.dp),
@@ -1585,6 +1609,7 @@ fun BottomSheetPlayer(
                                             painter = painterResource(
                                                 when {
                                                     playbackState == STATE_ENDED -> R.drawable.replay
+                                                    !canControl -> if (!isMuted) R.drawable.volume_up else R.drawable.volume_off
                                                     isPlaying -> R.drawable.pause
                                                     else -> R.drawable.play
                                                 }
@@ -1628,12 +1653,13 @@ fun BottomSheetPlayer(
                                 Spacer(modifier = Modifier.width(gap))
 
                                 Surface(
-                                    onClick = { playerConnection.player.toggleRepeatMode() },
+                                    onClick = { if (canControl) playerConnection.toggleRepeatMode() },
+                                    enabled = canControl,
                                     shape = RoundedCornerShape(smallRadius),
                                     color = TextBackgroundColor.copy(
                                         alpha = if (repeatMode != Player.REPEAT_MODE_OFF) 0.2f else 0.08f
                                     ),
-                                    modifier = Modifier.size(small)
+                                    modifier = Modifier.size(small).alpha(if (canControl) 1f else 0.5f)
                                 ) {
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
@@ -1700,11 +1726,13 @@ fun BottomSheetPlayer(
                             // Play/Pause — large dark rounded pill with text
                             Surface(
                                 onClick = {
-                                    if (playbackState == STATE_ENDED) {
-                                        playerConnection.player.seekTo(0, 0)
-                                        playerConnection.player.playWhenReady = true
+                                    if (!canControl) {
+                                        playerConnection.toggleMuteLocal()
+                                    } else if (playbackState == STATE_ENDED) {
+                                        playerConnection.seekTo(0, 0)
+                                        playerConnection.setPlayWhenReady(true)
                                     } else {
-                                        playerConnection.player.togglePlayPause()
+                                        playerConnection.togglePlayPause()
                                     }
                                 },
                                 shape = RoundedCornerShape(50),
@@ -1732,6 +1760,7 @@ fun BottomSheetPlayer(
                                                 painter = painterResource(
                                                     when {
                                                         playbackState == STATE_ENDED -> R.drawable.replay
+                                                        !canControl -> if (!isMuted) R.drawable.volume_up else R.drawable.volume_off
                                                         isPlaying -> R.drawable.pause
                                                         else -> R.drawable.play
                                                     }
@@ -1790,13 +1819,14 @@ fun BottomSheetPlayer(
                         ) {
                             Surface(
                                 onClick = {
-                                    playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled
+                                    if (canControl) playerConnection.setShuffleModeEnabled(!shuffleModeEnabled)
                                 },
+                                enabled = canControl,
                                 shape = RoundedCornerShape(50),
                                 color = if (shuffleModeEnabled)
                                     MaterialTheme.colorScheme.tertiaryContainer
                                 else TextBackgroundColor.copy(alpha = 0.08f),
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(40.dp).alpha(if (canControl) 1f else 0.5f)
                             ) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
@@ -1816,12 +1846,13 @@ fun BottomSheetPlayer(
                             Spacer(modifier = Modifier.width(16.dp))
 
                             Surface(
-                                onClick = { playerConnection.player.toggleRepeatMode() },
+                                onClick = { if (canControl) playerConnection.toggleRepeatMode() },
+                                enabled = canControl,
                                 shape = RoundedCornerShape(50),
                                 color = if (repeatMode != Player.REPEAT_MODE_OFF)
                                     MaterialTheme.colorScheme.tertiaryContainer
                                 else TextBackgroundColor.copy(alpha = 0.08f),
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(40.dp).alpha(if (canControl) 1f else 0.5f)
                             ) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
@@ -1862,13 +1893,14 @@ fun BottomSheetPlayer(
                                     else -> throw IllegalStateException()
                                 },
                                 color = TextBackgroundColor,
+                                enabled = canControl,
                                 modifier = Modifier
                                     .size(32.dp)
                                     .padding(4.dp)
                                     .align(Alignment.Center)
-                                    .alpha(if (repeatMode == Player.REPEAT_MODE_OFF) 0.5f else 1f),
+                                    .alpha(if (!canControl) 0.5f else if (repeatMode == Player.REPEAT_MODE_OFF) 0.5f else 1f),
                                 onClick = {
-                                    playerConnection.player.toggleRepeatMode()
+                                    if (canControl) playerConnection.toggleRepeatMode()
                                 },
                             )
                         }
@@ -1895,11 +1927,13 @@ fun BottomSheetPlayer(
                                 .clip(RoundedCornerShape(playPauseRoundness))
                                 .background(textButtonColor)
                                 .clickable {
-                                    if (playbackState == STATE_ENDED) {
-                                        playerConnection.player.seekTo(0, 0)
-                                        playerConnection.player.playWhenReady = true
+                                    if (!canControl) {
+                                        playerConnection.toggleMuteLocal()
+                                    } else if (playbackState == STATE_ENDED) {
+                                        playerConnection.seekTo(0, 0)
+                                        playerConnection.setPlayWhenReady(true)
                                     } else {
-                                        playerConnection.player.togglePlayPause()
+                                        playerConnection.togglePlayPause()
                                     }
                                 },
                         ) {
@@ -1915,14 +1949,11 @@ fun BottomSheetPlayer(
                                 Image(
                                     painter =
                                     painterResource(
-                                        if (playbackState ==
-                                            STATE_ENDED
-                                        ) {
-                                            R.drawable.replay
-                                        } else if (isPlaying) {
-                                            R.drawable.pause
-                                        } else {
-                                            R.drawable.play
+                                        when {
+                                            playbackState == STATE_ENDED -> R.drawable.replay
+                                            !canControl -> if (!isMuted) R.drawable.volume_up else R.drawable.volume_off
+                                            isPlaying -> R.drawable.pause
+                                            else -> R.drawable.play
                                         },
                                     ),
                                     contentDescription = null,
@@ -2343,5 +2374,8 @@ fun BottomSheetPlayer(
         }
     }
 }
+
+
+
 
 

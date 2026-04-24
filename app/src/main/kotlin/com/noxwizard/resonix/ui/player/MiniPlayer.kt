@@ -85,6 +85,7 @@ import com.noxwizard.resonix.constants.UseNewMiniPlayerDesignKey
 import com.noxwizard.resonix.db.entities.ArtistEntity
 import com.noxwizard.resonix.extensions.togglePlayPause
 import com.noxwizard.resonix.models.MediaMetadata
+import com.noxwizard.resonix.ui.screens.PlaybackPermission
 import com.noxwizard.resonix.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -133,6 +134,14 @@ private fun NewMiniPlayer(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
+
+    val roomState by com.noxwizard.resonix.playback.ListenTogetherManager.roomState.collectAsState()
+    val canControl = remember(roomState) {
+        if (roomState == null) return@remember true
+        val user = roomState?.users?.find { it.userId == com.noxwizard.resonix.playback.ListenTogetherManager.localUserId }
+        user != null && (user.isHost || user.hasTempControl || roomState?.playbackPermission == com.noxwizard.resonix.ui.screens.PlaybackPermission.Everyone)
+    }
+    val isMuted by playerConnection.isMutedFlow.collectAsState()
     
     // Track loading state when buffering
     val isLoading = playbackState == STATE_BUFFERING
@@ -248,10 +257,10 @@ private fun NewMiniPlayer(
                                     val isRightSwipe = currentOffset > 0
                                     
                                     if (isRightSwipe && canSkipPrevious) {
-                                        playerConnection.player.seekToPreviousMediaItem()
+                                        playerConnection.seekToPreviousMediaItem()
                                         try { com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager.restart() } catch (_: Exception) {}
                                     } else if (!isRightSwipe && canSkipNext) {
-                                        playerConnection.player.seekToNext()
+                                        playerConnection.seekToNext()
                                         try { com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager.restart() } catch (_: Exception) {}
                                     }
                                 }
@@ -362,11 +371,13 @@ private fun NewMiniPlayer(
                                 shape = CircleShape
                             )
                             .clickable {
-                                if (playbackState == Player.STATE_ENDED) {
-                                    playerConnection.player.seekTo(0, 0)
-                                    playerConnection.player.playWhenReady = true
+                                if (!canControl) {
+                                    playerConnection.toggleMuteLocal()
+                                } else if (playbackState == Player.STATE_ENDED) {
+                                    playerConnection.seekTo(0, 0)
+                                    playerConnection.setPlayWhenReady(true)
                                 } else {
-                                    playerConnection.player.togglePlayPause()
+                                    playerConnection.togglePlayPause()
                                 }
                             }
                     ) {
@@ -412,10 +423,10 @@ private fun NewMiniPlayer(
                             ) {
                                 Icon(
                                     painter = painterResource(
-                                        if (playbackState == Player.STATE_ENDED) {
-                                            R.drawable.replay
-                                        } else {
-                                            R.drawable.play
+                                        when {
+                                            playbackState == Player.STATE_ENDED -> R.drawable.replay
+                                            !canControl -> if (!isMuted) R.drawable.volume_up else R.drawable.volume_off
+                                            else -> R.drawable.play
                                         }
                                     ),
                                     contentDescription = null,
@@ -614,6 +625,14 @@ private fun LegacyMiniPlayer(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
+
+    val roomState by com.noxwizard.resonix.playback.ListenTogetherManager.roomState.collectAsState()
+    val canControl = remember(roomState) {
+        if (roomState == null) return@remember true
+        val user = roomState?.users?.find { it.userId == com.noxwizard.resonix.playback.ListenTogetherManager.localUserId }
+        user != null && (user.isHost || user.hasTempControl || roomState?.playbackPermission == com.noxwizard.resonix.ui.screens.PlaybackPermission.Everyone)
+    }
+    val isMuted by playerConnection.isMutedFlow.collectAsState()
     
     // Track loading state when buffering
     val isLoading = playbackState == STATE_BUFFERING
@@ -747,10 +766,10 @@ private fun LegacyMiniPlayer(
                                     val isRightSwipe = currentOffset > 0
                                     
                                     if (isRightSwipe && canSkipPrevious) {
-                                        playerConnection.player.seekToPreviousMediaItem()
+                                        playerConnection.seekToPreviousMediaItem()
                                         try { com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager.restart() } catch (_: Exception) {}
                                     } else if (!isRightSwipe && canSkipNext) {
-                                        playerConnection.player.seekToNext()
+                                        playerConnection.seekToNext()
                                         try { com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager.restart() } catch (_: Exception) {}
                                     }
                                 }
@@ -797,11 +816,13 @@ private fun LegacyMiniPlayer(
 
             IconButton(
                 onClick = {
-                    if (playbackState == Player.STATE_ENDED) {
-                        playerConnection.player.seekTo(0, 0)
-                        playerConnection.player.playWhenReady = true
+                    if (!canControl) {
+                        playerConnection.toggleMuteLocal()
+                    } else if (playbackState == Player.STATE_ENDED) {
+                        playerConnection.seekTo(0, 0)
+                        playerConnection.setPlayWhenReady(true)
                     } else {
-                        playerConnection.player.togglePlayPause()
+                        playerConnection.togglePlayPause()
                     }
                 },
             ) {
@@ -814,13 +835,12 @@ private fun LegacyMiniPlayer(
                 } else {
                     Icon(
                         painter = painterResource(
-                            if (playbackState == Player.STATE_ENDED) {
-                                R.drawable.replay
-                            } else if (isPlaying) {
-                                R.drawable.pause
-                            } else {
-                                R.drawable.play
-                            },
+                            when {
+                                playbackState == Player.STATE_ENDED -> R.drawable.replay
+                                !canControl -> if (!isMuted) R.drawable.volume_up else R.drawable.volume_off
+                                isPlaying -> R.drawable.pause
+                                else -> R.drawable.play
+                            }
                         ),
                         contentDescription = null,
                     )
@@ -968,6 +988,10 @@ private fun LegacyMiniMediaInfo(
         }
     }
 }
+
+
+
+
 
 
 

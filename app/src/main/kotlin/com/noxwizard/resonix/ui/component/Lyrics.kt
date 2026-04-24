@@ -656,7 +656,7 @@ fun Lyrics(
                                         }
                                     }
                                 } else if (isSynced && changeLyrics) {
-                                    playerConnection.player.seekTo(item.time)
+                                    playerConnection.seekTo(item.time)
                                     scope.launch {
                                         val itemInfo = lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
                                         if (itemInfo != null) {
@@ -2022,4 +2022,5 @@ private const val Resonix_SEEK_DURATION = 800L
 private const val Resonix_FAST_SEEK_DURATION = 600L 
 
 val LyricsPreviewTime = 2.seconds
+
 

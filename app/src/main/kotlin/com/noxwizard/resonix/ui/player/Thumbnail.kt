@@ -186,10 +186,10 @@ fun Thumbnail(
         if (!thumbnailLazyGridState.isScrollInProgress || !swipeThumbnail || itemScrollOffset != 0 || currentMediaIndex < 0) return@LaunchedEffect
 
             if (currentItem > currentMediaIndex && canSkipNext) {
-            playerConnection.player.seekToNext()
+            playerConnection.seekToNext()
             try { com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager.restart() } catch (_: Exception) {}
         } else if (currentItem < currentMediaIndex && canSkipPrevious) {
-            playerConnection.player.seekToPreviousMediaItem()
+            playerConnection.seekToPreviousMediaItem()
             try { com.noxwizard.resonix.ui.screens.settings.DiscordPresenceManager.restart() } catch (_: Exception) {}
         }
     }
@@ -323,13 +323,13 @@ fun Thumbnail(
                                                 if ((layoutDirection == LayoutDirection.Ltr && offset.x < size.width / 2) ||
                                                     (layoutDirection == LayoutDirection.Rtl && offset.x > size.width / 2)
                                                 ) {
-                                                    playerConnection.player.seekTo(
+                                                    playerConnection.seekTo(
                                                         (currentPosition - skipAmount).coerceAtLeast(0)
                                                     )
                                                     seekDirection =
                                                         context.getString(R.string.seek_backward_dynamic, skipAmount / 1000)
                                                 } else {
-                                                    playerConnection.player.seekTo(
+                                                    playerConnection.seekTo(
                                                         (currentPosition + skipAmount).coerceAtMost(duration)
                                                     )
                                                     seekDirection = context.getString(R.string.seek_forward_dynamic, skipAmount / 1000)
@@ -502,6 +502,9 @@ fun calculateDistanceToDesiredSnapPosition(
 
 private val LazyGridLayoutInfo.singleAxisViewportSize: Int
     get() = if (orientation == Orientation.Vertical) viewportSize.height else viewportSize.width
+
+
+
 
 
 

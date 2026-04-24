@@ -131,6 +131,7 @@ fun LyricsScreen(
     modifier: Modifier = Modifier
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
+    val canControl by playerConnection.canControlFlow.collectAsState()
     val player = playerConnection.player
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -676,7 +677,7 @@ fun LyricsScreen(
                                         },
                                         onValueChangeFinished = {
                                             sliderPosition?.let {
-                                                player.seekTo(it)
+                                                playerConnection.seekTo(it)
                                                 position = it
                                             }
                                             sliderPosition = null
@@ -694,7 +695,7 @@ fun LyricsScreen(
                                         },
                                         onValueChangeFinished = {
                                             sliderPosition?.let {
-                                                player.seekTo(it)
+                                                playerConnection.seekTo(it)
                                                 position = it
                                             }
                                             sliderPosition = null
@@ -716,7 +717,7 @@ fun LyricsScreen(
                                         },
                                         onValueChangeFinished = {
                                             sliderPosition?.let {
-                                                player.seekTo(it)
+                                                playerConnection.seekTo(it)
                                                 position = it
                                             }
                                             sliderPosition = null
@@ -740,7 +741,7 @@ fun LyricsScreen(
                                         },
                                         onValueChangeFinished = {
                                             sliderPosition?.let {
-                                                player.seekTo(it)
+                                                playerConnection.seekTo(it)
                                                 position = it
                                             }
                                             sliderPosition = null
@@ -761,7 +762,7 @@ fun LyricsScreen(
                                         },
                                         onValueChangeFinished = {
                                             sliderPosition?.let {
-                                                player.seekTo(it)
+                                                playerConnection.seekTo(it)
                                                 position = it
                                             }
                                             sliderPosition = null
@@ -805,7 +806,7 @@ fun LyricsScreen(
                             ) {
                                 // Repeat button
                                 IconButton(
-                                    onClick = { playerConnection.player.toggleRepeatMode() },
+                                    onClick = { playerConnection.toggleRepeatMode() },
                                     modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
@@ -834,7 +835,7 @@ fun LyricsScreen(
 
                                 // Previous button
                                 IconButton(
-                                    onClick = { player.seekToPrevious() },
+                                    onClick = { playerConnection.seekToPrevious() },
                                     modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
@@ -847,7 +848,7 @@ fun LyricsScreen(
 
                                 // Play/Pause button
                                 IconButton(
-                                    onClick = { player.togglePlayPause() },
+                                    onClick = { if (!canControl) playerConnection.toggleMuteLocal() else playerConnection.togglePlayPause() },
                                     modifier = Modifier.size(56.dp)
                                 ) {
                                     if (isLoading) {
@@ -870,7 +871,7 @@ fun LyricsScreen(
 
                                 // Next button
                                 IconButton(
-                                    onClick = { player.seekToNext() },
+                                    onClick = { playerConnection.seekToNext() },
                                     modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
@@ -883,7 +884,7 @@ fun LyricsScreen(
 
                                 // Shuffle button
                                 IconButton(
-                                    onClick = { playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled },
+                                    onClick = { playerConnection.setShuffleModeEnabled(!shuffleModeEnabled) },
                                     modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
@@ -1049,7 +1050,7 @@ fun LyricsScreen(
                                     },
                                     onValueChangeFinished = {
                                         sliderPosition?.let {
-                                            player.seekTo(it)
+                                            playerConnection.seekTo(it)
                                             position = it
                                         }
                                         sliderPosition = null
@@ -1067,7 +1068,7 @@ fun LyricsScreen(
                                     },
                                     onValueChangeFinished = {
                                         sliderPosition?.let {
-                                            player.seekTo(it)
+                                            playerConnection.seekTo(it)
                                             position = it
                                         }
                                         sliderPosition = null
@@ -1089,7 +1090,7 @@ fun LyricsScreen(
                                     },
                                     onValueChangeFinished = {
                                         sliderPosition?.let {
-                                            player.seekTo(it)
+                                            playerConnection.seekTo(it)
                                             position = it
                                         }
                                         sliderPosition = null
@@ -1113,7 +1114,7 @@ fun LyricsScreen(
                                     },
                                     onValueChangeFinished = {
                                         sliderPosition?.let {
-                                            player.seekTo(it)
+                                            playerConnection.seekTo(it)
                                             position = it
                                         }
                                         sliderPosition = null
@@ -1134,7 +1135,7 @@ fun LyricsScreen(
                                     },
                                     onValueChangeFinished = {
                                         sliderPosition?.let {
-                                            player.seekTo(it)
+                                            playerConnection.seekTo(it)
                                             position = it
                                         }
                                         sliderPosition = null
@@ -1178,7 +1179,7 @@ fun LyricsScreen(
                         ) {
                             // Repeat button with clear state indication
                             IconButton(
-                                onClick = { playerConnection.player.toggleRepeatMode() },
+                                onClick = { playerConnection.toggleRepeatMode() },
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
@@ -1209,7 +1210,7 @@ fun LyricsScreen(
 
                             // Previous button
                             IconButton(
-                                onClick = { player.seekToPrevious() },
+                                onClick = { playerConnection.seekToPrevious() },
                                 modifier = Modifier.size(40.dp) // Slightly smaller
                             ) {
                                 Icon(
@@ -1222,7 +1223,7 @@ fun LyricsScreen(
 
                             // Play/Pause button (largest)
                             IconButton(
-                                onClick = { player.togglePlayPause() },
+                                onClick = { if (!canControl) playerConnection.toggleMuteLocal() else playerConnection.togglePlayPause() },
                                 modifier = Modifier.size(56.dp) // Slightly smaller but still prominent
                             ) {
                                 if (isLoading) {
@@ -1245,7 +1246,7 @@ fun LyricsScreen(
 
                             // Next button
                             IconButton(
-                                onClick = { player.seekToNext() },
+                                onClick = { playerConnection.seekToNext() },
                                 modifier = Modifier.size(40.dp) // Slightly smaller
                             ) {
                                 Icon(
@@ -1258,7 +1259,7 @@ fun LyricsScreen(
 
                             // Shuffle button with clear state indication
                             IconButton(
-                                onClick = { playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled },
+                                onClick = { playerConnection.setShuffleModeEnabled(!shuffleModeEnabled) },
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
@@ -1318,6 +1319,9 @@ fun LyricsScreen(
         }
     }
 }
+
+
+
 
 
 

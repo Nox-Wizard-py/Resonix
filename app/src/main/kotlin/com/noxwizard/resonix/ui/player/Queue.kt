@@ -161,6 +161,7 @@ fun Queue(
     val bottomSheetPageState = LocalBottomSheetPageState.current
 
     val playerConnection = LocalPlayerConnection.current ?: return
+    val canControl by playerConnection.canControlFlow.collectAsState()
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val repeatMode by playerConnection.repeatMode.collectAsState()
 
@@ -394,7 +395,7 @@ fun Queue(
                                 )
                             )
                             .clickable {
-                                playerConnection.player.toggleRepeatMode()
+                                playerConnection.toggleRepeatMode()
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -1035,9 +1036,9 @@ fun Queue(
                     val safeTo = (to - headerItems).coerceIn(0, queueWindows.lastIndex)
 
                     if (!playerConnection.player.shuffleModeEnabled) {
-                        playerConnection.player.moveMediaItem(safeFrom, safeTo)
+                        playerConnection.moveMediaItem(safeFrom, safeTo)
                     } else {
-                        playerConnection.player.setShuffleOrder(
+                        playerConnection.setShuffleOrder(
                             DefaultShuffleOrder(
                                 queueWindows.map { it.firstPeriodIndex }
                                     .toMutableList()
@@ -1119,7 +1120,7 @@ fun Queue(
                                 )
                             ) {
                                 processedDismiss = true
-                                playerConnection.player.removeMediaItem(currentItem.firstPeriodIndex)
+                                playerConnection.removeMediaItem(currentItem.firstPeriodIndex)
                                 dismissJob?.cancel()
                                 dismissJob = coroutineScope.launch {
                                     val snackbarResult = snackbarHostState.showSnackbar(
@@ -1131,8 +1132,8 @@ fun Queue(
                                         duration = SnackbarDuration.Short,
                                     )
                                     if (snackbarResult == SnackbarResult.ActionPerformed) {
-                                        playerConnection.player.addMediaItem(currentItem.mediaItem)
-                                        playerConnection.player.moveMediaItem(
+                                        playerConnection.addMediaItem(currentItem.mediaItem)
+                                        playerConnection.moveMediaItem(
                                             mutableQueueWindows.size,
                                             currentItem.firstPeriodIndex,
                                         )
@@ -1212,12 +1213,12 @@ fun Queue(
                                                     }
                                                 } else {
                                                     if (index == currentWindowIndex) {
-                                                        playerConnection.player.togglePlayPause()
+                                                        if (!canControl) playerConnection.toggleMuteLocal() else playerConnection.togglePlayPause()
                                                     } else {
-                                                        playerConnection.player.seekToDefaultPosition(
+                                                        playerConnection.seekToDefaultPosition(
                                                             window.firstPeriodIndex,
                                                         )
-                                                        playerConnection.player.playWhenReady = true
+                                                        playerConnection.setPlayWhenReady(true)
                                                     }
                                                 }
                                             },
@@ -1515,8 +1516,7 @@ fun Queue(
                                 if (playerConnection.player.shuffleModeEnabled) playerConnection.player.currentMediaItemIndex else 0,
                             )
                         }.invokeOnCompletion {
-                            playerConnection.player.shuffleModeEnabled =
-                                !playerConnection.player.shuffleModeEnabled
+                            playerConnection.setShuffleModeEnabled(!playerConnection.player.shuffleModeEnabled)
                         }
                 },
             ) {
@@ -1567,5 +1567,8 @@ fun Queue(
         )
     }
 }
+
+
+
 
 
