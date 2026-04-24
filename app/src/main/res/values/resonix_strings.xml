@@ -267,6 +267,9 @@
     <string name="perm_microphone_title">Microphone</string>
     <string name="perm_microphone_subtitle">Enable voice search and commands</string>
     <string name="perm_microphone_rationale">Resonix needs microphone access for future voice search and voice command support.</string>
+    <string name="perm_camera_title">Camera Access</string>
+    <string name="perm_camera_subtitle">Allow Resonix to scan QR codes</string>
+    <string name="perm_camera_rationale">Resonix needs camera access to scan QR codes for the Listen Together feature.</string>
     <string name="perm_dialog_allow">Allow</string>
     <string name="perm_dialog_deny">Not Now</string>
 

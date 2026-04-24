@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -65,11 +67,13 @@ fun PermissionsSettings(
     }
     val notificationPermission = Manifest.permission.POST_NOTIFICATIONS
     val microphonePermission = Manifest.permission.RECORD_AUDIO
+    val cameraPermission = Manifest.permission.CAMERA
 
     fun checkPerm(perm: String): Boolean =
         ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
 
     var hasAudioPerm by remember { mutableStateOf(checkPerm(audioPermission)) }
+    var hasCameraPerm by remember { mutableStateOf(checkPerm(cameraPermission)) }
     var hasNotifPerm by remember {
         mutableStateOf(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) checkPerm(notificationPermission)
@@ -109,8 +113,13 @@ fun PermissionsSettings(
         ActivityResultContracts.RequestPermission()
     ) { granted -> hasMicPerm = granted }
 
+    val cameraPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasCameraPerm = granted }
+
     // Rationale dialog states
     var showAudioRationale by remember { mutableStateOf(false) }
+    var showCameraRationale by remember { mutableStateOf(false) }
     var showNotifRationale by remember { mutableStateOf(false) }
     var showMicRationale by remember { mutableStateOf(false) }
 
@@ -141,6 +150,24 @@ fun PermissionsSettings(
             },
             dismissButton = {
                 TextButton(onClick = { showAudioRationale = false }) {
+                    Text(stringResource(R.string.perm_dialog_deny))
+                }
+            }
+        )
+    }
+    if (showCameraRationale) {
+        AlertDialog(
+            onDismissRequest = { showCameraRationale = false },
+            title = { Text(stringResource(R.string.perm_camera_title)) },
+            text = { Text(stringResource(R.string.perm_camera_rationale)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCameraRationale = false
+                    cameraPermLauncher.launch(cameraPermission)
+                }) { Text(stringResource(R.string.perm_dialog_allow)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCameraRationale = false }) {
                     Text(stringResource(R.string.perm_dialog_deny))
                 }
             }
@@ -238,6 +265,16 @@ fun PermissionsSettings(
             checked = hasMicPerm,
             onCheckedChange = { enabled ->
                 if (enabled) showMicRationale = true
+                else openAppSettings()
+            }
+        )
+        SwitchPreference(
+            title = { Text(stringResource(R.string.perm_camera_title)) },
+            description = stringResource(R.string.perm_camera_subtitle),
+            icon = { Icon(Icons.Rounded.CameraAlt, null) },
+            checked = hasCameraPerm,
+            onCheckedChange = { enabled ->
+                if (enabled) showCameraRationale = true
                 else openAppSettings()
             }
         )
