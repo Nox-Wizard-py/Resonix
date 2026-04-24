@@ -707,7 +707,7 @@ fun AlbumScreen(
                                 onClick = {
                                     if (!selection) {
                                         if (songWrapper.item.id == mediaMetadata?.id) {
-                                            playerConnection.player.togglePlayPause()
+                                            playerConnection.togglePlayPause()
                                         } else {
                                             playerConnection.service.getAutomix(playlistId)
                                             playerConnection.playQueue(
@@ -1003,5 +1003,6 @@ private fun MetadataChip(
         }
     }
 }
+
 
 

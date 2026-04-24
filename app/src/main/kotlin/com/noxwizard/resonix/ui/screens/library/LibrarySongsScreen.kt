@@ -296,7 +296,7 @@ fun LibrarySongsScreen(
                             onClick = {
                                 if (!selection) {
                                     if (songWrapper.item.id == mediaMetadata?.id) {
-                                        playerConnection.player.togglePlayPause()
+                                        playerConnection.togglePlayPause()
                                     } else {
                                         playerConnection.playQueue(
                                             ListQueue(
@@ -341,5 +341,6 @@ fun LibrarySongsScreen(
         )
     }
 }
+
 
 

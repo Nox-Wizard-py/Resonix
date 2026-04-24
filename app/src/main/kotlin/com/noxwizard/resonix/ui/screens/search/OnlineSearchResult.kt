@@ -183,7 +183,7 @@ fun OnlineSearchResult(
                         when (item) {
                             is SongItem -> {
                                 if (item.id == mediaMetadata?.id) {
-                                    playerConnection.player.togglePlayPause()
+                                    playerConnection.togglePlayPause()
                                 } else {
                                     playerConnection.playQueue(
                                         YouTubeQueue(
@@ -298,5 +298,6 @@ fun OnlineSearchResult(
             .fillMaxWidth()
     )
 }
+
 
 

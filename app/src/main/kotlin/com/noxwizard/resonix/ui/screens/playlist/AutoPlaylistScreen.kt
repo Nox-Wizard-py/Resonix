@@ -735,7 +735,7 @@ fun AutoPlaylistScreen(
                                     onClick = {
                                         if (!selection) {
                                             if (songWrapper.item.song.id == mediaMetadata?.id) {
-                                                playerConnection.player.togglePlayPause()
+                                                playerConnection.togglePlayPause()
                                             } else {
                                                 playerConnection.playQueue(
                                                     ListQueue(
@@ -909,5 +909,6 @@ fun AutoPlaylistScreen(
 enum class PlaylistType {
     LIKE, DOWNLOAD, OTHER
 }
+
 
 

@@ -167,7 +167,7 @@ fun LazyListScope.QuickPicksSection(
                         .combinedClickable(
                             onClick = {
                                 if (song.id == mediaMetadataId) {
-                                    playerConnection.player.togglePlayPause()
+                                    playerConnection.togglePlayPause()
                                 } else {
                                     playerConnection.playQueue(
                                         com.noxwizard.resonix.playback.queues.YouTubeQueue.radio(song.toMediaMetadata())
@@ -357,7 +357,7 @@ fun LazyListScope.ForgottenFavoritesSection(
                         .combinedClickable(
                             onClick = {
                                 if (song.id == mediaMetadataId) {
-                                    playerConnection.player.togglePlayPause()
+                                    playerConnection.togglePlayPause()
                                 } else {
                                     playerConnection.playQueue(
                                         com.noxwizard.resonix.playback.queues.YouTubeQueue.radio(song.toMediaMetadata())
@@ -775,3 +775,4 @@ fun LazyListScope.CommunityCarouselSection(
         }
     }
 }
+

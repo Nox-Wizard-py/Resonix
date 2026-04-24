@@ -175,7 +175,7 @@ fun YouTubeBrowseScreen(
                                             Modifier
                                                 .clickable {
                                                     if (song.id == mediaMetadata?.id) {
-                                                        playerConnection.player.togglePlayPause()
+                                                        playerConnection.togglePlayPause()
                                                     } else {
                                                         playerConnection.playQueue(
                                                             YouTubeQueue.radio(
@@ -277,5 +277,6 @@ fun YouTubeBrowseScreen(
         }
     )
 }
+
 
 

@@ -260,7 +260,7 @@ fun StatsScreen(
                                 .combinedClickable(
                                     onClick = {
                                         if (song.id == mediaMetadata?.id) {
-                                            playerConnection.player.togglePlayPause()
+                                            playerConnection.togglePlayPause()
                                         } else {
                                             playerConnection.playQueue(
                                                 YouTubeQueue(
@@ -424,5 +424,6 @@ fun StatsScreen(
 }
 
 enum class OptionStats { WEEKS, MONTHS, YEARS, CONTINUOUS }
+
 
 

@@ -259,7 +259,7 @@ fun HistoryScreen(
                                 .combinedClickable(
                                     onClick = {
                                         if (song.id == mediaMetadata?.id) {
-                                            playerConnection.player.togglePlayPause()
+                                            playerConnection.togglePlayPause()
                                         } else {
                                             playerConnection.playQueue(
                                                 YouTubeQueue.radio(song.toMediaMetadata())
@@ -332,7 +332,7 @@ fun HistoryScreen(
                                     onClick = {
                                         if (!selection) {
                                             if (event.song.id == mediaMetadata?.id) {
-                                                playerConnection.player.togglePlayPause()
+                                                playerConnection.togglePlayPause()
                                             } else {
                                                 playerConnection.playQueue(
                                                     ListQueue(
@@ -512,5 +512,6 @@ fun HistoryScreen(
         }
     )
 }
+
 
 

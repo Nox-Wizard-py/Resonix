@@ -166,7 +166,7 @@ fun LocalSearchScreen(
                                 .combinedClickable(
                                     onClick = {
                                         if (item.id == mediaMetadata?.id) {
-                                            playerConnection.player.togglePlayPause()
+                                            playerConnection.togglePlayPause()
                                         } else {
                                             val songs = result.map
                                                 .getOrDefault(LocalFilter.SONG, emptyList())
@@ -244,5 +244,6 @@ fun LocalSearchScreen(
         }
     }
 }
+
 
 

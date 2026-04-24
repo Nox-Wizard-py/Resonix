@@ -254,7 +254,7 @@ fun HomeScreen(
                             .combinedClickable(
                                 onClick = {
                                     if (it.id == mediaMetadata?.id) {
-                                        playerConnection.player.togglePlayPause()
+                                        playerConnection.togglePlayPause()
                                     } else {
                                         playerConnection.playQueue(
                                             YouTubeQueue.radio(it.toMediaMetadata()),
@@ -631,5 +631,6 @@ fun HomeScreen(
         }
     }
 }
+
 
 

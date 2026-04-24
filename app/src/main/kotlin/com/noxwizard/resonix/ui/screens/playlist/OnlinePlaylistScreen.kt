@@ -757,7 +757,7 @@ fun OnlinePlaylistScreen(
                                     onClick = {
                                         if (!selection) {
                                             if (song.item.second.id == mediaMetadata?.id) {
-                                                playerConnection.player.togglePlayPause()
+                                                playerConnection.togglePlayPause()
                                             } else {
                                                 playerConnection.service.getAutomix(playlistId = playlist.id)
                                                 playerConnection.playQueue(
@@ -1019,5 +1019,6 @@ private fun MetadataChip(
         }
     }
 }
+
 
 
