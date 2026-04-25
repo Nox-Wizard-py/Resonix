@@ -198,7 +198,8 @@ function handleMessage(clientId, raw, ws) {
                 trackId: msg.trackId || '',
                 url: msg.url || '',
                 title: msg.title || '',
-                artist: msg.artist || ''
+                artist: msg.artist || '',
+                thumbnailUrl: msg.thumbnailUrl || ''
             });
 
             const sockets = roomManager.getRoomSockets(room.code);
