@@ -173,6 +173,46 @@ function handleMessage(clientId, raw, ws) {
             break;
         }
 
+        case 'track_change': {
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender) return;
+
+            const isAuthorized = (
+                sender.role === 'host' ||
+                sender.role === 'sudo' ||
+                room.playbackPermission === 'everyone'
+            );
+
+            if (!isAuthorized) {
+                console.log('[BLOCKED] Unauthorized track_change attempt:', sender.id);
+                return;
+            }
+
+            console.log('[TRACK_CHANGE] Broadcasting from', sender.id, '- trackId:', msg.trackId, 'url:', msg.url);
+
+            const payload = JSON.stringify({
+                type: 'track_change',
+                trackId: msg.trackId || '',
+                url: msg.url || '',
+                title: msg.title || '',
+                artist: msg.artist || ''
+            });
+
+            const sockets = roomManager.getRoomSockets(room.code);
+            if (!sockets) return;
+
+            sockets.forEach(s => {
+                if (s !== ws && s.readyState === 1) {
+                    s.send(payload);
+                }
+            });
+            break;
+        }
+
+
         // Add other cases if needed, but the focus is on sync fixes
         case 'transfer_host': {
             console.log("ACTION: transfer_host by socketId", ws.id);
