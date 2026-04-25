@@ -249,6 +249,75 @@ function handleMessage(clientId, raw, ws) {
             break;
         }
 
+        case 'track_ready': {
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender) return;
+
+            const payload = JSON.stringify({
+                type: 'track_ready',
+                userId: sender.id,
+                trackId: msg.trackId
+            });
+
+            // Send only to the host
+            const hostUser = room.users.find(u => u.role === 'host');
+            if (hostUser) {
+                const sockets = roomManager.getRoomSockets(room.code);
+                if (sockets) {
+                    sockets.forEach(s => {
+                        if ((s.userId || s.id) === hostUser.id && s.readyState === 1) {
+                            s.send(payload);
+                        }
+                    });
+                }
+            }
+            break;
+        }
+
+        case 'play_at': {
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender || sender.role !== 'host') return;
+
+            const payload = JSON.stringify({
+                type: 'play_at',
+                startTime: msg.startTime
+            });
+
+            const sockets = roomManager.getRoomSockets(room.code);
+            if (!sockets) return;
+            sockets.forEach(s => {
+                if (s !== ws && s.readyState === 1) {
+                    s.send(payload);
+                }
+            });
+            break;
+        }
+
+        case 'pause_at': {
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender || sender.role !== 'host') return;
+
+            const payload = JSON.stringify({
+                type: 'pause_at',
+                position: msg.position
+            });
+
+            const sockets = roomManager.getRoomSockets(room.code);
+            if (!sockets) return;
+            sockets.forEach(s => {
+                if (s !== ws && s.readyState === 1) {
+                    s.send(payload);
+                }
+            });
+            break;
+        }
+
 
         // Add other cases if needed, but the focus is on sync fixes
         case 'transfer_host': {
