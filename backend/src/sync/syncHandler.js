@@ -199,7 +199,43 @@ function handleMessage(clientId, raw, ws) {
                 url: msg.url || '',
                 title: msg.title || '',
                 artist: msg.artist || '',
-                thumbnailUrl: msg.thumbnailUrl || ''
+                thumbnailUrl: msg.thumbnailUrl || '',
+                startAt: msg.startAt || (Date.now() + 2000)
+            });
+
+            const sockets = roomManager.getRoomSockets(room.code);
+            if (!sockets) return;
+
+            sockets.forEach(s => {
+                if (s !== ws && s.readyState === 1) {
+                    s.send(payload);
+                }
+            });
+            break;
+        }
+
+        case 'seek': {
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender) return;
+
+            const isAuthorized = (
+                sender.role === 'host' ||
+                sender.role === 'sudo' ||
+                room.playbackPermission === 'everyone'
+            );
+
+            if (!isAuthorized) {
+                console.log('[BLOCKED] Unauthorized seek attempt:', sender.id);
+                return;
+            }
+
+            const payload = JSON.stringify({
+                type: 'seek',
+                position: msg.position || 0,
+                timestamp: msg.timestamp || Date.now()
             });
 
             const sockets = roomManager.getRoomSockets(room.code);
