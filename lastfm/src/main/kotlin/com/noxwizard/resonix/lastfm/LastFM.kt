@@ -72,8 +72,8 @@ object LastFM {
         client.post {
             lastfmParams(
                 method = "auth.getToken",
-                apiKey = API_KEY,
-                secret = SECRET
+                apiKey = apiKeyProvider(),
+                secret = secretProvider()
             )
         }.body<TokenResponse>()
     }
@@ -82,15 +82,15 @@ object LastFM {
         client.post {
             lastfmParams(
                 method = "auth.getSession",
-                apiKey = API_KEY,
-                secret = SECRET,
+                apiKey = apiKeyProvider(),
+                secret = secretProvider(),
                 extra = mapOf("token" to token)
             )
         }.body<Authentication>()
     }
 
     fun getAuthUrl(token: String): String {
-        return "https://www.last.fm/api/auth/?api_key=$API_KEY&token=$token"
+        return "https://www.last.fm/api/auth/?api_key=${apiKeyProvider()}&token=$token"
     }
 
     // Mobile session authentication
@@ -98,8 +98,8 @@ object LastFM {
         val response = client.post {
             lastfmParams(
                 method = "auth.getMobileSession",
-                apiKey = API_KEY,
-                secret = SECRET,
+                apiKey = apiKeyProvider(),
+                secret = secretProvider(),
                 extra = mapOf("username" to username, "password" to password)
             )
             parameter("format", "json")
@@ -124,8 +124,8 @@ object LastFM {
         client.post {
             lastfmParams(
                 method = "track.updateNowPlaying",
-                apiKey = API_KEY,
-                secret = SECRET,
+                apiKey = apiKeyProvider(),
+                secret = secretProvider(),
                 sessionKey = sessionKey!!,
                 extra = buildMap {
                     put("artist", artist)
@@ -145,8 +145,8 @@ object LastFM {
         client.post {
             lastfmParams(
                 method = "track.scrobble",
-                apiKey = API_KEY,
-                secret = SECRET,
+                apiKey = apiKeyProvider(),
+                secret = secretProvider(),
                 sessionKey = sessionKey!!,
                 extra = buildMap {
                     put("artist[0]", artist)
@@ -161,15 +161,15 @@ object LastFM {
     }
 
     // (loaded from BuildConfig/GitHub Secrets)
-    private var API_KEY = ""
-    private var SECRET = ""
+    private var apiKeyProvider: () -> String = { "" }
+    private var secretProvider: () -> String = { "" }
 
-    fun initialize(apiKey: String, secret: String) {
-        API_KEY = apiKey
-        SECRET = secret
+    fun initialize(apiKeyProvider: () -> String, secretProvider: () -> String) {
+        this.apiKeyProvider = apiKeyProvider
+        this.secretProvider = secretProvider
     }
 
-    fun isInitialized(): Boolean = API_KEY.isNotEmpty() && SECRET.isNotEmpty()
+    fun isInitialized(): Boolean = apiKeyProvider().isNotEmpty() && secretProvider().isNotEmpty()
 
     const val DEFAULT_SCROBBLE_DELAY_PERCENT = 0.5f
     const val DEFAULT_SCROBBLE_MIN_SONG_DURATION = 30

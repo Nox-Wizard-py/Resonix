@@ -30,14 +30,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         
+        val xorKey = 0x55.toByte()
+        fun obfuscate(input: String): String {
+            val bytes = input.toByteArray().map { (it.toInt() xor xorKey.toInt()).toByte() }
+            return bytes.joinToString(prefix = "new byte[]{", postfix = "}") { it.toString() }
+        }
+
         val lastfmApiKey = localProperties.getProperty("LASTFM_API_KEY")?.takeIf { it.isNotEmpty() }
             ?: System.getenv("LASTFM_API_KEY")?.takeIf { it.isNotEmpty() }
             ?: ""
         val lastfmSecret = localProperties.getProperty("LASTFM_SECRET")?.takeIf { it.isNotEmpty() }
             ?: System.getenv("LASTFM_SECRET")?.takeIf { it.isNotEmpty() }
             ?: ""
-        buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
-        buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
+        buildConfigField("byte[]", "LASTFM_API_KEY", obfuscate(lastfmApiKey))
+        buildConfigField("byte[]", "LASTFM_SECRET", obfuscate(lastfmSecret))
 
         val recognitionBackendUrl = localProperties.getProperty("RECOGNITION_BACKEND_URL")?.takeIf { it.isNotEmpty() }
             ?: System.getenv("RECOGNITION_BACKEND_URL")?.takeIf { it.isNotEmpty() }
