@@ -305,7 +305,8 @@ function handleMessage(clientId, raw, ws) {
 
             const payload = JSON.stringify({
                 type: 'pause_at',
-                position: msg.position
+                position: msg.position,
+                timestamp: msg.timestamp
             });
 
             const sockets = roomManager.getRoomSockets(room.code);
