@@ -86,6 +86,12 @@ class BackupRestoreViewModel @Inject constructor(
                 stream.zipInputStream().use { inputStream ->
                     var entry = tryOrNull { inputStream.nextEntry }
                     while (entry != null) {
+                        val name = entry.name
+                        if (name.contains("..") || name.contains("/") || name.contains("\\")) {
+                            entry = tryOrNull { inputStream.nextEntry }
+                            continue
+                        }
+
                         when (entry.name) {
                             SETTINGS_FILENAME -> hasSettings = true
                             InternalDatabase.DB_NAME -> hasDatabase = true
@@ -105,6 +111,12 @@ class BackupRestoreViewModel @Inject constructor(
                 stream.zipInputStream().use { inputStream ->
                     var entry = tryOrNull { inputStream.nextEntry }
                     while (entry != null) {
+                        val name = entry.name
+                        if (name.contains("..") || name.contains("/") || name.contains("\\")) {
+                            entry = tryOrNull { inputStream.nextEntry }
+                            continue
+                        }
+
                         when (entry.name) {
                             SETTINGS_FILENAME -> {
                                 try {
