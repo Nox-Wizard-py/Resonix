@@ -262,7 +262,9 @@ fun TopPlaylistScreen(
                 .build()
 
             val result = runCatching {
-                context.imageLoader.execute(request)
+                withContext(Dispatchers.IO) {
+                    context.imageLoader.execute(request)
+                }
             }.getOrNull()
 
             if (result != null) {
