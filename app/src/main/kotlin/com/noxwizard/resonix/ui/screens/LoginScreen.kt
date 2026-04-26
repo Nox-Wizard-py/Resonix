@@ -2,7 +2,6 @@ package com.noxwizard.resonix.ui.screens
 
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
@@ -62,8 +61,17 @@ fun LoginScreen(
             WebView(context).apply {
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView, url: String?) {
-                        loadUrl("javascript:Android.onRetrieveVisitorData(window.yt.config_.VISITOR_DATA)")
-                        loadUrl("javascript:Android.onRetrieveDataSyncId(window.yt.config_.DATASYNC_ID)")
+                        view.evaluateJavascript("window.yt.config_.VISITOR_DATA") { result ->
+                            if (result != null && result != "null") {
+                                // Result is a JSON string, so remove quotes if present
+                                visitorData = result.trim('"')
+                            }
+                        }
+                        view.evaluateJavascript("window.yt.config_.DATASYNC_ID") { result ->
+                            if (result != null && result != "null") {
+                                dataSyncId = result.trim('"').substringBefore("||")
+                            }
+                        }
 
                         if (url?.startsWith("https://music.youtube.com") == true) {
                             innerTubeCookie = CookieManager.getInstance().getCookie(url)
@@ -85,20 +93,6 @@ fun LoginScreen(
                     builtInZoomControls = true
                     displayZoomControls = false
                 }
-                addJavascriptInterface(object {
-                    @JavascriptInterface
-                    fun onRetrieveVisitorData(newVisitorData: String?) {
-                        if (newVisitorData != null) {
-                            visitorData = newVisitorData
-                        }
-                    }
-                    @JavascriptInterface
-                    fun onRetrieveDataSyncId(newDataSyncId: String?) {
-                        if (newDataSyncId != null) {
-                            dataSyncId = newDataSyncId.substringBefore("||")
-                        }
-                    }
-                }, "Android")
                 webView = this
                 loadUrl("https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com")
             }
