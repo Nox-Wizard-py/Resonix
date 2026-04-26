@@ -15,8 +15,8 @@ import me.bush.translator.Language
 
 class DiscordRPC(
     val context: Context,
-    token: String,
-) : KizzyRPC(token) {
+    private val rpcToken: String,
+) : KizzyRPC(rpcToken) {
 
     companion object {
         private const val APPLICATION_ID = "1165706613961789445"
@@ -349,7 +349,8 @@ class DiscordRPC(
             }
             Timber.tag(logtag).i("sending presence name=%s details=%s state=%s", activityName, activityDetails, activityState)
         } catch (ex: Exception) {
-            Timber.tag(logtag).e(ex, "updatePresence failed")
+            val safeMsg = ex.message?.replace(rpcToken, "***") ?: "Unknown error"
+            Timber.tag(logtag).e("updatePresence failed: %s", safeMsg)
             throw ex
         }
     }
@@ -358,12 +359,13 @@ class DiscordRPC(
         try {
             updateSong(song, currentPlaybackTimeMillis, isPaused).getOrThrow()
         } catch (ex: Exception) {
-            val msg = ex.message ?: ex.toString()
+            val msg = (ex.message ?: ex.toString()).replace(rpcToken, "***")
+            val safeStackTrace = ex.stackTraceToString().replace(rpcToken, "***")
             Timber.tag("DiscordRPC").e("refreshActivity updateSong failed: %s", msg)
             com.noxwizard.resonix.utils.GlobalLog.append(
                 android.util.Log.ERROR,
                 "DiscordRPC",
-                "refreshActivity updateSong failed: $msg\n${ex.stackTraceToString()}"
+                "refreshActivity updateSong failed: $msg\n$safeStackTrace"
             )
             throw ex
         }

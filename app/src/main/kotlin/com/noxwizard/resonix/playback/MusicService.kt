@@ -673,7 +673,7 @@ class MusicService :
                 isPausedProvider = { !player.isPlaying },
                 intervalProvider = { getPresenceIntervalMillis(this@MusicService) }
             )
-            Timber.tag("MusicService").d("Presence manager started with token=$key")
+            Timber.tag("MusicService").d("Presence manager started")
             lastPresenceToken = key
         } catch (ex: Exception) {
             Timber.tag("MusicService").e(ex, "Failed to start presence manager")
