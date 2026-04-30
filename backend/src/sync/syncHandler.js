@@ -111,16 +111,23 @@ function handleMessage(clientId, raw, ws) {
                 }));
 
                 if (room.currentTrackId) {
+                    const now = Date.now();
                     let currentPos = room.currentPositionMs || 0;
-                    if (room.isPlaying && room.lastPositionUpdate) {
-                        currentPos += (Date.now() - room.lastPositionUpdate);
+                    if (room.isPlaying && room.lastPositionUpdate && room.lastPositionUpdate > 0) {
+                        const elapsed = now - room.lastPositionUpdate;
+                        // Guard against clock skew / negative elapsed
+                        if (elapsed > 0 && elapsed < 3600000) {
+                            currentPos += elapsed;
+                        }
                     }
+                    currentPos = Math.max(0, currentPos);
+                    console.log(`[SNAPSHOT] Sending to late-join: trackId=${room.currentTrackId} pos=${currentPos}ms isPlaying=${room.isPlaying}`);
                     ws.send(JSON.stringify({
                         type: "sync_snapshot",
                         trackId: room.currentTrackId,
                         url: room.currentTrackUrl || "",
                         positionMs: currentPos,
-                        serverTime: Date.now(),
+                        serverTime: now,
                         isPlaying: !!room.isPlaying
                     }));
                 }
