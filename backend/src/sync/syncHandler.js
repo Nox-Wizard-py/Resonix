@@ -109,6 +109,21 @@ function handleMessage(clientId, raw, ws) {
                     resolvedName: username,
                     room: room
                 }));
+
+                if (room.currentTrackId) {
+                    let currentPos = room.currentPositionMs || 0;
+                    if (room.isPlaying && room.lastPositionUpdate) {
+                        currentPos += (Date.now() - room.lastPositionUpdate);
+                    }
+                    ws.send(JSON.stringify({
+                        type: "sync_snapshot",
+                        trackId: room.currentTrackId,
+                        url: room.currentTrackUrl || "",
+                        positionMs: currentPos,
+                        serverTime: Date.now(),
+                        isPlaying: !!room.isPlaying
+                    }));
+                }
             }
 
             roomManager.broadcastRoom(roomCode);
@@ -153,6 +168,16 @@ function handleMessage(clientId, raw, ws) {
                 return;
             }
 
+            if (msg.playbackEvent === 'play') {
+                room.isPlaying = true;
+                room.currentPositionMs = msg.positionMs || 0;
+                room.lastPositionUpdate = Date.now();
+            } else if (msg.playbackEvent === 'pause') {
+                room.isPlaying = false;
+                room.currentPositionMs = msg.positionMs || 0;
+                room.lastPositionUpdate = Date.now();
+            }
+
             // Broadcast to others in the room
             const sockets = roomManager.getRoomSockets(room.code);
             if (!sockets) return;
@@ -190,6 +215,12 @@ function handleMessage(clientId, raw, ws) {
                 console.log('[BLOCKED] Unauthorized track_change attempt:', sender.id);
                 return;
             }
+
+            room.currentTrackId = msg.trackId || '';
+            room.currentTrackUrl = msg.url || '';
+            room.isPlaying = true;
+            room.currentPositionMs = 0;
+            room.lastPositionUpdate = Date.now();
 
             console.log('[TRACK_CHANGE] Broadcasting from', sender.id, '- trackId:', msg.trackId, 'url:', msg.url);
 
@@ -231,6 +262,9 @@ function handleMessage(clientId, raw, ws) {
                 console.log('[BLOCKED] Unauthorized seek attempt:', sender.id);
                 return;
             }
+
+            room.currentPositionMs = msg.position || 0;
+            room.lastPositionUpdate = Date.now();
 
             const payload = JSON.stringify({
                 type: 'seek',
@@ -336,6 +370,11 @@ function handleMessage(clientId, raw, ws) {
 
             // Clear the server-side queue too
             room.queue = [];
+            room.currentTrackId = null;
+            room.currentTrackUrl = null;
+            room.isPlaying = false;
+            room.currentPositionMs = 0;
+            room.lastPositionUpdate = Date.now();
 
             console.log('[STOP] Host stopped playback, clearing room queue');
             const stopPayload = JSON.stringify({ type: 'stop' });
@@ -377,6 +416,38 @@ function handleMessage(clientId, raw, ws) {
             sockets.forEach(s => {
                 if (s !== ws && s.readyState === 1) {
                     s.send(queuePayload);
+                }
+            });
+            break;
+        }
+
+        case 'sync_update': {
+            const room = findRoomBySocket(ws);
+            if (!room) return;
+            const sender = room.users.find(u => u.id === (ws.userId || ws.id));
+            if (!sender) return;
+
+            const isAuthorized = (
+                sender.role === 'host' ||
+                sender.role === 'sudo' ||
+                room.playbackPermission === 'everyone'
+            );
+            if (!isAuthorized) return;
+
+            room.currentPositionMs = msg.positionMs || 0;
+            room.lastPositionUpdate = Date.now();
+
+            const payload = JSON.stringify({
+                type: 'sync_update',
+                positionMs: msg.positionMs,
+                serverTimeToExecute: Date.now()
+            });
+
+            const sockets = roomManager.getRoomSockets(room.code);
+            if (!sockets) return;
+            sockets.forEach(s => {
+                if (s !== ws && s.readyState === 1) {
+                    s.send(payload);
                 }
             });
             break;
