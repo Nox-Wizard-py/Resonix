@@ -135,6 +135,9 @@ function handleMessage(clientId, raw, ws) {
                             type: "sync_snapshot",
                             trackId: String(room.currentTrackId),
                             url: room.currentTrackUrl,
+                            title: room.currentTrackTitle || '',
+                            artist: room.currentTrackArtist || '',
+                            thumbnailUrl: room.currentTrackThumbnail || '',
                             positionMs: positionAtExecution,
                             serverTimeToExecute: serverTimeToExecute,
                             serverTime: now,
@@ -147,6 +150,9 @@ function handleMessage(clientId, raw, ws) {
                             type: "sync_snapshot",
                             trackId: String(room.currentTrackId),
                             url: room.currentTrackUrl,
+                            title: room.currentTrackTitle || '',
+                            artist: room.currentTrackArtist || '',
+                            thumbnailUrl: room.currentTrackThumbnail || '',
                             positionMs: currentPos,
                             serverTimeToExecute: now, // execute immediately
                             serverTime: now,
@@ -248,6 +254,9 @@ function handleMessage(clientId, raw, ws) {
 
             room.currentTrackId = msg.trackId || '';
             room.currentTrackUrl = msg.url || '';
+            room.currentTrackTitle = msg.title || '';
+            room.currentTrackArtist = msg.artist || '';
+            room.currentTrackThumbnail = msg.thumbnailUrl || '';
             room.isPlaying = true;
             room.currentPositionMs = 0;
             room.lastPositionUpdate = Date.now();
