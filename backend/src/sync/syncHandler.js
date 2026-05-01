@@ -113,23 +113,42 @@ function handleMessage(clientId, raw, ws) {
                 if (room.currentTrackId) {
                     const now = Date.now();
                     let currentPos = room.currentPositionMs || 0;
-                    if (room.isPlaying && room.lastPositionUpdate && room.lastPositionUpdate > 0) {
-                        const elapsed = now - room.lastPositionUpdate;
-                        // Guard against clock skew / negative elapsed
-                        if (elapsed > 0 && elapsed < 3600000) {
-                            currentPos += elapsed;
+
+                    if (room.isPlaying) {
+                        // ── BeatSync-style: schedule execution SYNC_BUFFER_MS in the future ──
+                        const SYNC_BUFFER_MS = 2000; // 2s headroom for load + seek
+                        const serverTimeToExecute = now + SYNC_BUFFER_MS;
+
+                        if (room.lastPositionUpdate && room.lastPositionUpdate > 0) {
+                            const elapsed = now - room.lastPositionUpdate;
+                            if (elapsed > 0 && elapsed < 3600000) currentPos += elapsed;
                         }
+                        currentPos = Math.max(0, currentPos);
+                        const positionAtExecution = currentPos + SYNC_BUFFER_MS;
+
+                        console.log(`[SNAPSHOT] late-join playing: trackId=${room.currentTrackId} posAtExec=${positionAtExecution}ms execAt=${serverTimeToExecute}`);
+                        ws.send(JSON.stringify({
+                            type: "sync_snapshot",
+                            trackId: room.currentTrackId,
+                            url: room.currentTrackUrl || "",
+                            positionMs: positionAtExecution,
+                            serverTimeToExecute: serverTimeToExecute,
+                            serverTime: now,
+                            isPlaying: true
+                        }));
+                    } else {
+                        // Paused: no forward projection needed, just send current position
+                        console.log(`[SNAPSHOT] late-join paused: trackId=${room.currentTrackId} pos=${currentPos}ms`);
+                        ws.send(JSON.stringify({
+                            type: "sync_snapshot",
+                            trackId: room.currentTrackId,
+                            url: room.currentTrackUrl || "",
+                            positionMs: currentPos,
+                            serverTimeToExecute: now, // execute immediately
+                            serverTime: now,
+                            isPlaying: false
+                        }));
                     }
-                    currentPos = Math.max(0, currentPos);
-                    console.log(`[SNAPSHOT] Sending to late-join: trackId=${room.currentTrackId} pos=${currentPos}ms isPlaying=${room.isPlaying}`);
-                    ws.send(JSON.stringify({
-                        type: "sync_snapshot",
-                        trackId: room.currentTrackId,
-                        url: room.currentTrackUrl || "",
-                        positionMs: currentPos,
-                        serverTime: now,
-                        isPlaying: !!room.isPlaying
-                    }));
                 }
             }
 
