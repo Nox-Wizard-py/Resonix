@@ -110,7 +110,11 @@ function handleMessage(clientId, raw, ws) {
                     room: room
                 }));
 
-                if (room.currentTrackId) {
+                if (!room.currentTrackId || !room.currentTrackUrl) {
+                    if (room.currentTrackId || room.currentTrackUrl) {
+                        console.warn(`[SYNC SNAPSHOT SKIPPED] Missing track data: id=${room.currentTrackId}, url=${room.currentTrackUrl}`);
+                    }
+                } else {
                     const now = Date.now();
                     let currentPos = room.currentPositionMs || 0;
 
@@ -129,8 +133,8 @@ function handleMessage(clientId, raw, ws) {
                         console.log(`[SNAPSHOT] late-join playing: trackId=${room.currentTrackId} posAtExec=${positionAtExecution}ms execAt=${serverTimeToExecute}`);
                         ws.send(JSON.stringify({
                             type: "sync_snapshot",
-                            trackId: room.currentTrackId,
-                            url: room.currentTrackUrl || "",
+                            trackId: String(room.currentTrackId),
+                            url: room.currentTrackUrl,
                             positionMs: positionAtExecution,
                             serverTimeToExecute: serverTimeToExecute,
                             serverTime: now,
@@ -141,8 +145,8 @@ function handleMessage(clientId, raw, ws) {
                         console.log(`[SNAPSHOT] late-join paused: trackId=${room.currentTrackId} pos=${currentPos}ms`);
                         ws.send(JSON.stringify({
                             type: "sync_snapshot",
-                            trackId: room.currentTrackId,
-                            url: room.currentTrackUrl || "",
+                            trackId: String(room.currentTrackId),
+                            url: room.currentTrackUrl,
                             positionMs: currentPos,
                             serverTimeToExecute: now, // execute immediately
                             serverTime: now,
