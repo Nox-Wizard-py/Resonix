@@ -202,8 +202,11 @@ Constantly.
     </tr>
     <tr>
       <td><a href="https://github.com/aleksey-saenko/MusicRecognizer"><strong>MusicRecognizer</strong></a></td>
-      <td>Music recognition feature & Shazam API integration</td>
+      <td>Music recognition feature & Shazam API integration.</td>
     </tr>
+    <tr>
+      <td><a href="https://github.com/freeman-jiang/beatsync"><strong>Beatsync</strong></a></td>
+      <td>Listen Together - Real-time audio sync across devices.</td>
   </tbody>
 </table>
 
