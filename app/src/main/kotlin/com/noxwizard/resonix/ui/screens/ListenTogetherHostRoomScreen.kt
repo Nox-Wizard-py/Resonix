@@ -107,6 +107,7 @@ fun ListenTogetherHostRoomScreen(
     }
 
     val state = uiState!!
+    val rtt by ListenTogetherManager.rtt.collectAsStateWithLifecycle()
     var selectedUser by remember { mutableStateOf<RoomUser?>(null) }
 
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -316,6 +317,8 @@ fun ListenTogetherHostRoomScreen(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                 )
+                val offset by ListenTogetherManager.rtt.collectAsStateWithLifecycle()
+                val actualOffset by com.noxwizard.resonix.playback.PlaybackSyncCoordinator.offsetFlow.collectAsStateWithLifecycle()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -323,8 +326,8 @@ fun ListenTogetherHostRoomScreen(
                     horizontalArrangement = Arrangement.spacedBy(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    NerdStat(label = "RTT", value = state.rtt)
-                    NerdStat(label = "Offset", value = state.offset)
+                    NerdStat(label = "RTT", value = "${rtt} ms")
+                    NerdStat(label = "Offset", value = "${if (actualOffset > 0) "+" else ""}${actualOffset}ms")
                     NerdStat(label = "NTP", value = state.ntpSynced)
                 }
             }
