@@ -16,12 +16,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
+import com.noxwizard.resonix.playback.PlaybackSyncCoordinator
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+
 @Composable
 fun ListenTogetherSyncCompleteDialog(
-    onEnterRoom: () -> Unit,
-    rtt: String = "11ms",
-    offset: String = "+0.7ms"
+    onEnterRoom: () -> Unit
 ) {
+    val rtt by PlaybackSyncCoordinator.rttFlow.collectAsState()
+    val offset by PlaybackSyncCoordinator.offsetFlow.collectAsState()
     Dialog(
         onDismissRequest = {}, // enforce button click
         properties = DialogProperties(
@@ -96,7 +100,7 @@ fun ListenTogetherSyncCompleteDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = rtt,
+                        text = "${rtt}ms",
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -108,7 +112,7 @@ fun ListenTogetherSyncCompleteDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = offset,
+                        text = "${if (offset > 0) "+" else ""}${offset}ms",
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

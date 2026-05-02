@@ -34,7 +34,6 @@ data class RoomUiState(
     val timingOffsetMs: Int,
     val playbackPermission: PlaybackPermission,
     val isLocalUserHost: Boolean,
-    val rtt: String = "24ms",
     val offset: String = "+0ms",
     val ntpSynced: String = "Yes"
 )
@@ -228,7 +227,7 @@ class ListenTogetherViewModel @Inject constructor(
         val timingOffset = SocketListenTogetherRepository.roomState.value?.timingOffsetMs?.toLong() ?: 0L
         
         isApplyingRemoteEvent = true
-        when (event) {
+         when (event) {
             is PlaybackEvent.Play -> {
                 // To play a specific track if we aren't on it (basic implementation)
                 if (pc.player.currentMediaItem?.mediaId != event.trackId && event.trackId.isNotEmpty()) {
@@ -243,6 +242,12 @@ class ListenTogetherViewModel @Inject constructor(
             }
             is PlaybackEvent.Seek -> {
                 pc.player.seekTo(event.positionMs + timingOffset)
+            }
+            is PlaybackEvent.TrackChange -> {
+                // TrackChange is handled in PlayerConnection
+            }
+            else -> {
+                // PlayAt, PauseAt, TrackReady are handled directly in PlayerConnection
             }
         }
         isApplyingRemoteEvent = false

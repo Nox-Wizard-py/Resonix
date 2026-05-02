@@ -20,12 +20,21 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 
+import com.noxwizard.resonix.playback.PlaybackSyncCoordinator
+
 @Composable
 fun ListenTogetherCalibratingDialog(
     onDismissRequest: () -> Unit,
     hasError: Boolean = false
 ) {
     var activeSegment by remember { mutableIntStateOf(0) }
+    
+    val pairs by PlaybackSyncCoordinator.pairsSent.collectAsState()
+    val pure by PlaybackSyncCoordinator.pureCount.collectAsState()
+    val impure by PlaybackSyncCoordinator.impureCount.collectAsState()
+    val measurements by PlaybackSyncCoordinator.measurementCount.collectAsState()
+    val ws by PlaybackSyncCoordinator.wsState.collectAsState()
+    val audio by PlaybackSyncCoordinator.audioState.collectAsState()
 
     LaunchedEffect(Unit) {
         while (activeSegment < 8) {
@@ -119,11 +128,11 @@ fun ListenTogetherCalibratingDialog(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Stats Table
-                StatRow("pairs sent", "16")
-                StatRow("pure / impure", "7 / 3")
-                StatRow("measurements", "7 / 16")
-                StatRow("audio", "loaded")
-                StatRow("ws", "open")
+                StatRow("pairs sent", "$pairs")
+                StatRow("pure / impure", "$pure / $impure")
+                StatRow("measurements", "$measurements")
+                StatRow("audio", audio)
+                StatRow("ws", ws)
             }
         }
     }
