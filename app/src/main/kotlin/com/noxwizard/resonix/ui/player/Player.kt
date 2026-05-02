@@ -548,15 +548,22 @@ fun BottomSheetPlayer(
                     // Apply same logic to pure black background
                     Color.Black.copy(alpha = 1f - fadeProgress)
                 } else {
-                    // Apply same logic to normal theme
+                    // Normal theme fallback
                     MaterialTheme.colorScheme.surface.copy(alpha = 1f - fadeProgress)
                 }
             }
         },
         onDismiss = {
-            playerConnection.service.clearAutomix()
-            playerConnection.player.stop()
-            playerConnection.player.clearMediaItems()
+            if (ListenTogetherManager.roomState.value != null && !ListenTogetherManager.isHostOrSudo()) {
+                // Guest → local stop only
+                playerConnection.stopLocallyWithoutBroadcast()
+                return@BottomSheet
+            }
+
+            if (ListenTogetherManager.roomState.value != null) {
+                ListenTogetherManager.broadcastStop()
+            }
+            playerConnection.stopLocallyWithoutBroadcast()
         },
         collapsedContent = {
             MiniPlayer(

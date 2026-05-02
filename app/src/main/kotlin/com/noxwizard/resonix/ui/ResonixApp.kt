@@ -556,8 +556,11 @@ fun ResonixApp(
                             mediaItem: MediaItem?,
                             reason: Int,
                         ) {
-                            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
-                                mediaItem != null &&
+                            if (mediaItem == null) {
+                                if (!playerBottomSheetState.isDismissed) {
+                                    playerBottomSheetState.dismiss()
+                                }
+                            } else if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
                                 playerBottomSheetState.isDismissed
                             ) {
                                 playerBottomSheetState.collapseSoft()

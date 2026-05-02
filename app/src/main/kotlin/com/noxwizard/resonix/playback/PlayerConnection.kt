@@ -49,6 +49,7 @@ class PlayerConnection(
     val roomVolume: Float get() = _roomVolume
     var isMuted: Boolean = false
     val isMutedFlow = MutableStateFlow(false)
+    @Volatile private var isApplyingRemoteTrackChange = false
 
     fun setRoomVolume(value: Float) {
         if (blockIfGuest()) return
@@ -61,6 +62,14 @@ class PlayerConnection(
         isMuted = !isMuted
         isMutedFlow.value = isMuted
         player.volume = if (isMuted) 0f else _roomVolume
+    }
+
+    fun stopLocallyWithoutBroadcast() {
+        isApplyingRemoteTrackChange = true
+        service.clearAutomix()
+        player.stop()
+        player.clearMediaItems()
+        isApplyingRemoteTrackChange = false
     }
 
     private fun blockIfGuest(): Boolean {
@@ -111,6 +120,14 @@ class PlayerConnection(
     val error = MutableStateFlow<PlaybackException?>(null)
     val waitingForNetworkConnection = service.waitingForNetworkConnection
 
+    val isWaitingForGuests = MutableStateFlow(false)
+    private var guestWaitingForTrackId: String? = null
+    private var hostWaitingForTrackId: String? = null
+    private var hostIsReadyForTrack: String? = null
+    private val readyGuests = mutableSetOf<String>()
+    private val requiredGuests = mutableSetOf<String>()
+    private var playTimeoutJob: kotlinx.coroutines.Job? = null
+
     init {
         player.addListener(this)
 
@@ -125,6 +142,7 @@ class PlayerConnection(
         repeatMode.value = player.repeatMode
 
         connectionScope.launch {
+            android.util.Log.d("PLAYER", "[TrackChange] Collector coroutine started")
             ListenTogetherManager.roomState.collect { roomState ->
                 updateCanSkipPreviousAndNext()
                 updateCanControl()
@@ -134,6 +152,278 @@ class PlayerConnection(
                     _roomVolume = remoteVolume
                     player.volume = if (isMuted) 0f else _roomVolume
                 }
+                if (isWaitingForGuests.value && roomState != null) {
+                    val currentGuests = roomState.users.filter { it.role == "guest" }.map { it.userId }
+                    requiredGuests.retainAll(currentGuests.toSet())
+                    checkHostAndGuestsReady()
+                }
+                // Start / stop NTP clock probing with room lifecycle
+                if (roomState != null) {
+                    PlaybackSyncCoordinator.init(
+                        coroutineScope = connectionScope,
+                        playerProvider = { player as androidx.media3.exoplayer.ExoPlayer },
+                        isPlayingProvider = { player.isPlaying },
+                    )
+                    if (!PlaybackSyncCoordinator.isSynced) PlaybackSyncCoordinator.startProbing()
+                } else {
+                    PlaybackSyncCoordinator.stop()
+                }
+            }
+        }
+
+        connectionScope.launch {
+            android.util.Log.d("PLAYER", "[TrackChange] Collector coroutine started")
+            SocketListenTogetherRepository.playbackEvents.collect { event ->
+                android.util.Log.d("PLAYER", "[TrackChange] Received event: $event")
+                if (event is PlaybackEvent.TrackChange) {
+                    android.util.Log.d("PLAYER", "TrackChange triggered for trackId=${event.trackId} url=${event.url}")
+                    if (!ListenTogetherManager.canControlPlayback()) {
+                        val currentId = player.currentMediaItem?.mediaId
+                        if (currentId != event.trackId) {
+                            val resonixMetadata = com.noxwizard.resonix.models.MediaMetadata(
+                                id = event.trackId,
+                                title = event.title,
+                                artists = listOf(
+                                    com.noxwizard.resonix.models.MediaMetadata.Artist(
+                                        id = null,
+                                        name = event.artist
+                                    )
+                                ),
+                                duration = -1,
+                                thumbnailUrl = event.thumbnailUrl.ifEmpty { null }
+                            )
+                            val mediaItem = MediaItem.Builder()
+                                .setMediaId(event.trackId)
+                                .setUri(event.trackId) // Force local stream resolution via trackId
+                                .setCustomCacheKey(event.trackId)
+                                .setTag(resonixMetadata)
+                                .setMediaMetadata(
+                                    androidx.media3.common.MediaMetadata.Builder()
+                                        .setTitle(event.title)
+                                        .setArtist(event.artist)
+                                        .setArtworkUri(if (event.thumbnailUrl.isNotEmpty()) android.net.Uri.parse(event.thumbnailUrl) else null)
+                                        .setMediaType(androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC)
+                                        .build()
+                                )
+                                .build()
+
+                            isApplyingRemoteTrackChange = true
+                            withContext(Dispatchers.Main) {
+                                guestWaitingForTrackId = event.trackId
+                                isWaitingForGuests.value = true
+                                player.playWhenReady = false
+
+                                val queueSize = player.mediaItemCount
+                                var targetIndex = -1
+                                for (i in 0 until queueSize) {
+                                    if (player.getMediaItemAt(i).mediaId == event.trackId) {
+                                        targetIndex = i
+                                        break
+                                    }
+                                }
+
+                                if (targetIndex >= 0) {
+                                    player.seekToDefaultPosition(targetIndex)
+                                    player.prepare()
+                                } else {
+                                    player.stop()
+                                    player.clearMediaItems()
+                                    player.setMediaItem(mediaItem)
+                                    player.prepare()
+                                }
+                                
+                                if (player.playbackState == androidx.media3.common.Player.STATE_READY) {
+                                    guestWaitingForTrackId = null
+                                    SocketListenTogetherRepository.sendTrackReady(event.trackId)
+                                }
+                            }
+                            isApplyingRemoteTrackChange = false
+
+                            android.util.Log.d("PLAYER", "Guest started playback for ${event.trackId}")
+                        } else {
+                            android.util.Log.d("PLAYER", "TrackChange skipped - same trackId already loaded")
+                            isApplyingRemoteTrackChange = true
+                            withContext(Dispatchers.Main) {
+                                guestWaitingForTrackId = event.trackId
+                                isWaitingForGuests.value = true
+                                player.playWhenReady = false
+                                player.prepare()
+                                
+                                if (player.playbackState == androidx.media3.common.Player.STATE_READY) {
+                                    guestWaitingForTrackId = null
+                                    SocketListenTogetherRepository.sendTrackReady(event.trackId)
+                                }
+                            }
+                            isApplyingRemoteTrackChange = false
+                        }
+                    } else {
+                        android.util.Log.d("PLAYER", "TrackChange skipped - local user is host/control")
+                    }
+                } else if (event is PlaybackEvent.Seek) {
+                    if (!ListenTogetherManager.canControlPlayback()) {
+                        val corrected = PlaybackSyncCoordinator.correctedPosition(event.positionMs, event.timestamp)
+                        withContext(Dispatchers.Main) {
+                            player.seekTo(corrected)
+                        }
+                    }
+                } else if (event is PlaybackEvent.PlayAt) {
+                    if (!ListenTogetherManager.canControlPlayback()) {
+                        val waitMs = PlaybackSyncCoordinator.estimatedWaitMs(event.startTime)
+                        withContext(Dispatchers.Main) {
+                            when {
+                                waitMs > 50 -> {
+                                    // Enough headroom — schedule future play
+                                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                        isWaitingForGuests.value = false
+                                        playbackState.value = player.playbackState
+                                        player.playWhenReady = true
+                                    }, waitMs)
+                                }
+                                waitMs < -50 -> {
+                                    // Already late — seek forward by the missed amount
+                                    player.seekTo((-waitMs).coerceAtLeast(0L))
+                                    isWaitingForGuests.value = false
+                                    playbackState.value = player.playbackState
+                                    player.playWhenReady = true
+                                }
+                                else -> {
+                                    // Within ±50 ms tolerance — play immediately
+                                    isWaitingForGuests.value = false
+                                    playbackState.value = player.playbackState
+                                    player.playWhenReady = true
+                                }
+                            }
+                        }
+                    }
+                } else if (event is PlaybackEvent.PauseAt) {
+                    if (!ListenTogetherManager.canControlPlayback()) {
+                        val corrected = PlaybackSyncCoordinator.correctedPosition(event.positionMs, event.timestamp)
+                        withContext(Dispatchers.Main) {
+                            player.seekTo(corrected)
+                            player.pause()
+                        }
+                    }
+                } else if (event is PlaybackEvent.SyncUpdate) {
+                    if (!ListenTogetherManager.canControlPlayback()) {
+                        PlaybackSyncCoordinator.applyDriftCorrection(
+                            expectedPositionMs = event.positionMs,
+                            serverTimeToExecute = event.serverTimeToExecute,
+                        )
+                    }
+                } else if (event is PlaybackEvent.SyncSnapshot) {
+                    // SyncSnapshot is handled exclusively by MusicService which builds
+                    // the MediaItem correctly with setCustomCacheKey + setUri(trackId).
+                    // Do NOT duplicate here — it causes a "No media id" crash because
+                    // the raw stream URL cannot be set as the URI for ResolvingDataSource.
+                    android.util.Log.d("PLAYER", "[SyncSnapshot] delegated to MusicService handler — skipping PlayerConnection handling")
+                } else if (event is PlaybackEvent.TrackReady) {
+                    if (ListenTogetherManager.canControlPlayback()) {
+                        if (event.trackId == hostIsReadyForTrack || event.trackId == hostWaitingForTrackId) {
+                            readyGuests.add(event.userId)
+                            checkHostAndGuestsReady()
+                        }
+                    }
+                } else if (event is PlaybackEvent.Stop) {
+                    withContext(Dispatchers.Main) {
+                        playTimeoutJob?.cancel()
+                        isWaitingForGuests.value = false
+                        guestWaitingForTrackId = null
+                        stopLocallyWithoutBroadcast()
+                    }
+                } else if (event is PlaybackEvent.QueueUpdate) {
+                    if (!ListenTogetherManager.canControlPlayback() && event.queue.isNotEmpty()) {
+                        val currentTrackId = player.currentMediaItem?.mediaId
+                        val currentPos = player.currentPosition
+
+                        val mediaItems = event.queue.map { item ->
+                            val meta = com.noxwizard.resonix.models.MediaMetadata(
+                                id = item.trackId,
+                                title = item.title,
+                                artists = listOf(
+                                    com.noxwizard.resonix.models.MediaMetadata.Artist(
+                                        id = null,
+                                        name = item.artist
+                                    )
+                                ),
+                                duration = -1,
+                                thumbnailUrl = item.thumbnailUrl.ifEmpty { null }
+                            )
+                            MediaItem.Builder()
+                                .setMediaId(item.trackId)
+                                .setUri(item.trackId)
+                                .setCustomCacheKey(item.trackId)
+                                .setTag(meta)
+                                .setMediaMetadata(
+                                    androidx.media3.common.MediaMetadata.Builder()
+                                        .setTitle(item.title)
+                                        .setArtist(item.artist)
+                                        .setArtworkUri(if (item.thumbnailUrl.isNotEmpty()) android.net.Uri.parse(item.thumbnailUrl) else null)
+                                        .setMediaType(androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC)
+                                        .build()
+                                )
+                                .build()
+                        }
+
+                        val targetIndex = event.queue.indexOfFirst { it.trackId == currentTrackId }
+                            .takeIf { it >= 0 } ?: 0
+
+                        withContext(Dispatchers.Main) {
+                            isApplyingRemoteTrackChange = true
+                            player.setMediaItems(mediaItems, targetIndex, currentPos)
+                            if (guestWaitingForTrackId != null) {
+                                player.prepare()
+                            }
+                            isApplyingRemoteTrackChange = false
+                        }
+                        android.util.Log.d("PLAYER", "QueueUpdate applied: ${event.queue.size} tracks, resuming at index=$targetIndex")
+                    }
+                }
+            }
+        }
+
+        // Host: broadcast current position every 2.5 s so guests can drift-correct
+        connectionScope.launch(Dispatchers.IO) {
+            while (true) {
+                kotlinx.coroutines.delay(2500)
+                val room = ListenTogetherManager.roomState.value ?: continue
+                if (!ListenTogetherManager.canControlPlayback()) continue
+                
+                val (playing, pos) = withContext(Dispatchers.Main) {
+                    player.isPlaying to player.currentPosition
+                }
+                
+                if (!playing) continue
+                SocketListenTogetherRepository.sendSyncUpdate(pos)
+            }
+        }
+    }
+
+    private fun checkHostAndGuestsReady() {
+        if (hostIsReadyForTrack != null) {
+            if (readyGuests.containsAll(requiredGuests)) {
+                forcePlayTrack(hostIsReadyForTrack!!)
+            }
+        }
+    }
+
+    private fun forcePlayTrack(trackId: String) {
+        if (isWaitingForGuests.value) {
+            playTimeoutJob?.cancel()
+
+            val startTime = System.currentTimeMillis() + 500
+            SocketListenTogetherRepository.sendPlayAt(startTime)
+
+            val delay = startTime - System.currentTimeMillis()
+            if (delay > 0) {
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    isWaitingForGuests.value = false
+                    playbackState.value = player.playbackState
+                    player.playWhenReady = true
+                }, delay)
+            } else {
+                isWaitingForGuests.value = false
+                playbackState.value = player.playbackState
+                player.playWhenReady = true
             }
         }
     }
@@ -230,6 +520,7 @@ class PlayerConnection(
     fun seekTo(position: Long) {
         if (blockIfGuest()) return
         player.seekTo(position)
+        ListenTogetherManager.broadcastSeek(position)
     }
 
     fun seekTo(windowIndex: Int, positionMs: Long) {
@@ -273,15 +564,52 @@ class PlayerConnection(
     }
 
     override fun onPlaybackStateChanged(state: Int) {
-        playbackState.value = state
+        if (isWaitingForGuests.value) {
+            playbackState.value = androidx.media3.common.Player.STATE_BUFFERING
+        } else {
+            playbackState.value = state
+        }
         error.value = player.playerError
+
+        val currentId = player.currentMediaItem?.mediaId ?: return
+        if (state == androidx.media3.common.Player.STATE_READY) {
+            if (!ListenTogetherManager.canControlPlayback()) {
+                if (currentId == guestWaitingForTrackId) {
+                    guestWaitingForTrackId = null
+                    SocketListenTogetherRepository.sendTrackReady(currentId)
+                }
+            } else {
+                if (currentId == hostWaitingForTrackId) {
+                    hostWaitingForTrackId = null
+                    hostIsReadyForTrack = currentId
+                    checkHostAndGuestsReady()
+                }
+            }
+        }
     }
 
     override fun onPlayWhenReadyChanged(
         newPlayWhenReady: Boolean,
         reason: Int,
     ) {
+        if (newPlayWhenReady && isWaitingForGuests.value) {
+            player.playWhenReady = false
+            return
+        }
+        
         playWhenReady.value = newPlayWhenReady
+        if (!isApplyingRemoteTrackChange && ListenTogetherManager.roomState.value != null && ListenTogetherManager.canControlPlayback()) {
+            if (!newPlayWhenReady) {
+                if (!isWaitingForGuests.value && reason != androidx.media3.common.Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
+                    SocketListenTogetherRepository.sendPauseAt(player.currentPosition)
+                }
+            } else {
+                if (!isWaitingForGuests.value) {
+                    val trackId = player.currentMediaItem?.mediaId ?: ""
+                    ListenTogetherManager.broadcastPlay(trackId, player.currentPosition)
+                }
+            }
+        }
     }
 
     override fun onMediaItemTransition(
@@ -292,6 +620,55 @@ class PlayerConnection(
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()
+
+        if (!isApplyingRemoteTrackChange && ListenTogetherManager.roomState.value != null && ListenTogetherManager.canControlPlayback() && mediaItem != null) {
+            val metadata = mediaItem.metadata
+            if (metadata != null) {
+                android.util.Log.d("PLAYER", "[TrackChange] Host broadcasting trackId=${metadata.id} url=${mediaItem.localConfiguration?.uri}")
+                val fallbackThumbnail = mediaItem.mediaMetadata.artworkUri?.toString() ?: ""
+                ListenTogetherManager.broadcastTrackChange(
+                    trackId = metadata.id,
+                    url = mediaItem.localConfiguration?.uri?.toString() ?: "",
+                    title = metadata.title,
+                    artist = metadata.artists.firstOrNull()?.name ?: "",
+                    thumbnailUrl = metadata.thumbnailUrl ?: fallbackThumbnail,
+                    startAt = 0 // Deprecated/ignored
+                )
+
+                val room = ListenTogetherManager.roomState.value
+                val guests = room?.users?.filter { it.role == "guest" }?.map { it.userId } ?: emptyList()
+
+                if (guests.isNotEmpty()) {
+                    isWaitingForGuests.value = true
+                    playbackState.value = androidx.media3.common.Player.STATE_BUFFERING
+                    player.playWhenReady = false
+
+                    hostWaitingForTrackId = metadata.id
+                    hostIsReadyForTrack = null
+                    readyGuests.clear()
+                    requiredGuests.clear()
+                    requiredGuests.addAll(guests)
+
+                    if (player.playbackState == androidx.media3.common.Player.STATE_READY) {
+                        hostWaitingForTrackId = null
+                        hostIsReadyForTrack = metadata.id
+                        checkHostAndGuestsReady()
+                    }
+
+                    playTimeoutJob?.cancel()
+                    playTimeoutJob = connectionScope.launch {
+                        kotlinx.coroutines.delay(10000)
+                        if (isWaitingForGuests.value) {
+                            val trackId = hostWaitingForTrackId ?: hostIsReadyForTrack
+                            if (trackId != null) {
+                                hostIsReadyForTrack = trackId
+                                forcePlayTrack(trackId)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun onTimelineChanged(
@@ -303,6 +680,39 @@ class PlayerConnection(
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()
+
+        // Broadcast queue snapshot to guests when host's queue changes
+        if (!isApplyingRemoteTrackChange &&
+            ListenTogetherManager.roomState.value != null &&
+            ListenTogetherManager.canControlPlayback()
+        ) {
+            val sharedQueue = buildSharedQueue()
+            // Prevent guests from wiping the room queue when they close their local player
+            if (sharedQueue.isNotEmpty() || ListenTogetherManager.isHostOrSudo()) {
+                ListenTogetherManager.broadcastQueueUpdate(sharedQueue)
+            }
+        }
+    }
+
+    private fun buildSharedQueue(): List<SharedQueueItem> {
+        val count = player.mediaItemCount
+        val items = mutableListOf<SharedQueueItem>()
+        for (i in 0 until count) {
+            val item = player.getMediaItemAt(i)
+            val meta = item.metadata
+            if (meta != null) {
+                items.add(
+                    SharedQueueItem(
+                        trackId = item.mediaId,
+                        url = item.localConfiguration?.uri?.toString() ?: "",
+                        title = meta.title,
+                        artist = meta.artists.firstOrNull()?.name ?: "",
+                        thumbnailUrl = meta.thumbnailUrl ?: item.mediaMetadata.artworkUri?.toString() ?: ""
+                    )
+                )
+            }
+        }
+        return items
     }
 
     override fun onShuffleModeEnabledChanged(enabled: Boolean) {
