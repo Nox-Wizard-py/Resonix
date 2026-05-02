@@ -73,6 +73,11 @@ object ListenTogetherManager {
     // Socket repo is the live source of truth for room presence
     val roomState: StateFlow<RemoteRoomState?> = SocketListenTogetherRepository.roomState
 
+    // Shared queue state — exposed for UI consumption
+    val sharedQueue = SocketListenTogetherRepository.sharedQueue
+
+    val rtt = PlaybackSyncCoordinator.rttFlow
+
     // Legacy local events flow (kept for ViewModel compatibility)
     private val _events = MutableSharedFlow<RoomEvent>()
     val events = _events.asSharedFlow()
@@ -98,6 +103,12 @@ object ListenTogetherManager {
         }
         android.util.Log.d("AUTH_UI", "[canControlPlayback] role=$roleLabel canControl=$result permission=${state.playbackPermission}")
         return result
+    }
+
+    fun isHostOrSudo(): Boolean {
+        val state = roomState.value ?: return true
+        val user = state.users.find { it.userId == localUserId } ?: return false
+        return user.isHost || user.hasTempControl
     }
 
     private var _serverUrl: String = "wss://resonix-0pvb.onrender.com/ws"
@@ -221,8 +232,21 @@ object ListenTogetherManager {
     }
 
     fun broadcastSeek(positionMs: Long) {
-        SocketListenTogetherRepository.sendPlaybackSync("seek", "", positionMs)
+        SocketListenTogetherRepository.sendSeek(positionMs)
         scope.launch { _events.emit(RoomEvent.Seek(positionMs)) }
+    }
+
+    fun broadcastTrackChange(trackId: String, url: String, title: String, artist: String, thumbnailUrl: String, startAt: Long) {
+        SocketListenTogetherRepository.sendTrackChange(trackId, url, title, artist, thumbnailUrl, startAt)
+        scope.launch { _events.emit(RoomEvent.TrackChanged(trackId)) }
+    }
+
+    fun broadcastStop() {
+        SocketListenTogetherRepository.sendStop()
+    }
+
+    fun broadcastQueueUpdate(queue: List<SharedQueueItem>) {
+        SocketListenTogetherRepository.sendQueueUpdate(queue)
     }
 
     // ── Legacy helper (kept for QR scanner dup-resolve UX) ───────────────────
