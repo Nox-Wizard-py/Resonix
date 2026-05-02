@@ -553,6 +553,23 @@ function handleMessage(clientId, raw, ws) {
             break;
         }
 
+        case 'ntp_probe': {
+            const { t0 } = msg;
+            if (t0 === undefined) return;
+
+            const t1 = Date.now();
+
+            if (ws.readyState === 1) {
+                ws.send(JSON.stringify({
+                    type: "ntp_response",
+                    t0: t0,
+                    t1: t1,
+                    t2: Date.now()
+                }));
+            }
+            break;
+        }
+
         case 'set_playback_permission': {
             const room = findRoomBySocket(ws);
             if (!room) return;

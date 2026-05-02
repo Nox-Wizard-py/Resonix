@@ -55,6 +55,7 @@ class ListenTogetherViewModel @Inject constructor(
 
     private val roomState = ListenTogetherManager.roomState
     private var playerConnection: PlayerConnection? = null
+    private var pendingPlayJob: kotlinx.coroutines.Job? = null
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private val playerListener = object : androidx.media3.common.Player.Listener {
@@ -227,21 +228,40 @@ class ListenTogetherViewModel @Inject constructor(
         val timingOffset = SocketListenTogetherRepository.roomState.value?.timingOffsetMs?.toLong() ?: 0L
         
         isApplyingRemoteEvent = true
-         when (event) {
+        pendingPlayJob?.cancel()
+        pendingPlayJob = null
+
+        when (event) {
             is PlaybackEvent.Play -> {
-                // To play a specific track if we aren't on it (basic implementation)
                 if (pc.player.currentMediaItem?.mediaId != event.trackId && event.trackId.isNotEmpty()) {
                     // Real app should lookup song and play, but for now we just play what we have
                 }
-                pc.player.seekTo(event.positionMs + timingOffset)
-                pc.player.play()
+                val waitMs = com.noxwizard.resonix.playback.PlaybackSyncCoordinator.estimatedWaitMs(event.serverTimeToExecute)
+                val seekPosition = if (waitMs < 0) {
+                    event.positionMs - waitMs // -waitMs is positive, so it advances the position
+                } else {
+                    event.positionMs
+                }
+
+                pc.player.seekTo(seekPosition + timingOffset)
+
+                if (waitMs > 0) {
+                    pendingPlayJob = viewModelScope.launch {
+                        kotlinx.coroutines.delay(waitMs)
+                        pc.player.play()
+                    }
+                } else {
+                    pc.player.play()
+                }
             }
             is PlaybackEvent.Pause -> {
                 pc.player.pause()
-                pc.player.seekTo(event.positionMs + timingOffset)
+                val correctedPosition = com.noxwizard.resonix.playback.PlaybackSyncCoordinator.correctedPosition(event.positionMs, event.serverTimeToExecute)
+                pc.player.seekTo(correctedPosition + timingOffset)
             }
             is PlaybackEvent.Seek -> {
-                pc.player.seekTo(event.positionMs + timingOffset)
+                val correctedPosition = com.noxwizard.resonix.playback.PlaybackSyncCoordinator.correctedPosition(event.positionMs, event.timestamp)
+                pc.player.seekTo(correctedPosition + timingOffset)
             }
             is PlaybackEvent.TrackChange -> {
                 // TrackChange is handled in PlayerConnection
