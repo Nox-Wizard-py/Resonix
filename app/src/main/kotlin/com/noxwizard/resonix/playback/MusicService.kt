@@ -629,6 +629,95 @@ class MusicService :
                 }
             }
         }
+
+        // Mid-session join: handle SyncSnapshot at service level so it works
+        // even before the player UI / PlayerConnection is open.
+        // Uses syncSnapshotEvent (replay=1) — guaranteed delivery even if this
+        // coroutine starts slightly after the snapshot was emitted.
+        scope.launch {
+            SocketListenTogetherRepository.syncSnapshotEvent.collect { event ->
+                android.util.Log.d("MusicService", "[SyncSnapshot] received trackId=${event.trackId} url=${event.url} pos=${event.positionMs} isPlaying=${event.isPlaying}")
+
+                if (event.url.isBlank()) {
+                    android.util.Log.w("MusicService", "[SyncSnapshot] skipped — url is empty")
+                    return@collect
+                }
+
+                // The host never receives a sync_snapshot from the backend, so any device
+                // that does receive it is a guest. No need for role check.
+                
+                withContext(Dispatchers.Main) {
+                    val safeId = if (event.trackId.isBlank()) event.url else event.trackId
+
+                    val meta = com.noxwizard.resonix.models.MediaMetadata(
+                        id = safeId,
+                        title = event.title.ifEmpty { "Live Sync" },
+                        artists = listOf(com.noxwizard.resonix.models.MediaMetadata.Artist(null, event.artist.ifEmpty { "Listen Together" })),
+                        duration = -1,
+                        thumbnailUrl = event.thumbnailUrl.ifEmpty { null }
+                    )
+
+                    val mediaItem = MediaItem.Builder()
+                        .setMediaId(safeId)
+                        .setUri(safeId) // Must be safeId for ResolvingDataSource to intercept
+                        .setCustomCacheKey(safeId)
+                        .setTag(meta)
+                        .setMediaMetadata(
+                            androidx.media3.common.MediaMetadata.Builder()
+                                .setTitle(event.title.ifEmpty { "Live Sync" })
+                                .setArtist(event.artist.ifEmpty { "Listen Together" })
+                                .setArtworkUri(if (event.thumbnailUrl.isNotEmpty()) android.net.Uri.parse(event.thumbnailUrl) else null)
+                                .setMediaType(androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC)
+                                .build()
+                        )
+                        .build()
+
+                    // One-shot listener: seek + play only once ExoPlayer is READY
+                    val listener = object : Player.Listener {
+                        override fun onPlaybackStateChanged(playbackState: Int) {
+                            if (playbackState == Player.STATE_READY) {
+                                player.removeListener(this)
+                                
+                                if (event.isPlaying) {
+                                    // Calculate how much time is left until serverTimeToExecute NOW (after buffering)
+                                    val remainingWaitMs = PlaybackSyncCoordinator.estimatedWaitMs(event.serverTimeToExecute)
+                                    
+                                    val finalSeekPosition = if (remainingWaitMs < 0) {
+                                        event.positionMs + (-remainingWaitMs)
+                                    } else {
+                                        event.positionMs
+                                    }
+                                    
+                                    player.seekTo(finalSeekPosition)
+                                    
+                                    scope.launch {
+                                        if (remainingWaitMs > 0) {
+                                            android.util.Log.d("MusicService", "[SyncSnapshot] buffering complete, waiting ${remainingWaitMs}ms until execution time")
+                                            delay(remainingWaitMs)
+                                        }
+                                        player.playWhenReady = true
+                                        android.util.Log.d("MusicService", "[SyncSnapshot] ✅ playback started at ${finalSeekPosition}ms")
+                                    }
+                                } else {
+                                    // If paused, we just seek to the exact position and stay paused
+                                    val remainingWaitMs = PlaybackSyncCoordinator.estimatedWaitMs(event.serverTimeToExecute)
+                                    val finalSeekPosition = if (remainingWaitMs < 0) event.positionMs + (-remainingWaitMs) else event.positionMs
+                                    player.seekTo(finalSeekPosition)
+                                    player.playWhenReady = false
+                                    android.util.Log.d("MusicService", "[SyncSnapshot] ✅ seeked to ${finalSeekPosition}ms, remaining paused")
+                                }
+                            } else if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
+                                player.removeListener(this)
+                                android.util.Log.w("MusicService", "[SyncSnapshot] player in bad state=$playbackState, aborting")
+                            }
+                        }
+                    }
+                    player.addListener(listener)
+                    player.setMediaItem(mediaItem)
+                    player.prepare()
+                }
+            }
+        }
     }
 
     private fun ensurePresenceManager() {
