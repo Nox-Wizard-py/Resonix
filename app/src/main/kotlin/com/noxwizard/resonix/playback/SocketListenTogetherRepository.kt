@@ -24,11 +24,40 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "SocketLTRepo"
 
+/** A single item in the shared Listen Together queue. */
+data class SharedQueueItem(
+    val trackId: String,
+    val url: String,
+    val title: String,
+    val artist: String,
+    val thumbnailUrl: String
+)
+
 /** Playback events received from the server on the guest side. */
 sealed class PlaybackEvent {
+    data class TrackReady(val userId: String, val trackId: String) : PlaybackEvent()
+    data class PlayAt(val startTime: Long) : PlaybackEvent()
+    data class PauseAt(val positionMs: Long, val timestamp: Long) : PlaybackEvent()
     data class Play(val trackId: String, val positionMs: Long, val serverTimeToExecute: Long) : PlaybackEvent()
     data class Pause(val positionMs: Long, val serverTimeToExecute: Long) : PlaybackEvent()
-    data class Seek(val positionMs: Long, val serverTimeToExecute: Long) : PlaybackEvent()
+    data class Seek(val positionMs: Long, val timestamp: Long) : PlaybackEvent()
+    data class TrackChange(val trackId: String, val url: String, val title: String, val artist: String, val thumbnailUrl: String, val startAt: Long) : PlaybackEvent()
+    /** Host → guests: current playback position for drift correction. */
+    data class SyncUpdate(val positionMs: Long, val serverTimeToExecute: Long) : PlaybackEvent()
+    /** Server → late-joining guest: catch up to current room playback position. */
+    data class SyncSnapshot(
+        val trackId: String,
+        val url: String,
+        val positionMs: Long,        // track position AT serverTimeToExecute
+        val serverTimeToExecute: Long, // server clock time to start playback
+        val serverTime: Long,         // server clock at send time (for NTP correction)
+        val isPlaying: Boolean,
+        val title: String = "",
+        val artist: String = "",
+        val thumbnailUrl: String = ""
+    ) : PlaybackEvent()
+    object Stop : PlaybackEvent()
+    data class QueueUpdate(val queue: List<SharedQueueItem>) : PlaybackEvent()
 }
 
 /**
@@ -50,11 +79,18 @@ object SocketListenTogetherRepository {
     private val _roomState = MutableStateFlow<RemoteRoomState?>(null)
     val roomState: StateFlow<RemoteRoomState?> = _roomState.asStateFlow()
 
-    private val _playbackEvents = MutableSharedFlow<PlaybackEvent>(extraBufferCapacity = 8)
+    private val _playbackEvents = MutableSharedFlow<PlaybackEvent>(replay = 1, extraBufferCapacity = 8)
     val playbackEvents: SharedFlow<PlaybackEvent> = _playbackEvents.asSharedFlow()
+
+    // Dedicated replay-1 flow for SyncSnapshot — guarantees late-joining MusicService gets it
+    private val _syncSnapshotEvent = MutableSharedFlow<PlaybackEvent.SyncSnapshot>(replay = 1, extraBufferCapacity = 2)
+    val syncSnapshotEvent: SharedFlow<PlaybackEvent.SyncSnapshot> = _syncSnapshotEvent.asSharedFlow()
 
     private val _navigationEvents = MutableSharedFlow<RoomEvent>(extraBufferCapacity = 4)
     val navigationEvents: SharedFlow<RoomEvent> = _navigationEvents.asSharedFlow()
+
+    private val _sharedQueue = MutableStateFlow<List<SharedQueueItem>>(emptyList())
+    val sharedQueue: StateFlow<List<SharedQueueItem>> = _sharedQueue.asStateFlow()
 
     // Local metadata the server doesn't store
     var timingOffsetMs: Int = 0
@@ -175,6 +211,92 @@ object SocketListenTogetherRepository {
         })
     }
 
+    fun sendTrackChange(trackId: String, url: String, title: String, artist: String, thumbnailUrl: String, startAt: Long) {
+        send(JSONObject().apply {
+            put("type", "track_change")
+            put("trackId", trackId)
+            put("url", url)
+            put("title", title)
+            put("artist", artist)
+            put("thumbnailUrl", thumbnailUrl)
+            put("startAt", startAt)
+        })
+    }
+
+    fun sendSeek(position: Long) {
+        send(JSONObject().apply {
+            put("type", "seek")
+            put("position", position)
+            put("timestamp", System.currentTimeMillis())
+        })
+    }
+
+    fun sendTrackReady(trackId: String) {
+        send(JSONObject().apply {
+            put("type", "track_ready")
+            put("trackId", trackId)
+        })
+    }
+
+    fun sendPlayAt(startTime: Long) {
+        send(JSONObject().apply {
+            put("type", "play_at")
+            put("startTime", startTime)
+        })
+    }
+
+    fun sendStop() {
+        send(JSONObject().apply { put("type", "stop") })
+    }
+
+    /**
+     * NTP probe — server echoes t0, t1 (receive), t2 (send) back as ntp_response.
+     * Only meaningful when backend supports the ntp_probe handler.
+     */
+    fun sendNtpProbe(t0: Long) {
+        send(JSONObject().apply {
+            put("type", "ntp_probe")
+            put("t0", t0)
+        })
+    }
+
+    /**
+     * Host → server → guests: broadcast current playback position for drift correction.
+     * positionMs is the host's current ExoPlayer position.
+     */
+    fun sendSyncUpdate(positionMs: Long) {
+        send(JSONObject().apply {
+            put("type", "sync_update")
+            put("positionMs", positionMs)
+            put("timestamp", System.currentTimeMillis())
+        })
+    }
+
+    fun sendQueueUpdate(queue: List<SharedQueueItem>) {
+        val arr = org.json.JSONArray()
+        queue.forEach { item ->
+            arr.put(JSONObject().apply {
+                put("trackId", item.trackId)
+                put("url", item.url)
+                put("title", item.title)
+                put("artist", item.artist)
+                put("thumbnailUrl", item.thumbnailUrl)
+            })
+        }
+        send(JSONObject().apply {
+            put("type", "queue_update")
+            put("queue", arr)
+        })
+    }
+
+    fun sendPauseAt(position: Long) {
+        send(JSONObject().apply {
+            put("type", "pause_at")
+            put("position", position)
+            put("timestamp", System.currentTimeMillis())
+        })
+    }
+
     fun sendRoomSettings(globalVolume: Float? = null, timingOffsetMs: Int? = null) {
         send(JSONObject().apply {
             put("type", "update_room_settings")
@@ -206,6 +328,7 @@ object SocketListenTogetherRepository {
     private val listener: WebSocketListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             connected.set(true)
+            PlaybackSyncCoordinator.wsState.value = "open"
             Log.d(TAG, "WebSocket open")
             // Auto-rejoin ONLY if this was an unexpected reconnect (not a fresh join)
             if (isReconnecting.get() && !intentionalDisconnect.get() && lastRoomCode.isNotEmpty() && lastUsername.isNotEmpty()) {
@@ -273,6 +396,119 @@ object SocketListenTogetherRepository {
                         else    -> PlaybackEvent.Play(trackId, positionMs, serverTime)
                     }
                     scope.launch { _playbackEvents.emit(pe) }
+                }
+
+                "track_change" -> {
+                    val event = PlaybackEvent.TrackChange(
+                        trackId = obj.optString("trackId", ""),
+                        url = obj.optString("url", ""),
+                        title = obj.optString("title", ""),
+                        artist = obj.optString("artist", ""),
+                        thumbnailUrl = obj.optString("thumbnailUrl", ""),
+                        startAt = obj.optLong("startAt", System.currentTimeMillis() + 2000)
+                    )
+                    Log.d(TAG, "RECEIVE: track_change -> $event")
+                    scope.launch { _playbackEvents.emit(event) }
+                }
+
+                "seek" -> {
+                    val event = PlaybackEvent.Seek(
+                        positionMs = obj.optLong("position", 0),
+                        timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                    )
+                    Log.d(TAG, "RECEIVE: seek -> $event")
+                    scope.launch { _playbackEvents.emit(event) }
+                }
+
+                "track_ready" -> {
+                    val event = PlaybackEvent.TrackReady(
+                        userId = obj.optString("userId", ""),
+                        trackId = obj.optString("trackId", "")
+                    )
+                    Log.d(TAG, "RECEIVE: track_ready -> $event")
+                    scope.launch { _playbackEvents.emit(event) }
+                }
+
+                "play_at" -> {
+                    val event = PlaybackEvent.PlayAt(
+                        startTime = obj.optLong("startTime", 0L)
+                    )
+                    Log.d(TAG, "RECEIVE: play_at -> $event")
+                    scope.launch { _playbackEvents.emit(event) }
+                }
+
+                "pause_at" -> {
+                    val event = PlaybackEvent.PauseAt(
+                        positionMs = obj.optLong("position", 0L),
+                        timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                    )
+                    Log.d(TAG, "RECEIVE: pause_at -> $event")
+                    scope.launch { _playbackEvents.emit(event) }
+                }
+
+                "ntp_response" -> {
+                    val t0 = obj.optLong("t0", 0L)
+                    val t1 = obj.optLong("t1", 0L)
+                    val t2 = obj.optLong("t2", 0L)
+                    PlaybackSyncCoordinator.onNtpResponse(t0, t1, t2)
+                }
+
+                "sync_update" -> {
+                    val positionMs = obj.optLong("positionMs", 0L)
+                    val serverTimeToExecute = obj.optLong("serverTimeToExecute", System.currentTimeMillis())
+                    Log.d(TAG, "RECEIVE: sync_update positionMs=$positionMs")
+                    scope.launch {
+                        _playbackEvents.emit(PlaybackEvent.SyncUpdate(positionMs, serverTimeToExecute))
+                    }
+                }
+
+                "sync_snapshot" -> {
+                    val trackId   = obj.optString("trackId", "")
+                    val url       = obj.optString("url", "")
+
+                    if (trackId.isBlank() || url.isBlank()) {
+                        Log.w(TAG, "SYNC_DEBUG: Invalid snapshot: trackId or url missing")
+                        return
+                    }
+
+                    val positionMs = obj.optLong("positionMs", 0L)
+                    val serverTimeToExecute = obj.optLong("serverTimeToExecute", System.currentTimeMillis() + 2000L)
+                    val serverTime = obj.optLong("serverTime", System.currentTimeMillis())
+                    val isPlaying  = obj.optBoolean("isPlaying", false)
+                    val title = obj.optString("title", "")
+                    val artist = obj.optString("artist", "")
+                    val thumbnailUrl = obj.optString("thumbnailUrl", "")
+                    Log.d(TAG, "RECEIVE: sync_snapshot trackId=$trackId pos=$positionMs execAt=$serverTimeToExecute isPlaying=$isPlaying")
+                    val snapshot = PlaybackEvent.SyncSnapshot(trackId, url, positionMs, serverTimeToExecute, serverTime, isPlaying, title, artist, thumbnailUrl)
+                    scope.launch {
+                        _syncSnapshotEvent.emit(snapshot)   // replay=1 — MusicService never misses it
+                        _playbackEvents.emit(snapshot)
+                    }
+                }
+
+                "stop" -> {
+                    Log.d(TAG, "RECEIVE: stop")
+                    _sharedQueue.value = emptyList()
+                    scope.launch { _playbackEvents.emit(PlaybackEvent.Stop) }
+                }
+
+                "queue_update" -> {
+                    val arr = obj.optJSONArray("queue") ?: org.json.JSONArray()
+                    val newQueue = (0 until arr.length()).map { i ->
+                        val item = arr.getJSONObject(i)
+                        SharedQueueItem(
+                            trackId = item.optString("trackId", ""),
+                            url = item.optString("url", ""),
+                            title = item.optString("title", ""),
+                            artist = item.optString("artist", ""),
+                            thumbnailUrl = item.optString("thumbnailUrl", "")
+                        )
+                    }
+                    if (newQueue != _sharedQueue.value) {
+                        _sharedQueue.value = newQueue
+                        Log.d(TAG, "RECEIVE: queue_update -> ${newQueue.size} tracks")
+                        scope.launch { _playbackEvents.emit(PlaybackEvent.QueueUpdate(newQueue)) }
+                    }
                 }
 
                 "room_closed" -> {
