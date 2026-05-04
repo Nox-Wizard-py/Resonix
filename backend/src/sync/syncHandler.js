@@ -183,6 +183,22 @@ function handleMessage(clientId, raw, ws) {
             break;
         }
 
+        case 'ntp_probe': {
+            const t1 = Date.now();
+            const { t0 } = msg;
+            if (t0 === undefined) return;
+            const t2 = Date.now();
+            if (ws.readyState === 1) {
+                ws.send(JSON.stringify({
+                    type: "ntp_response",
+                    t0: t0,
+                    t1: t1,
+                    t2: t2
+                }));
+            }
+            break;
+        }
+
         // Keep other essential playback sync logic but adapted to new structure
         case 'playback_sync': {
             const room = findRoomBySocket(ws);
