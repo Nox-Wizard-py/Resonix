@@ -102,6 +102,7 @@ object PlaybackSyncCoordinator {
 
     /** Start clock probing when joining a room. */
     fun startProbing() {
+        if (probeJob?.isActive == true) return
         probeJob?.cancel()
         reset()
         probeJob = scope?.launch(Dispatchers.IO) {
@@ -137,8 +138,6 @@ object PlaybackSyncCoordinator {
         _pureCount.value = 0
         _impureCount.value = 0
         _measurementCount.value = 0
-        wsState.value = "connecting"
-        audioState.value = "loading"
     }
 
     // ── NTP probe exchange ────────────────────────────────────────────────────

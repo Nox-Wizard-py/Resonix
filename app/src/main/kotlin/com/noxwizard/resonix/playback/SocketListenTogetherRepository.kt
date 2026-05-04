@@ -127,6 +127,7 @@ object SocketListenTogetherRepository {
         isReconnecting.set(false)
         destroyed.set(false)
         lastServerUrl = serverUrl
+        PlaybackSyncCoordinator.wsState.value = "connecting"
         val request = Request.Builder().url(serverUrl).build()
         socket = client.newWebSocket(request, listener)
         Log.d(TAG, "Connecting to $serverUrl")
@@ -345,6 +346,7 @@ object SocketListenTogetherRepository {
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             connected.set(false)
+            PlaybackSyncCoordinator.wsState.value = "error"
             Log.w(TAG, "WebSocket failure: ${t.message}")
             // Only auto-reconnect if not intentionally disconnected and we had a room going
             if (!intentionalDisconnect.get() && lastRoomCode.isNotEmpty() && lastServerUrl.isNotEmpty()) {
@@ -354,6 +356,7 @@ object SocketListenTogetherRepository {
                     if (!intentionalDisconnect.get()) {
                         Log.d(TAG, "Reconnecting to $lastServerUrl, room=$lastRoomCode")
                         isReconnecting.set(true)
+                        PlaybackSyncCoordinator.wsState.value = "connecting"
                         val request = okhttp3.Request.Builder().url(lastServerUrl).build()
                         socket = client.newWebSocket(request, this@SocketListenTogetherRepository.listener)
                     }
@@ -363,6 +366,7 @@ object SocketListenTogetherRepository {
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             connected.set(false)
+            PlaybackSyncCoordinator.wsState.value = "closed"
             Log.d(TAG, "WebSocket closed: $code $reason")
         }
     }
