@@ -3,6 +3,56 @@
  */
 
 const roomManager = require('./roomManager');
+const {
+    getRoom, addClient, setHost, isHost,
+    removeClient, getRoomOfClient,
+    broadcast, destroyRoomIfEmpty,
+    updateClientRtt, getLastKnownRtt, clearClientRtt,
+    updateClientCompensation, getMaxRoomCompensation, clearClientCompensation,
+    getMaxRoomRtt,
+    markPeerReady, areAllPeersReady, clearReadyState,
+    initAudioLoad, markAudioLoaded, areAllPeersAudioLoaded, clearAudioLoad,
+} = roomManager;
+
+/**
+ * Compute dynamic execution lead time for the entire room.
+ *
+ * Uses the WORST (maximum) RTT and hardware compensation across
+ * all connected clients — not just the sender's — so the slowest
+ * peer always has enough runway to receive, compensate, and execute.
+ *
+ * Formula mirrors BeatSync's RoomManager.ts approach:
+ *   rttDelay          = max(400, maxRoomRtt × 1.5 + 200)
+ *   compensationDelay = maxRoomCompensation + 200
+ *   leadTime          = min(1000, max(rttDelay, compensationDelay))
+ *
+ * Example — Host RTT=40ms, Guest RTT=300ms, Guest BT=250ms:
+ *   rttDelay=650ms  compensationDelay=450ms  leadTime=650ms
+ *
+ * Hard cap at 1000ms — prevents one pathologically bad connection
+ * from making the whole room wait more than 1 second.
+ *
+ * @param {string} roomCode
+ * @returns {number} leadTimeMs
+ */
+function computeRoomLeadTime(roomCode) {
+    const maxRoomRtt = getMaxRoomRtt(roomCode);
+    const maxCompensation = getMaxRoomCompensation(roomCode);
+
+    const rttDelay = Math.max(400, (maxRoomRtt * 1.5) + 200);
+    const compensationDelay = maxCompensation + 200;
+    const leadTime = Math.min(1000, Math.max(rttDelay, compensationDelay));
+
+    console.log(
+        `[sync] leadTime=${leadTime}ms ` +
+        `(maxRoomRtt=${maxRoomRtt}ms ` +
+        `maxComp=${maxCompensation}ms ` +
+        `rttDelay=${rttDelay}ms ` +
+        `compDelay=${compensationDelay}ms)`
+    );
+
+    return leadTime;
+}
 
 /**
  * Dispatch an inbound WebSocket message.
@@ -25,6 +75,177 @@ function handleMessage(clientId, raw, ws) {
     const ROOM_CODE_REGEX = /^HA[A-Z0-9]{5}$/;
 
     switch (msg.type) {
+        case 'READY': {
+            const { roomCode, clientId: readyClientId } = msg;
+            roomManager.markPeerReady(roomCode, readyClientId);
+            console.log(`[sync] READY from ${readyClientId} in room ${roomCode}`);
+
+            if (roomManager.areAllPeersReady(roomCode)) {
+                console.log(`[sync] All peers ready in room ${roomCode} — scheduling playback`);
+                roomManager.clearReadyState(roomCode);
+
+                const leadTimeMs = computeRoomLeadTime(roomCode);
+                const serverTimeToExecute = Date.now() + leadTimeMs;
+
+                roomManager.broadcast(roomCode, {
+                    type: 'SCHEDULED_ACTION',
+                    serverTimeToExecute,
+                    scheduledAction: {
+                        type: 'PLAY',
+                        trackTimeSeconds: msg.trackTimeSeconds || 0,
+                        audioSource: msg.audioSource || '',
+                    },
+                });
+            }
+            break;
+        }
+
+        case 'JOIN': {
+            const { roomCode } = msg;
+            roomManager.addClient(roomCode, clientId, ws);
+            const room = roomManager.getRoom(roomCode);
+            if (room.users.length === 1) {
+                roomManager.setHost(roomCode, clientId);
+            }
+
+            ws.send(JSON.stringify({
+                type: 'ROOM_STATE',
+                roomCode,
+                hostClientId: room.hostClientId,
+                isPlaying: room.isPlaying || false,
+                positionMs: room.positionMs || 0,
+            }));
+
+            // If room is already playing, send PREPARE to late joiner
+            if (room.isPlaying && clientId !== room.hostClientId) {
+                ws.send(JSON.stringify({
+                    type: 'PREPARE',
+                    trackTimeSeconds: (room.positionMs || 0) / 1000,
+                    audioSource: room.currentAudioSource || '',
+                }));
+                console.log(`[sync] Late join PREPARE sent to ${clientId} in room ${roomCode}`);
+            }
+
+            console.log(`[sync] ${clientId} joined room ${roomCode} | clients: ${room.users.length}`);
+            break;
+        }
+
+        case 'SYNC': {
+            const roomCode = roomManager.getRoomOfClient(clientId);
+            if (!roomCode) {
+                ws.send(JSON.stringify({
+                    type: 'ROOM_STATE',
+                    roomCode: null,
+                    hostClientId: null,
+                    isPlaying: false,
+                    positionMs: 0,
+                }));
+                console.log(`[sync] SYNC from ${clientId} — not in any room`);
+                return;
+            }
+
+            const room = roomManager.getRoom(roomCode);
+            if (!room) return;
+
+            // Project live position forward if the room is playing
+            const livePositionMs = room.isPlaying
+                ? (room.positionMs || 0) + (Date.now() - (room.lastPlayTimestamp || Date.now()))
+                : (room.positionMs || 0);
+
+            ws.send(JSON.stringify({
+                type: 'ROOM_STATE',
+                roomCode,
+                hostClientId: room.hostClientId,
+                isPlaying: room.isPlaying || false,
+                positionMs: Math.max(0, livePositionMs),
+            }));
+
+            if (room.isPlaying) {
+                // Also send PREPARE so the reconnecting client buffers the current track
+                ws.send(JSON.stringify({
+                    type: 'PREPARE',
+                    trackTimeSeconds: Math.max(0, livePositionMs) / 1000,
+                    audioSource: room.currentAudioSource || '',
+                }));
+                console.log(`[sync] SYNC reconnect — ROOM_STATE + PREPARE sent to ${clientId}`);
+            } else {
+                console.log(`[sync] SYNC reconnect — ROOM_STATE sent to ${clientId}`);
+            }
+            break;
+        }
+
+        case 'PLAY':
+        case 'SEEK': {
+            const roomCode = roomManager.getRoomOfClient(clientId);
+            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
+
+            const room = roomManager.getRoom(roomCode);
+            if (room) {
+                room.isPlaying = true;
+                room.positionMs = (msg.trackTimeSeconds || 0) * 1000;
+                room.currentAudioSource = msg.audioSource || '';
+                room.lastPlayTimestamp = Date.now();
+            }
+
+            // Count non-host peers
+            const peers = room ? room.users.filter(u => u.id !== clientId) : [];
+
+            if (peers.length === 0) {
+                // Solo session — skip load gate, schedule immediately
+                const leadTimeMs = computeRoomLeadTime(roomCode);
+                const serverTimeToExecute = Date.now() + leadTimeMs;
+                roomManager.broadcast(roomCode, {
+                    type: 'SCHEDULED_ACTION',
+                    serverTimeToExecute,
+                    scheduledAction: {
+                        type: 'PLAY',
+                        trackTimeSeconds: msg.trackTimeSeconds,
+                        audioSource: msg.audioSource,
+                    },
+                });
+                console.log(`[sync] Solo PLAY — scheduled immediately`);
+                break;
+            }
+
+            // Multi-peer — initiate audio-load gate before scheduling
+            roomManager.initAudioLoad(roomCode, msg.audioSource);
+            roomManager.broadcast(roomCode, {
+                type: 'LOAD_AUDIO',
+                audioSource: msg.audioSource,
+                trackTimeSeconds: msg.trackTimeSeconds,
+            }, clientId); // exclude host — host loads locally
+
+            console.log(`[sync] LOAD_AUDIO sent to ${peers.length} peer(s) in room ${roomCode}`);
+            break;
+        }
+
+        case 'PAUSE': {
+            const roomCode = roomManager.getRoomOfClient(clientId);
+            if (!roomCode || !roomManager.isHost(roomCode, clientId)) return;
+
+            // Track room playback state
+            const room = roomManager.getRoom(roomCode);
+            if (room) {
+                room.isPlaying = false;
+                room.positionMs = (msg.trackTimeSeconds || 0) * 1000;
+                room.lastPlayTimestamp = null; // clear on pause
+            }
+
+            const leadTimeMs = computeRoomLeadTime(roomCode);
+            const serverTimeToExecute = Date.now() + leadTimeMs;
+
+            roomManager.broadcast(roomCode, {
+                type: 'SCHEDULED_ACTION',
+                serverTimeToExecute,
+                scheduledAction: {
+                    type: 'PAUSE',
+                    trackTimeSeconds: msg.trackTimeSeconds,
+                    audioSource: msg.audioSource,
+                },
+            }, clientId);
+            break;
+        }
+
         case 'create_room': {
             const { roomCode, username, userId } = msg;
             if (!roomCode || !username) return;
@@ -183,18 +404,59 @@ function handleMessage(clientId, raw, ws) {
             break;
         }
 
+        case 'NTP_REQUEST':
         case 'ntp_probe': {
             const t1 = Date.now();
-            const { t0 } = msg;
+            const { t0, clientRtt } = msg;
             if (t0 === undefined) return;
+
+            // Update RTT tracking if client sent its measured RTT
+            if (clientRtt != null) {
+                updateClientRtt(clientId, clientRtt);
+            }
+
+            // Track hardware compensation — mirrors BeatSync's RoomManager compensation store
+            if (msg.clientCompensationMs != null) {
+                updateClientCompensation(clientId, msg.clientCompensationMs);
+            }
+
             const t2 = Date.now();
             if (ws.readyState === 1) {
                 ws.send(JSON.stringify({
-                    type: "ntp_response",
+                    type: msg.type === 'NTP_REQUEST' ? 'NTP_RESPONSE' : 'ntp_response',
                     t0: t0,
                     t1: t1,
-                    t2: t2
+                    t2: t2,
+                    probeGroupId: msg.probeGroupId,
+                    probeGroupIndex: msg.probeGroupIndex,
                 }));
+            }
+            break;
+        }
+
+        case 'AUDIO_LOADED': {
+            const { roomCode, audioSource } = msg;
+            roomManager.markAudioLoaded(roomCode, clientId, audioSource);
+            console.log(`[sync] AUDIO_LOADED from ${clientId} in room ${roomCode}`);
+
+            if (roomManager.areAllPeersAudioLoaded(roomCode)) {
+                roomManager.clearAudioLoad(roomCode);
+                console.log(`[sync] All peers loaded — scheduling playback in room ${roomCode}`);
+
+                const room = roomManager.getRoom(roomCode);
+                const leadTimeMs = computeRoomLeadTime(roomCode);
+                const serverTimeToExecute = Date.now() + leadTimeMs;
+
+                // Broadcast to ALL (including host) — host also needs the SCHEDULED_ACTION
+                roomManager.broadcast(roomCode, {
+                    type: 'SCHEDULED_ACTION',
+                    serverTimeToExecute,
+                    scheduledAction: {
+                        type: 'PLAY',
+                        trackTimeSeconds: (room?.positionMs || 0) / 1000,
+                        audioSource: room?.currentAudioSource || audioSource,
+                    },
+                });
             }
             break;
         }
@@ -234,12 +496,16 @@ function handleMessage(clientId, raw, ws) {
             const sockets = roomManager.getRoomSockets(room.code);
             if (!sockets) return;
 
+            // Dynamic lead time — true room-wide worst-case RTT + max compensation
+            const leadTimeMs = computeRoomLeadTime(room.code);
+            const serverTimeToExecute = Date.now() + leadTimeMs;
+
             const payload = JSON.stringify({
                 type: 'playback_sync',
                 playbackEvent: msg.playbackEvent,
                 trackId: msg.trackId,
                 positionMs: msg.positionMs,
-                serverTimeToExecute: Date.now() + 200 // 200ms window
+                serverTimeToExecute: serverTimeToExecute
             });
 
             sockets.forEach(s => {
@@ -589,6 +855,10 @@ function handleDisconnect(clientId, ws) {
     if (ws) {
         roomManager.removeSocketFromRoom(ws);
     }
+    // Clean up per-client state so stale values don't inflate future room headroom
+    clearClientCompensation(clientId);
+    clearClientRtt(clientId);
+    console.log(`[sync] ${clientId} disconnected — RTT + compensation state cleared`);
 }
 
 function findRoomBySocket(ws) {
