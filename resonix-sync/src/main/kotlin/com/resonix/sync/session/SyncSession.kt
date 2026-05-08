@@ -5,6 +5,7 @@ import android.util.Log
 import com.resonix.sync.network.SyncMessage
 import com.resonix.sync.network.SyncWebSocket
 import com.resonix.sync.ntp.NtpEngine
+import com.resonix.sync.ntp.NtpResult
 import com.resonix.sync.scheduler.PlaybackScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,6 +19,9 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import java.util.UUID
 import kotlin.math.abs
 
@@ -61,10 +65,25 @@ internal class SyncSession(
     private val webSocket: SyncWebSocket = SyncWebSocket(
         context = context,
         serverUrl = serverUrl,
-        onResync = { triggerResync() },
+        onResync = {
+            Log.d(TAG, "Network change — resetting rolling window, stale state, requesting resync")
+            ntpEngine.resetWindow()
+            ntpEngine.resetStale()
+            // Request current room state from server after reconnect;
+            // brief delay to let the WebSocket re-handshake complete first
+            scope.launch {
+                delay(500L)
+                webSocket.send(SyncMessage.RequestSync)
+                Log.d(TAG, "RequestSync sent after network recovery")
+            }
+        },
     )
 
-    private val ntpEngine = NtpEngine(webSocket)
+    private val ntpEngine = NtpEngine(
+        webSocket = webSocket,
+        compensationMs = scheduler.hardwareLatencyMs,
+        nudgeMs = 0L,
+    )
 
     // ── Incoming message router ───────────────────────────────────────────────
 
@@ -72,13 +91,24 @@ internal class SyncSession(
         webSocket.incoming
             .onEach { message -> handleIncoming(message) }
             .launchIn(scope)
+
+        // Watch for WebSocket reconnection — restart heartbeat if we went stale
+        scope.launch {
+            state.collect { sessionState ->
+                if (sessionState is SessionState.Stale) {
+                    Log.w(TAG, "Session stale — waiting for WebSocket reconnect to restart heartbeat")
+                }
+            }
+        }
     }
 
     private fun handleIncoming(message: SyncMessage) {
         when (message) {
             is SyncMessage.RoomState -> {
-                Log.d(TAG, "RoomState received: room=${message.roomCode} host=${message.hostClientId}")
+                Log.d(TAG, "RoomState: room=${message.roomCode} host=${message.hostClientId} " +
+                    "playing=${message.isPlaying} pos=${message.positionMs}ms")
                 isHost = message.hostClientId == clientId
+                // If room is playing, a PREPARE message will follow from the server
             }
             is SyncMessage.ScheduledPlay -> {
                 Log.d(TAG, "ScheduledPlay: executeAt=${message.serverTimeToExecute} pos=${message.trackTimeSeconds}s")
@@ -94,6 +124,37 @@ internal class SyncSession(
                     globalTimestampMs = message.serverTimeToExecute,
                     ntpOffsetMs = currentOffsetMs,
                 )
+            }
+            is SyncMessage.Prepare -> {
+                Log.d(TAG, "PREPARE received — buffering: ${message.audioSource} at ${message.trackTimeSeconds}s")
+                val p = scheduler.getPlayer() ?: return
+                scope.launch(Dispatchers.Main) {
+                    p.seekTo((message.trackTimeSeconds * 1000).toLong())
+                    p.pause()
+                    waitForBufferReady(p)
+                    val roomCode = currentRoomCode ?: return@launch
+                    webSocket.send(SyncMessage.Ready(
+                        roomCode = roomCode,
+                        clientId = clientId,
+                    ))
+                    Log.d(TAG, "Buffer ready — sent READY to server")
+                }
+            }
+            is SyncMessage.LoadAudio -> {
+                Log.d(TAG, "LOAD_AUDIO received — pre-buffering: ${message.audioSource}")
+                val p = scheduler.getPlayer() ?: return
+                scope.launch(Dispatchers.Main) {
+                    p.seekTo((message.trackTimeSeconds * 1000).toLong())
+                    p.pause()
+                    waitForBufferReady(p)
+                    val roomCode = currentRoomCode ?: return@launch
+                    webSocket.send(SyncMessage.AudioLoaded(
+                        roomCode = roomCode,
+                        clientId = clientId,
+                        audioSource = message.audioSource,
+                    ))
+                    Log.d(TAG, "Audio loaded — sent AUDIO_LOADED to server")
+                }
             }
             else -> Unit
         }
@@ -114,7 +175,16 @@ internal class SyncSession(
 
         scope.launch {
             webSocket.send(SyncMessage.Join(roomCode = code, clientId = clientId))
-            calibrate()
+            ntpEngine.startHeartbeat(
+                onResult = { result ->
+                    ntpEngine.markResponseReceived()
+                    applyNtpResult(result)
+                },
+                onConnectionStale = {
+                    Log.e(TAG, "Connection stale — emitting Stale state")
+                    _state.value = SessionState.Stale
+                }
+            )
         }
     }
 
@@ -140,7 +210,16 @@ internal class SyncSession(
 
         scope.launch {
             webSocket.send(SyncMessage.Join(roomCode = code, clientId = clientId))
-            calibrate()
+            ntpEngine.startHeartbeat(
+                onResult = { result ->
+                    ntpEngine.markResponseReceived()
+                    applyNtpResult(result)
+                },
+                onConnectionStale = {
+                    Log.e(TAG, "Connection stale — emitting Stale state")
+                    _state.value = SessionState.Stale
+                }
+            )
         }
 
         return code
@@ -197,65 +276,34 @@ internal class SyncSession(
         webSocket.send(SyncMessage.Seek(trackTimeSeconds = positionMs / 1000.0, audioSource = audioSource))
     }
 
-    // ── Periodic resync ───────────────────────────────────────────────────────
-
-    /**
-     * Start a periodic resync loop on [Dispatchers.IO].
-     *
-     * Every [intervalMs], re-runs the NTP probe cycle. If the new offset differs
-     * from the current one by more than 5 ms, updates internally and emits [SessionState.Drifted].
-     *
-     * @param intervalMs Poll interval in milliseconds (default 30,000 ms).
-     */
-    fun startPeriodicResync(intervalMs: Long = 30_000L) {
-        scope.launch {
-            while (true) {
-                delay(intervalMs)
-                Log.d(TAG, "Periodic resync triggered")
-                calibrate(isResync = true)
-            }
-        }
-    }
-
     // ── NTP calibration ───────────────────────────────────────────────────────
 
-    private suspend fun calibrate(isResync: Boolean = false) {
-        val result = ntpEngine.measure()
-
-        if (result == null) {
-            Log.e(TAG, "NTP calibration failed — no pure probes")
+    /**
+     * Apply a fresh [NtpResult] from the heartbeat.
+     * Always updates offset. Only emits [SessionState.Drifted] when drift exceeds threshold.
+     */
+    private fun applyNtpResult(result: NtpResult) {
+        // Confidence gate — ported from BeatSync's measurement quality check
+        if (result.confidence < MINIMUM_CONFIDENCE) {
+            Log.w(TAG, "NTP result rejected — confidence too low: ${"%.2f".format(result.confidence)} " +
+                "(need >= $MINIMUM_CONFIDENCE). Keeping previous offset=$currentOffsetMs")
             return
         }
 
         val previousOffset = currentOffsetMs
+        val drift = kotlin.math.abs(result.offsetMs - previousOffset)
 
-        if (isResync) {
-            val drift = abs(result.offsetMs - previousOffset)
-            currentOffsetMs = result.offsetMs       // always update
-            scheduler.updateOffset(result.offsetMs)  // always propagate
+        currentOffsetMs = result.offsetMs
+        scheduler.updateOffset(result.offsetMs)
 
-            if (drift > DRIFT_THRESHOLD_MS) {
-                Log.w(TAG, "Clock drift detected: ${drift}ms (prev=$previousOffset new=${result.offsetMs})")
-                _state.value = SessionState.Drifted(driftMs = drift)
-                return
-            } else {
-                Log.d(TAG, "Resync OK — drift within threshold (${drift}ms)")
-            }
+        if (previousOffset != 0L && drift > DRIFT_THRESHOLD_MS) {
+            Log.w(TAG, "Drift detected: ${drift}ms — offset updated to ${result.offsetMs}ms")
+            _state.value = SessionState.Drifted(driftMs = drift)
         } else {
-            currentOffsetMs = result.offsetMs
-            scheduler.updateOffset(result.offsetMs)
+            _state.value = SessionState.Synced(offsetMs = result.offsetMs)
         }
 
-        Log.d(
-            TAG,
-            "Calibrated: offset=${result.offsetMs}ms rtt=${result.rttMs}ms confidence=${"%.2f".format(result.confidence)}"
-        )
-        _state.value = SessionState.Synced(offsetMs = currentOffsetMs)
-    }
-
-    /** Immediate resync triggered by a network change callback. */
-    private fun triggerResync() {
-        scope.launch { calibrate(isResync = true) }
+        Log.d(TAG, "NTP applied: offset=${result.offsetMs}ms bestRtt=${result.rttMs}ms avgRtt=${result.averageRttMs}ms confidence=${"%.2f".format(result.confidence)}")
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -267,8 +315,27 @@ internal class SyncSession(
     fun destroy() {
         scope.cancel()
         webSocket.destroy()
+        scheduler.destroy()
         _state.value = SessionState.Idle
         Log.d(TAG, "SyncSession destroyed")
+    }
+
+    private suspend fun waitForBufferReady(player: androidx.media3.exoplayer.ExoPlayer) {
+        withContext(Dispatchers.Main) {
+            if (player.playbackState == androidx.media3.common.Player.STATE_READY) return@withContext
+            suspendCancellableCoroutine { cont ->
+                val listener = object : androidx.media3.common.Player.Listener {
+                    override fun onPlaybackStateChanged(state: Int) {
+                        if (state == androidx.media3.common.Player.STATE_READY && cont.isActive) {
+                            player.removeListener(this)
+                            cont.resume(Unit)
+                        }
+                    }
+                }
+                player.addListener(listener)
+                cont.invokeOnCancellation { player.removeListener(listener) }
+            }
+        }
     }
 
     companion object {
@@ -276,5 +343,6 @@ internal class SyncSession(
 
         /** Minimum drift that triggers a [SessionState.Drifted] update (ms). */
         private const val DRIFT_THRESHOLD_MS = 5L
+        private const val MINIMUM_CONFIDENCE = 0.35f  // ~6/16 pure probes minimum
     }
 }
