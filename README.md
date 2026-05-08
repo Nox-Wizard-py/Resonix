@@ -12,7 +12,11 @@
 [![License](https://img.shields.io/github/license/Nox-Wizard-py/Resonix?style=for-the-badge&labelColor=0d1117)](./LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/Nox-Wizard-py/Resonix/total?style=for-the-badge&labelColor=0d1117)](../../releases)
 
-<br/>
+![Architecture](https://img.shields.io/badge/ARCHITECTURE-MVVM-6C5CE7?style=for-the-badge&labelColor=0d1117)
+![Language](https://img.shields.io/badge/LANGUAGE-KOTLIN-6C5CE7?style=for-the-badge&logo=kotlin&logoColor=white&labelColor=0d1117)
+![Toolkit](https://img.shields.io/badge/TOOLKIT-JETPACK%20COMPOSE-6C5CE7?style=for-the-badge&logo=jetpackcompose&logoColor=white&labelColor=0d1117)
+![Design](https://img.shields.io/badge/DESIGN-MATERIAL%203-6C5CE7?style=for-the-badge&logo=materialdesign&logoColor=white&labelColor=0d1117)
+![Platform](https://img.shields.io/badge/PLATFORM-ANDROID-6C5CE7?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117)
 
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white&labelColor=0d1117)](https://t.me/resonix_music_app)
 [![Community](https://img.shields.io/badge/Community-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=0d1117)](https://t.me/resonixcommunity)
@@ -112,6 +116,15 @@ Built with a modern Android-first design philosophy, the experience is fast, flu
   <li>Every interaction is designed to feel premium, responsive, and distinctly Android-native.</li>
   </ul> 
 
+ <h3>Listen Together</h3>
+  <ul>
+  <li>Sync music playback in real-time across multiple devices simultaneously using Beatsync integration.</li>
+  <li>Host a listening session and invite friends — everyone hears the same track at the exact same moment.</li>
+  <li>Engineered for precision timing with minimal latency, so the beat drops for everyone at once.</li>
+  <li>Works seamlessly over both local networks and the internet — distance is not a barrier.</li>
+  <li>A shared music experience that actually feels shared, not just approximate.</li>
+  </ul>
+  
 ---
 
 <div align="center">
@@ -165,6 +178,27 @@ Yes, fully free and open-source.
 
 ### Is it under active development?
 Constantly.
+
+### Does Resonix require a YouTube Music account?
+Some features like personal library, liked songs, and recommendations require a Google account. Core playback and search work without one.
+
+### Does Resonix work offline?
+Yes. Any track downloaded through the built-in downloader is available for offline playback without an internet connection.
+
+### Is Resonix available on iOS?
+No. Resonix is built exclusively for Android using Kotlin and Jetpack Compose. An iOS version is not planned.
+
+### Will my account get banned for using Resonix?
+Resonix does not modify or interfere with YouTube Music's servers in any unauthorized way. However, as with any third-party client, use is at your own discretion.
+
+### How do I import playlists from Spotify?
+Resonix includes a Universal Bridge feature that allows direct Spotify playlist import. Navigate to Library → Import → Spotify and follow the on-screen steps.
+
+### Where do I report bugs or request features?
+Open an issue on the [GitHub repository](https://github.com/Nox-Wizard-py/Resonix/issues) or join the [Telegram community](https://t.me/resonix_music_app).
+
+### How often is Resonix updated?
+Constantly. The project is under active development with fixes and features shipping regularly.
 
 ---
 
