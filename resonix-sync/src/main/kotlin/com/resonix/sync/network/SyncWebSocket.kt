@@ -162,7 +162,9 @@ internal class SyncWebSocket(
             is SyncMessage.Pause -> json.encodeToString(SyncMessage.Pause.serializer(), message)
             is SyncMessage.Seek -> json.encodeToString(SyncMessage.Seek.serializer(), message)
             is SyncMessage.Join -> json.encodeToString(SyncMessage.Join.serializer(), message)
+            is SyncMessage.Ready -> json.encodeToString(SyncMessage.Ready.serializer(), message)
             is SyncMessage.RequestSync -> """{"type":"SYNC"}"""
+            is SyncMessage.AudioLoaded -> json.encodeToString(SyncMessage.AudioLoaded.serializer(), message)
             else -> {
                 Log.w(TAG, "Attempted to send non-outgoing message type: ${message::class.simpleName}")
                 null
@@ -179,6 +181,9 @@ internal class SyncWebSocket(
             "NTP_RESPONSE" -> json.decodeFromString(SyncMessage.NtpResponse.serializer(), raw)
             "ROOM_STATE" -> json.decodeFromString(SyncMessage.RoomState.serializer(), raw)
             "SCHEDULED_ACTION" -> parseScheduledAction(obj, raw)
+            "PREPARE" -> json.decodeFromString(SyncMessage.Prepare.serializer(), raw)
+            "READY" -> json.decodeFromString(SyncMessage.Ready.serializer(), raw)
+            "LOAD_AUDIO" -> json.decodeFromString(SyncMessage.LoadAudio.serializer(), raw)
             else -> SyncMessage.Unknown(raw)
         }
     } catch (e: Exception) {
