@@ -55,6 +55,56 @@ function computeRoomLeadTime(roomCode) {
 }
 
 /**
+ * Build the authoritative full room snapshot sent to late-joiners and reconnecting clients.
+ *
+ * Covers every field the Android client needs to hydrate state in a single message:
+ * - queue, current track, live position, play state
+ * - room users + host info
+ * - loop/shuffle mode
+ *
+ * @param {object} room  Room object from roomManager.
+ * @param {boolean} projectPosition  If true, project positionMs forward from lastPlayTimestamp.
+ * @returns {object}  Plain object ready for JSON.stringify.
+ */
+function buildRoomSnapshot(room, projectPosition = false) {
+    const now = Date.now();
+
+    let livePositionMs = room.currentPositionMs || room.positionMs || 0;
+    if (projectPosition && room.isPlaying) {
+        const elapsed = room.lastPositionUpdate
+            ? now - room.lastPositionUpdate
+            : room.lastPlayTimestamp
+                ? now - room.lastPlayTimestamp
+                : 0;
+        livePositionMs = Math.max(0, livePositionMs + elapsed);
+    }
+
+    return {
+        type: 'room_state_snapshot',
+        roomCode: room.code,
+        hostClientId: room.hostClientId || null,
+        users: room.users || [],
+        // Playback
+        isPlaying: room.isPlaying || false,
+        positionMs: Math.max(0, livePositionMs),
+        serverTime: now,
+        // Current track
+        currentTrackId: room.currentTrackId || null,
+        currentTrackUrl: room.currentTrackUrl || room.currentAudioSource || null,
+        currentTrackTitle: room.currentTrackTitle || '',
+        currentTrackArtist: room.currentTrackArtist || '',
+        currentTrackThumbnail: room.currentTrackThumbnail || '',
+        // Queue — authoritative, full list
+        queue: room.queue || [],
+        // Playback settings
+        loopMode: room.loopMode || 'none',
+        shuffleEnabled: room.shuffleEnabled || false,
+        globalVolume: room.globalVolume || 1.0,
+        playbackPermission: room.playbackPermission || 'host_only',
+    };
+}
+
+/**
  * Dispatch an inbound WebSocket message.
  *
  * @param {string} clientId Unique identifier for the client connection.
@@ -108,68 +158,59 @@ function handleMessage(clientId, raw, ws) {
                 roomManager.setHost(roomCode, clientId);
             }
 
-            ws.send(JSON.stringify({
-                type: 'ROOM_STATE',
-                roomCode,
-                hostClientId: room.hostClientId,
-                isPlaying: room.isPlaying || false,
-                positionMs: room.positionMs || 0,
-            }));
+            // Full authoritative snapshot — replaces the thin ROOM_STATE emit
+            const snapshot = buildRoomSnapshot(room, /* projectPosition= */ true);
+            if (ws.readyState === 1) {
+                ws.send(JSON.stringify(snapshot));
+                console.log(`[sync:join] ${clientId} joined room ${roomCode} | hydrated: queue=${snapshot.queue.length} tracks isPlaying=${snapshot.isPlaying} pos=${snapshot.positionMs}ms`);
+            }
 
-            // If room is already playing, send PREPARE to late joiner
+            // If room is actively playing, also send PREPARE so client buffers before receiving SCHEDULED_ACTION
             if (room.isPlaying && clientId !== room.hostClientId) {
                 ws.send(JSON.stringify({
                     type: 'PREPARE',
-                    trackTimeSeconds: (room.positionMs || 0) / 1000,
-                    audioSource: room.currentAudioSource || '',
+                    trackTimeSeconds: snapshot.positionMs / 1000,
+                    audioSource: room.currentAudioSource || room.currentTrackUrl || '',
                 }));
-                console.log(`[sync] Late join PREPARE sent to ${clientId} in room ${roomCode}`);
+                console.log(`[sync:join] PREPARE sent to late-joiner ${clientId} in room ${roomCode}`);
             }
-
-            console.log(`[sync] ${clientId} joined room ${roomCode} | clients: ${room.users.length}`);
             break;
         }
 
         case 'SYNC': {
             const roomCode = roomManager.getRoomOfClient(clientId);
             if (!roomCode) {
-                ws.send(JSON.stringify({
-                    type: 'ROOM_STATE',
-                    roomCode: null,
-                    hostClientId: null,
-                    isPlaying: false,
-                    positionMs: 0,
-                }));
-                console.log(`[sync] SYNC from ${clientId} — not in any room`);
+                if (ws.readyState === 1) {
+                    ws.send(JSON.stringify({
+                        type: 'room_state_snapshot',
+                        roomCode: null,
+                        hostClientId: null,
+                        isPlaying: false,
+                        positionMs: 0,
+                        queue: [],
+                        users: [],
+                    }));
+                }
+                console.log(`[sync:reconnect] SYNC from ${clientId} — not in any room`);
                 return;
             }
 
             const room = roomManager.getRoom(roomCode);
             if (!room) return;
 
-            // Project live position forward if the room is playing
-            const livePositionMs = room.isPlaying
-                ? (room.positionMs || 0) + (Date.now() - (room.lastPlayTimestamp || Date.now()))
-                : (room.positionMs || 0);
-
-            ws.send(JSON.stringify({
-                type: 'ROOM_STATE',
-                roomCode,
-                hostClientId: room.hostClientId,
-                isPlaying: room.isPlaying || false,
-                positionMs: Math.max(0, livePositionMs),
-            }));
+            const snapshot = buildRoomSnapshot(room, /* projectPosition= */ true);
+            if (ws.readyState === 1) {
+                ws.send(JSON.stringify(snapshot));
+                console.log(`[sync:reconnect] ${clientId} rehydrated | room=${roomCode} queue=${snapshot.queue.length} isPlaying=${snapshot.isPlaying} pos=${snapshot.positionMs}ms`);
+            }
 
             if (room.isPlaying) {
-                // Also send PREPARE so the reconnecting client buffers the current track
                 ws.send(JSON.stringify({
                     type: 'PREPARE',
-                    trackTimeSeconds: Math.max(0, livePositionMs) / 1000,
-                    audioSource: room.currentAudioSource || '',
+                    trackTimeSeconds: snapshot.positionMs / 1000,
+                    audioSource: room.currentAudioSource || room.currentTrackUrl || '',
                 }));
-                console.log(`[sync] SYNC reconnect — ROOM_STATE + PREPARE sent to ${clientId}`);
-            } else {
-                console.log(`[sync] SYNC reconnect — ROOM_STATE sent to ${clientId}`);
+                console.log(`[sync:reconnect] PREPARE sent to reconnecting client ${clientId}`);
             }
             break;
         }
@@ -295,10 +336,6 @@ function handleMessage(clientId, raw, ws) {
 
             const resolvedId = userId || ws.id;
 
-            console.log("JOIN_ATTEMPT:", roomCode);
-            console.log("ROOM_EXISTS:", roomManager.rooms.has(roomCode));
-            console.log("CURRENT_ROOMS:", Array.from(roomManager.rooms.keys()));
-
             if (!ROOM_CODE_REGEX.test(roomCode)) {
                 if (ws.readyState === 1) {
                     ws.send(JSON.stringify({
@@ -331,17 +368,13 @@ function handleMessage(clientId, raw, ws) {
                     room: room
                 }));
 
-                if (!room.currentTrackId || !room.currentTrackUrl) {
-                    if (room.currentTrackId || room.currentTrackUrl) {
-                        console.warn(`[SYNC SNAPSHOT SKIPPED] Missing track data: id=${room.currentTrackId}, url=${room.currentTrackUrl}`);
-                    }
-                } else {
+                // Full hydration snapshot — includes queue, track, position, users, loop/shuffle
+                if (room.currentTrackId || room.currentTrackUrl) {
                     const now = Date.now();
                     let currentPos = room.currentPositionMs || 0;
 
                     if (room.isPlaying) {
-                        // ── BeatSync-style: schedule execution SYNC_BUFFER_MS in the future ──
-                        const SYNC_BUFFER_MS = 2000; // 2s headroom for load + seek
+                        const SYNC_BUFFER_MS = 2000;
                         const serverTimeToExecute = now + SYNC_BUFFER_MS;
 
                         if (room.lastPositionUpdate && room.lastPositionUpdate > 0) {
@@ -351,7 +384,7 @@ function handleMessage(clientId, raw, ws) {
                         currentPos = Math.max(0, currentPos);
                         const positionAtExecution = currentPos + SYNC_BUFFER_MS;
 
-                        console.log(`[SNAPSHOT] late-join playing: trackId=${room.currentTrackId} posAtExec=${positionAtExecution}ms execAt=${serverTimeToExecute}`);
+                        console.log(`[sync:join_room] late-join playing: trackId=${room.currentTrackId} posAtExec=${positionAtExecution}ms execAt=${serverTimeToExecute} queue=${(room.queue || []).length} tracks`);
                         ws.send(JSON.stringify({
                             type: "sync_snapshot",
                             trackId: String(room.currentTrackId),
@@ -362,11 +395,14 @@ function handleMessage(clientId, raw, ws) {
                             positionMs: positionAtExecution,
                             serverTimeToExecute: serverTimeToExecute,
                             serverTime: now,
-                            isPlaying: true
+                            isPlaying: true,
+                            // Queue hydration — prevents late joiner seeing empty queue
+                            queue: room.queue || [],
+                            loopMode: room.loopMode || 'none',
+                            shuffleEnabled: room.shuffleEnabled || false,
                         }));
                     } else {
-                        // Paused: no forward projection needed, just send current position
-                        console.log(`[SNAPSHOT] late-join paused: trackId=${room.currentTrackId} pos=${currentPos}ms`);
+                        console.log(`[sync:join_room] late-join paused: trackId=${room.currentTrackId} pos=${currentPos}ms queue=${(room.queue || []).length} tracks`);
                         ws.send(JSON.stringify({
                             type: "sync_snapshot",
                             trackId: String(room.currentTrackId),
@@ -375,15 +411,29 @@ function handleMessage(clientId, raw, ws) {
                             artist: room.currentTrackArtist || '',
                             thumbnailUrl: room.currentTrackThumbnail || '',
                             positionMs: currentPos,
-                            serverTimeToExecute: now, // execute immediately
+                            serverTimeToExecute: now,
                             serverTime: now,
-                            isPlaying: false
+                            isPlaying: false,
+                            // Queue hydration
+                            queue: room.queue || [],
+                            loopMode: room.loopMode || 'none',
+                            shuffleEnabled: room.shuffleEnabled || false,
+                        }));
+                    }
+                } else {
+                    // No active track — still send queue if it exists (host may have queued tracks but not started)
+                    if ((room.queue || []).length > 0) {
+                        console.log(`[sync:join_room] no active track but queue has ${room.queue.length} items — sending queue_update`);
+                        ws.send(JSON.stringify({
+                            type: 'queue_update',
+                            queue: room.queue,
                         }));
                     }
                 }
             }
 
             roomManager.broadcastRoom(roomCode);
+            console.log(`[sync:join_room] ${resolvedId} (${username}) joined room ${roomCode} | users: ${room.users.length}`);
             break;
         }
 
@@ -724,10 +774,12 @@ function handleMessage(clientId, raw, ws) {
                 return;
             }
 
-            // Persist in room state
+            // Persist authoritatively in room state
             room.queue = msg.queue || [];
+            console.log(`[sync:queue] ${sender.id} updated queue in room ${room.code}: ${room.queue.length} tracks`);
 
-            console.log(`[QUEUE] Updated queue: ${room.queue.length} tracks`);
+            // QUEUE_UPDATED — incremental broadcast to all OTHER clients
+            // (the sender already has the up-to-date queue locally)
             const queuePayload = JSON.stringify({
                 type: 'queue_update',
                 queue: room.queue

@@ -25,7 +25,10 @@ function addClient(roomCode, clientId, ws) {
             isPlaying: false,
             positionMs: 0,
             currentAudioSource: '',
-            hostClientId: clientId
+            hostClientId: clientId,
+            queue: [],
+            loopMode: 'none',       // 'none' | 'one' | 'all'
+            shuffleEnabled: false,
         };
         rooms.set(roomCode, room);
     }
@@ -99,6 +102,19 @@ function createRoom(roomCode, socket, username, userId) {
         globalVolume: 1.0,
         playbackPermission: "host_only",
         timingOffsetMs: 0,
+        isPlaying: false,
+        positionMs: 0,
+        currentAudioSource: '',
+        currentTrackId: null,
+        currentTrackUrl: null,
+        currentTrackTitle: '',
+        currentTrackArtist: '',
+        currentTrackThumbnail: '',
+        currentPositionMs: 0,
+        lastPositionUpdate: null,
+        queue: [],
+        loopMode: 'none',
+        shuffleEnabled: false,
         users: [{
             id: userId || socket.id,
             name: username || "Unknown",
