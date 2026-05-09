@@ -32,21 +32,43 @@ import kotlinx.coroutines.withTimeoutOrNull
  *
  * @param webSocket The live [SyncWebSocket] used to send NTP probe packets.
  */
-internal class NtpEngine(private val webSocket: SyncWebSocket) {
+internal class NtpEngine(
+    private val webSocket: SyncWebSocket,
+    private val compensationMs: Long = 0L,
+    private val nudgeMs: Long = 0L,
+) {
 
     // ── Constants (ported from @beatsync/shared constants.ts) ────────────────
 
     /** Inter-departure gap between the two probes in a pair (ms). */
     private val PROBE_GAP_MS = 25L
 
+    /** Breathing gap between probe pairs to let network buffers drain (ms). */
+    private val INTER_PAIR_DELAY_MS = 10L
+
     /** Maximum allowed drift between client-side and server-side inter-arrival gaps (ms). */
     private val PROBE_GAP_TOLERANCE_MS = 5L
 
     /** Number of probe pairs fired per measurement cycle. */
-    private val PROBE_PAIR_COUNT = 8
+    private val PROBE_PAIR_COUNT = 16
+
+    /** Maximum number of pure measurements to retain in the rolling window. */
+    private val ROLLING_WINDOW_SIZE = 32
+
+    /** Minimum pure measurements in window before offset is considered stable. */
+    private val MIN_WINDOW_FOR_STABLE_OFFSET = 8
+
+    /** Interval between probes during initial rapid-fire phase (ms). */
+    private val INITIAL_INTERVAL_MS = 50L
+
+    /** Interval between probes during steady-state phase (ms). */
+    private val STEADY_STATE_INTERVAL_MS = 2500L
 
     /** Maximum wait for a single probe response before timing out (ms). */
     private val PROBE_RESPONSE_TIMEOUT_MS = 1_500L
+
+    /** 1.5 × steady-state interval — mirrors BeatSync's RESPONSE_TIMEOUT_MS exactly. */
+    private val RESPONSE_TIMEOUT_MS = 3750L
 
     // ── Internal measurement record ───────────────────────────────────────────
 
@@ -69,6 +91,13 @@ internal class NtpEngine(private val webSocket: SyncWebSocket) {
         val probeGroupIndex: Int,
     )
 
+    /**
+     * Rolling window of all accumulated pure measurements across all cycles.
+     * Capped at [ROLLING_WINDOW_SIZE] — oldest measurements are evicted when full.
+     * Persists across individual [measure()] calls unlike [pureMeasurements].
+     */
+    private val rollingWindow = ArrayDeque<Measurement>(ROLLING_WINDOW_SIZE)
+
     // ── Probe state (reset on each cycle) ────────────────────────────────────
 
     private var probeGroupCounter = 0
@@ -76,6 +105,13 @@ internal class NtpEngine(private val webSocket: SyncWebSocket) {
     private var pendingFirstProbeGroupId: Int? = null
     private var pureCount = 0
     private var impureCount = 0
+
+    /** Timestamp of the last outbound probe — null if no probe is in-flight. */
+    private var lastProbeTimestampMs: Long? = null
+
+    /** Whether the heartbeat has been stopped due to stale connection. */
+    @Volatile
+    private var isStale: Boolean = false
 
     private fun resetProbeState() {
         probeGroupCounter = 0
@@ -86,6 +122,39 @@ internal class NtpEngine(private val webSocket: SyncWebSocket) {
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
+
+    /**
+     * Clear the rolling window.
+     * Must be called when the session reconnects after a network drop —
+     * stale measurements from a previous connection are no longer valid.
+     */
+    fun resetWindow() {
+        rollingWindow.clear()
+        Log.d(TAG, "Rolling window reset")
+    }
+
+    /**
+     * Mark that a valid NTP response was received.
+     * Resets the stale-connection timer.
+     *
+     * Must be called by [SyncSession] after every successful [NtpResult]
+     * from the heartbeat — mirrors BeatSync's `markNTPResponseReceived()`.
+     */
+    fun markResponseReceived() {
+        lastProbeTimestampMs = null
+        isStale = false
+        Log.d(TAG, "NTP response acknowledged — stale timer reset")
+    }
+
+    /**
+     * Reset stale state — called when WebSocket reconnects.
+     * Allows heartbeat to resume after a connection recovery.
+     */
+    fun resetStale() {
+        isStale = false
+        lastProbeTimestampMs = null
+        Log.d(TAG, "Stale state reset — heartbeat can resume")
+    }
 
     /**
      * Run a full NTP measurement cycle on [Dispatchers.IO].
@@ -115,7 +184,19 @@ internal class NtpEngine(private val webSocket: SyncWebSocket) {
             val validated = validateProbePair(first, second, groupId) ?: return@repeat
             pureMeasurements.add(validated)
 
-            Log.d(TAG, "Pair $pairIndex/$PROBE_PAIR_COUNT done. Pure so far: ${pureMeasurements.size}")
+            // Add to rolling window — evict oldest if at capacity
+            if (rollingWindow.size >= ROLLING_WINDOW_SIZE) {
+                rollingWindow.removeFirst()
+            }
+            rollingWindow.addLast(validated)
+
+            Log.d(TAG, "Pair $pairIndex/$PROBE_PAIR_COUNT done. " +
+                "Cycle pure: ${pureMeasurements.size} | Window: ${rollingWindow.size}/$ROLLING_WINDOW_SIZE")
+
+            // Breathing room between pairs — lets network buffers drain before next pair
+            if (pairIndex < PROBE_PAIR_COUNT - 1) {
+                delay(INTER_PAIR_DELAY_MS)
+            }
         }
 
         if (pureMeasurements.isEmpty()) {
@@ -124,6 +205,87 @@ internal class NtpEngine(private val webSocket: SyncWebSocket) {
         }
 
         buildResult(pureMeasurements)
+    }
+
+    /**
+     * Starts a continuous NTP heartbeat — ported from BeatSync's two-phase probe strategy.
+     *
+     * Phase 1 (rapid-fire): Fires probe pairs every [INITIAL_INTERVAL_MS] until
+     * [PROBE_PAIR_COUNT] pure measurements have been collected.
+     *
+     * Phase 2 (steady-state): Fires a single probe pair every [STEADY_STATE_INTERVAL_MS]
+     * indefinitely, keeping the offset permanently fresh.
+     *
+     * The [onResult] callback is invoked after every successful measurement with the
+     * latest [NtpResult]. The caller (SyncSession) should update offset and scheduler.
+     *
+     * Must be called from a coroutine scope. Runs entirely on [Dispatchers.IO].
+     * Cancel the parent scope or job to stop the heartbeat.
+     *
+     * @param onResult Callback invoked with each fresh [NtpResult].
+     */
+    suspend fun startHeartbeat(
+        onResult: (NtpResult) -> Unit,
+        onConnectionStale: () -> Unit,
+    ) = withContext(Dispatchers.IO) {
+        var pureMeasurementsCollected = 0
+        isStale = false
+
+        // Phase 1 — rapid fire
+        while (pureMeasurementsCollected < PROBE_PAIR_COUNT) {
+            if (isStale) {
+                Log.w(TAG, "Heartbeat stopped — connection stale during Phase 1")
+                return@withContext
+            }
+
+            // Check if previous probe timed out
+            val lastProbe = lastProbeTimestampMs
+            if (lastProbe != null && (System.currentTimeMillis() - lastProbe) > RESPONSE_TIMEOUT_MS) {
+                Log.e(TAG, "NTP probe timed out — connection stale")
+                isStale = true
+                onConnectionStale()
+                return@withContext
+            }
+
+            lastProbeTimestampMs = System.currentTimeMillis()
+            val result = measure()
+            if (result != null) {
+                lastProbeTimestampMs = null // response received
+                pureMeasurementsCollected++
+                onResult(result)
+                Log.d(TAG, "Heartbeat phase 1: $pureMeasurementsCollected/$PROBE_PAIR_COUNT")
+            }
+            delay(INITIAL_INTERVAL_MS)
+        }
+
+        Log.d(TAG, "Heartbeat entering steady-state")
+
+        // Phase 2 — steady state
+        while (true) {
+            if (isStale) {
+                Log.w(TAG, "Heartbeat stopped — connection stale during Phase 2")
+                return@withContext
+            }
+
+            delay(STEADY_STATE_INTERVAL_MS)
+
+            // Check stale before firing
+            val lastProbe = lastProbeTimestampMs
+            if (lastProbe != null && (System.currentTimeMillis() - lastProbe) > RESPONSE_TIMEOUT_MS) {
+                Log.e(TAG, "NTP steady-state probe timed out — connection stale")
+                isStale = true
+                onConnectionStale()
+                return@withContext
+            }
+
+            lastProbeTimestampMs = System.currentTimeMillis()
+            val result = measure()
+            if (result != null) {
+                lastProbeTimestampMs = null // response received
+                onResult(result)
+                Log.d(TAG, "Heartbeat steady-state: offset=${result.offsetMs}ms rtt=${result.rttMs}ms")
+            }
+        }
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -144,6 +306,9 @@ internal class NtpEngine(private val webSocket: SyncWebSocket) {
                 t0 = t0,
                 probeGroupId = groupId,
                 probeGroupIndex = probeGroupIndex,
+                clientRtt = if (pendingFirstProbe != null) pendingFirstProbe!!.roundTripDelay else null,
+                clientCompensationMs = compensationMs,
+                clientNudgeMs = nudgeMs,
             )
         )
 
@@ -225,14 +390,30 @@ internal class NtpEngine(private val webSocket: SyncWebSocket) {
      * closest to true propagation delay — its offset has the least asymmetric queuing noise.
      */
     private fun buildResult(measurements: List<Measurement>): NtpResult {
-        val best = measurements.minByOrNull { it.roundTripDelay }!!
+        // Use rolling window if it has enough measurements — more accurate than single cycle
+        val source = if (rollingWindow.size >= MIN_WINDOW_FOR_STABLE_OFFSET) {
+            Log.d(TAG, "Using rolling window (${rollingWindow.size} measurements) for offset estimate")
+            rollingWindow.toList()
+        } else {
+            Log.d(TAG, "Window not yet stable (${rollingWindow.size}/$MIN_WINDOW_FOR_STABLE_OFFSET) — using cycle measurements")
+            measurements
+        }
+
+        // Min-RTT selection across entire source pool
+        val best = source.minByOrNull { it.roundTripDelay }!!
+        val averageRtt = source.map { it.roundTripDelay }.average().toLong()
         val total = pureCount + impureCount
         val confidence = if (total > 0) pureCount.toFloat() / total else 0f
+
+        // Window stability bonus — confidence gets a boost when window is full
+        val windowBonus = if (rollingWindow.size >= ROLLING_WINDOW_SIZE) 0.1f else 0f
+        val adjustedConfidence = (confidence + windowBonus).coerceAtMost(1.0f)
 
         return NtpResult(
             offsetMs = best.clockOffset,
             rttMs = best.roundTripDelay,
-            confidence = confidence,
+            averageRttMs = averageRtt,
+            confidence = adjustedConfidence,
         )
     }
 

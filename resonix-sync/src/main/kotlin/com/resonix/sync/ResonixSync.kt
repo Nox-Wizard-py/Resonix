@@ -19,10 +19,9 @@ import kotlinx.coroutines.flow.StateFlow
  * ```kotlin
  * ResonixSync.init(context, serverUrl = "wss://sync.resonix.app/ws")
  * ResonixSync.attachPlayer(exoPlayer)
- * val code = ResonixSync.createRoom()          // share 'code' with peers
- * ResonixSync.startPeriodicResync()
+ * val code = ResonixSync.createRoom()
  * ResonixSync.play(positionMs = 0L)
- * // … later …
+ * // Heartbeat runs automatically — no manual resync needed
  * ResonixSync.destroy()
  * ```
  *
@@ -31,7 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
  * ResonixSync.init(context, serverUrl = "wss://sync.resonix.app/ws")
  * ResonixSync.attachPlayer(exoPlayer)
  * ResonixSync.joinRoom(code)
- * ResonixSync.startPeriodicResync()
+ * // Heartbeat runs automatically — no manual resync needed
  * // ExoPlayer will play/pause automatically on ScheduledPlay/Pause commands
  * // … later …
  * ResonixSync.destroy()
@@ -89,7 +88,7 @@ object ResonixSync {
             Log.w(TAG, "init() called when session already active — call destroy() first")
             return
         }
-        val sched = PlaybackScheduler()
+        val sched = PlaybackScheduler(context = context.applicationContext)
         scheduler = sched
         session = SyncSession(
             context = context.applicationContext,
@@ -176,22 +175,20 @@ object ResonixSync {
         requireSession().seek(positionMs, audioSource)
     }
 
-    // ── Resync ────────────────────────────────────────────────────────────────
+    // ── Calibration ───────────────────────────────────────────────────────────
 
     /**
-     * Start the periodic NTP resync loop.
+     * Apply a manual sync nudge offset for this device.
      *
-     * Runs a full NTP probe cycle every [intervalMs] milliseconds. If the new offset
-     * deviates from the current one by more than 5 ms, [sessionState] transitions to
-     * [SessionState.Drifted] and the offset is corrected automatically.
+     * Use when the user reports they can hear their device is slightly
+     * ahead or behind other devices in the room. The nudge is applied
+     * on top of the automatic hardware latency compensation.
      *
-     * A resync is also triggered immediately on any network-change event (e.g.
-     * Wi-Fi handoff, mobile data reconnect).
-     *
-     * @param intervalMs Resync interval in milliseconds. Default: 30,000 ms.
+     * @param nudgeMs Positive = delay this device. Negative = advance this device.
+     *                Recommended range: -200ms to +200ms.
      */
-    fun startPeriodicResync(intervalMs: Long = 30_000L) {
-        requireSession().startPeriodicResync(intervalMs)
+    fun updateNudge(nudgeMs: Long) {
+        requireScheduler().updateNudge(nudgeMs)
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────────

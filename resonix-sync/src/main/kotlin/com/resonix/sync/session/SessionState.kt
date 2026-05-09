@@ -33,4 +33,10 @@ sealed class SessionState {
      * @property driftMs Magnitude of the detected drift in milliseconds.
      */
     data class Drifted(val driftMs: Long) : SessionState()
+
+    /**
+     * NTP heartbeat detected a stale connection — no response within 3750ms.
+     * UI should show a reconnecting indicator and attempt WebSocket reconnect.
+     */
+    object Stale : SessionState()
 }

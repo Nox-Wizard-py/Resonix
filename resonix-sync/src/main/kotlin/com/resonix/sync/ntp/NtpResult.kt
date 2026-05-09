@@ -12,6 +12,7 @@ package com.resonix.sync.ntp
  */
 data class NtpResult(
     val offsetMs: Long,
-    val rttMs: Long,
+    val rttMs: Long,          // best (lowest) RTT from pure probes
+    val averageRttMs: Long,   // average RTT across all pure probes — used for dynamic lead time
     val confidence: Float,
 )

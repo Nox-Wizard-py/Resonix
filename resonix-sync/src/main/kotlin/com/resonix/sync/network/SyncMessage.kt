@@ -11,18 +11,20 @@ import kotlinx.serialization.Serializable
  * field so that kotlinx.serialization's polymorphic JSON can round-trip them correctly.
  *
  * ## Client → Server messages (outgoing)
- * - [NtpProbe]   — NTP coded-probe request (index 0 or 1)
- * - [Play]       — Trigger playback at a given track position
- * - [Pause]      — Pause playback
- * - [Seek]       — Seek to a specific position
- * - [Join]       — Join or create a room
- * - [RequestSync]— Late-join sync request
+ * - [NtpProbe]    — NTP coded-probe request (index 0 or 1)
+ * - [Play]        — Trigger playback at a given track position
+ * - [Pause]       — Pause playback
+ * - [Seek]        — Seek to a specific position
+ * - [Join]        — Join or create a room
+ * - [RequestSync] — Late-join / reconnect sync request
+ * - [AudioLoaded] — Confirms audio source is buffered and ExoPlayer is ready
  *
  * ## Server → Client messages (incoming)
  * - [NtpResponse]    — Server echo with t1/t2 timestamps
  * - [RoomState]      — Full room state snapshot
  * - [ScheduledPlay]  — Server-time-stamped play command
  * - [ScheduledPause] — Server-time-stamped pause command
+ * - [LoadAudio]      — Server tells all peers to pre-buffer a track before scheduling
  */
 @Serializable
 sealed class SyncMessage {
@@ -96,6 +98,28 @@ sealed class SyncMessage {
     @Serializable
     @SerialName("JOIN")
     data class Join(
+        val roomCode: String,
+        val clientId: String,
+    ) : SyncMessage()
+
+    /**
+     * Sent by server to tell a late-joining peer to prepare (buffer) a track
+     * before playback is scheduled.
+     */
+    @Serializable
+    @SerialName("PREPARE")
+    data class Prepare(
+        val trackTimeSeconds: Double,
+        val audioSource: String,
+    ) : SyncMessage()
+
+    /**
+     * Sent by client to server once ExoPlayer has buffered and is ready.
+     * Server holds playback scheduling until all peers signal READY.
+     */
+    @Serializable
+    @SerialName("READY")
+    data class Ready(
         val roomCode: String,
         val clientId: String,
     ) : SyncMessage()
@@ -175,6 +199,30 @@ sealed class SyncMessage {
         val serverTimeToExecute: Long,
         val trackTimeSeconds: Double,
         val audioSource: String,
+    ) : SyncMessage()
+
+    /**
+     * Sent by client to server confirming the audio source is loaded
+     * and ExoPlayer is ready to receive a [ScheduledPlay] command.
+     * Server holds scheduling until all peers confirm (audio-load gate).
+     */
+    @Serializable
+    @SerialName("AUDIO_LOADED")
+    data class AudioLoaded(
+        val roomCode: String,
+        val clientId: String,
+        val audioSource: String,
+    ) : SyncMessage()
+
+    /**
+     * Sent by server to all peers instructing them to pre-buffer an audio source
+     * before playback is scheduled. Peers must respond with [AudioLoaded].
+     */
+    @Serializable
+    @SerialName("LOAD_AUDIO")
+    data class LoadAudio(
+        val audioSource: String,
+        val trackTimeSeconds: Double,
     ) : SyncMessage()
 
     /**
