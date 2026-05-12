@@ -898,7 +898,7 @@ fun ResonixApp(
                 }
 
                 val currentRoute = navBackStackEntry?.destination?.route
-                val showUtilityFab = currentRoute == Screens.Home.route
+                val showUtilityFab = currentRoute == Screens.Home.route && (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
 
                 if (showUtilityFab) {
                 val isDarkThemeForFab = if (pureBlack) true
