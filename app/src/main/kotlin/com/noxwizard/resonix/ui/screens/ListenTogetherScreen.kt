@@ -2,8 +2,14 @@ package com.noxwizard.resonix.ui.screens
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -42,12 +49,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -211,7 +223,7 @@ fun ListenTogetherScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Listen Together",
+                            text = "Resonance",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -242,17 +254,9 @@ fun ListenTogetherScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            
-            Text(
-                text = "Music in perfect sync",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
-            )
+            ResonanceHeroHeader()
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -400,7 +404,7 @@ fun ListenTogetherScreen(
                                 .height(56.dp),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text("Join")
+                            Text("Join Resonance")
                         }
 
                         Button(
@@ -411,7 +415,7 @@ fun ListenTogetherScreen(
                                 .height(56.dp),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text("Create")
+                            Text("Start Resonance")
                         }
                     }
                 }
@@ -472,6 +476,92 @@ fun ListenTogetherScreen(
             }
             else -> Unit
         }
+    }
+}
+
+@Composable
+private fun ResonanceHeroHeader() {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
+    // Soft breathing pulse animation
+    val infiniteTransition = rememberInfiniteTransition(label = "heroGlow")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.88f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.10f,
+        targetValue = 0.22f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Icon with layered radial glow
+        Box(contentAlignment = Alignment.Center) {
+            // Outer glow ring (animated)
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .scale(pulseScale)
+                    .background(
+                        color = primaryColor.copy(alpha = pulseAlpha),
+                        shape = CircleShape
+                    )
+            )
+            // Inner soft halo
+            Box(
+                modifier = Modifier
+                    .size(92.dp)
+                    .background(
+                        color = primaryColor.copy(alpha = 0.10f),
+                        shape = CircleShape
+                    )
+            )
+            // Resonance icon
+            Image(
+                painter = painterResource(R.drawable.resonance),
+                contentDescription = "Resonance",
+                modifier = Modifier.size(80.dp),
+                colorFilter = ColorFilter.tint(primaryColor)
+            )
+        }
+
+        // Brand title
+        Text(
+            text = "RESONANCE",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 4.sp
+            ),
+            color = primaryColor,
+            textAlign = TextAlign.Center
+        )
+
+        // Tagline
+        Text(
+            text = "Feel every beat together, perfectly synced\nacross every connected listener.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = onSurfaceVariant.copy(alpha = 0.75f),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
     }
 }
 
