@@ -23,8 +23,8 @@ android {
     applicationId = "com.noxwizard.resonix"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.8.0-Luna-I"
+        versionCode = 9
+        versionName = "1.8.1-Luna-II"
         
         multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
