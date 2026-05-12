@@ -263,6 +263,22 @@ fun PlayerMenu(
             NewAction(
                 icon = {
                     Icon(
+                        painter = painterResource(R.drawable.sync),
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                text = "Start Resonance",
+                onClick = {
+                    navController.navigate("listen_together")
+                    playerBottomSheetState.collapseSoft()
+                    onDismiss()
+                }
+            ),
+            NewAction(
+                icon = {
+                    Icon(
                         painter = painterResource(R.drawable.playlist_add),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
