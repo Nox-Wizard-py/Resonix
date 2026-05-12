@@ -9,12 +9,14 @@ import android.view.WindowManager
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -69,6 +71,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -76,7 +80,9 @@ import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -190,8 +196,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.draw.blur
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import java.net.URLDecoder
 import java.net.URLEncoder
 import kotlin.time.Duration.Companion.days
@@ -675,7 +687,24 @@ fun ResonixApp(
                 com.noxwizard.resonix.ui.component.LocalMenuState provides menuState,
                 LocalCategoryAccentCallback provides { color -> categoryAccentOverride = color },
             ) {
-                Scaffold(
+                var isUtilityFabExpanded by rememberSaveable { mutableStateOf(false) }
+                val utilityFabBlurRadius by animateDpAsState(
+                    targetValue = if (isUtilityFabExpanded) 20.dp else 0.dp,
+                    animationSpec = tween(300),
+                    label = "blur_anim"
+                )
+                val utilityFabScrimAlpha by animateFloatAsState(
+                    targetValue = if (isUtilityFabExpanded) 0.4f else 0f,
+                    animationSpec = tween(300),
+                    label = "scrim_anim"
+                )
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Scaffold(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(if (utilityFabBlurRadius > 0.dp) Modifier.blur(utilityFabBlurRadius) else Modifier)
+                            .nestedScroll(searchBarScrollBehavior.nestedScrollConnection),
                     topBar = {
                         if (shouldShowTopBar) {
                             ResonixTopBar(
@@ -736,6 +765,13 @@ fun ResonixApp(
                             }
                         }
 
+                        val navItemLongClick: (Screens) -> Unit = { screen ->
+                            if (screen.route == Screens.Search.route) {
+                                navController.navigate("recognition")
+                            }
+                        }
+
+
                         if (frostedGlassNavBar) {
                             FrostedGlassNavigationBar(
                                 navController = navController,
@@ -749,6 +785,10 @@ fun ResonixApp(
                                 slimNav = slimNav,
                                 navigationItems = navigationItems,
                                 onItemClick = navItemClick,
+                                onItemLongClick = navItemLongClick,
+                                isUtilityFabExpanded = isUtilityFabExpanded,
+                                onUtilityFabExpandedChange = { isUtilityFabExpanded = it },
+                                menuState = menuState
                             )
                         } else {
                             ResonixBottomBar(
@@ -763,12 +803,10 @@ fun ResonixApp(
                                 slimNav = slimNav,
                                 navigationItems = navigationItems,
                                 onItemClick = navItemClick,
+                                onItemLongClick = navItemLongClick,
                             )
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(searchBarScrollBehavior.nestedScrollConnection)
+                    }
                 ) {
                     var transitionDirection =
                         AnimatedContentTransitionScope.SlideDirection.Left
@@ -845,7 +883,94 @@ fun ResonixApp(
                             localLatestVersionName
                         )
                     }
+
                 }
+
+                if (utilityFabScrimAlpha > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF100A1A).copy(alpha = utilityFabScrimAlpha))
+                            .pointerInput(Unit) {
+                                detectTapGestures(onTap = { isUtilityFabExpanded = false })
+                            }
+                    )
+                }
+
+                val currentRoute = navBackStackEntry?.destination?.route
+                val showUtilityFab = currentRoute == Screens.Home.route
+
+                if (showUtilityFab) {
+                val isDarkThemeForFab = if (pureBlack) true
+                else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
+
+                val glassBgForFab = if (isDarkThemeForFab)
+                    MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+                else
+                    MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
+
+                val shadowColorForFab = if (isDarkThemeForFab) Color.Black.copy(alpha = 0.50f)
+                else Color.Black.copy(alpha = 0.12f)
+
+                val borderColorForFab = if (isDarkThemeForFab) Color.White.copy(alpha = 0.10f)
+                else Color.Black.copy(alpha = 0.08f)
+
+                val innerReflectionColorForFab = if (isDarkThemeForFab) Color.White.copy(alpha = 0.06f)
+                else Color.White.copy(alpha = 0.40f)
+
+                if (frostedGlassNavBar) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(
+                                end = 28.dp,
+                                bottom = bottomInsetDp + 0.dp,
+                            )
+                    ) {
+                        com.noxwizard.resonix.ui.GlassUtilityFab(
+                            isExpanded = isUtilityFabExpanded,
+                            onExpandedChange = { isUtilityFabExpanded = it },
+                            isDarkTheme = isDarkThemeForFab,
+                            glassBg = glassBgForFab,
+                            shadowColor = shadowColorForFab,
+                            borderColor = borderColorForFab,
+                            innerReflectionColor = innerReflectionColorForFab,
+                            menuState = menuState,
+                            navController = navController
+                        )
+                    }
+                } else {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = topAppBarScrollBehavior.state.collapsedFraction < 0.5f || isUtilityFabExpanded,
+                        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }),
+                        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .windowInsetsPadding(
+                                com.noxwizard.resonix.LocalPlayerAwareWindowInsets.current
+                                    .only(androidx.compose.foundation.layout.WindowInsetsSides.Bottom + androidx.compose.foundation.layout.WindowInsetsSides.Horizontal)
+                            )
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(end = 16.dp, bottom = 16.dp)
+                        ) {
+                            com.noxwizard.resonix.ui.GlassUtilityFab(
+                                isExpanded = isUtilityFabExpanded,
+                                onExpandedChange = { isUtilityFabExpanded = it },
+                                isDarkTheme = isDarkThemeForFab,
+                                glassBg = glassBgForFab,
+                                shadowColor = shadowColorForFab,
+                                borderColor = borderColorForFab,
+                                innerReflectionColor = innerReflectionColorForFab,
+                                menuState = menuState,
+                                navController = navController,
+                                useGlassTheme = false
+                            )
+                        }
+                    }
+                }
+                } // end showUtilityFab
+            }
 
                 BottomSheetMenu(
                     state = LocalMenuState.current,
