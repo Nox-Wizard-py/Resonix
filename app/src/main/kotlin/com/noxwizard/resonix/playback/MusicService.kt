@@ -1877,26 +1877,32 @@ class MusicService :
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        // When the user clears the app from Recents, ensure we clear Discord rich presence
+        
+        // Stop playback and clear queue immediately
+        if (::player.isInitialized) {
+            player.stop()
+            player.clearMediaItems()
+        }
+
+        // Discord and Presence cleanup
         try {
             scope.launch {
                 try { discordRpc?.stopActivity() } catch (_: Exception) {}
+                try { 
+                    if (discordRpc?.isRpcRunning() == true) {
+                        discordRpc?.closeRPC()
+                    }
+                } catch (_: Exception) {}
+                discordRpc = null
             }
         } catch (_: Exception) {}
 
-        try {
-            if (discordRpc?.isRpcRunning() == true) {
-                try { discordRpc?.closeRPC() } catch (_: Exception) {}
-            }
-        } catch (_: Exception) {}
-        discordRpc = null
         try { DiscordPresenceManager.stop() } catch (_: Exception) {}
         lastPresenceToken = null
-        try {
-            if (dataStore.get(StopMusicOnTaskClearKey, false)) {
-                stopSelf()
-            }
-        } catch (_: Exception) {}
+
+        // Full service shutdown
+        stopForeground(true)
+        stopSelf()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = mediaSession
