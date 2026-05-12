@@ -652,7 +652,7 @@ class MusicService :
                     val meta = com.noxwizard.resonix.models.MediaMetadata(
                         id = safeId,
                         title = event.title.ifEmpty { "Live Sync" },
-                        artists = listOf(com.noxwizard.resonix.models.MediaMetadata.Artist(null, event.artist.ifEmpty { "Listen Together" })),
+                        artists = listOf(com.noxwizard.resonix.models.MediaMetadata.Artist(null, event.artist.ifEmpty { "Resonance" })),
                         duration = -1,
                         thumbnailUrl = event.thumbnailUrl.ifEmpty { null }
                     )
@@ -665,7 +665,7 @@ class MusicService :
                         .setMediaMetadata(
                             androidx.media3.common.MediaMetadata.Builder()
                                 .setTitle(event.title.ifEmpty { "Live Sync" })
-                                .setArtist(event.artist.ifEmpty { "Listen Together" })
+                                .setArtist(event.artist.ifEmpty { "Resonance" })
                                 .setArtworkUri(if (event.thumbnailUrl.isNotEmpty()) android.net.Uri.parse(event.thumbnailUrl) else null)
                                 .setMediaType(androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC)
                                 .build()
