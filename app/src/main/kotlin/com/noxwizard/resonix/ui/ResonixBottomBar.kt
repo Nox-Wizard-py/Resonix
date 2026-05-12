@@ -2,6 +2,9 @@ package com.noxwizard.resonix.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -29,6 +32,7 @@ import com.noxwizard.resonix.ui.component.BottomSheetState
 import com.noxwizard.resonix.ui.player.BottomSheetPlayer
 import com.noxwizard.resonix.ui.screens.Screens
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ResonixBottomBar(
     navController: NavHostController,
@@ -42,7 +46,8 @@ fun ResonixBottomBar(
     slimNav: Boolean,
 
     navigationItems: List<Screens>,
-    onItemClick: (Screens, Boolean) -> Unit
+    onItemClick: (Screens, Boolean) -> Unit,
+    onItemLongClick: (Screens) -> Unit = {}
 ) {
     Box {
         BottomSheetPlayer(
@@ -106,6 +111,12 @@ fun ResonixBottomBar(
                     onClick = {
                         onItemClick(screen, isSelected)
                     },
+                    modifier = Modifier.combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { onItemClick(screen, isSelected) },
+                        onLongClick = { onItemLongClick(screen) }
+                    )
                 )
             }
         }
