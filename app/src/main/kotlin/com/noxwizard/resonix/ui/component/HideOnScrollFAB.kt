@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.noxwizard.resonix.LocalPlayerAwareWindowInsets
 import com.noxwizard.resonix.ui.utils.isScrollingUp
+import com.noxwizard.resonix.utils.rememberPreference
+import com.noxwizard.resonix.constants.FrostedGlassNavBarKey
 
 @Composable
 fun BoxScope.HideOnScrollFAB(
@@ -32,6 +34,9 @@ fun BoxScope.HideOnScrollFAB(
     offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
+    val (frostedGlassNavBar) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val bottomPadding = if (frostedGlassNavBar) 16.dp else 84.dp
+
     AnimatedVisibility(
         visible = visible && lazyListState.isScrollingUp(),
         enter = slideInVertically { it },
@@ -46,7 +51,7 @@ fun BoxScope.HideOnScrollFAB(
             ),
     ) {
         FloatingActionButton(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(end = 16.dp, bottom = bottomPadding),
             onClick = onClick,
         ) {
             Icon(
@@ -65,6 +70,9 @@ fun BoxScope.HideOnScrollFAB(
     offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
+    val (frostedGlassNavBar) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val bottomPadding = if (frostedGlassNavBar) 16.dp else 84.dp
+
     AnimatedVisibility(
         visible = visible && lazyListState.isScrollingUp(),
         enter = slideInVertically { it },
@@ -79,7 +87,7 @@ fun BoxScope.HideOnScrollFAB(
             ),
     ) {
         FloatingActionButton(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(end = 16.dp, bottom = bottomPadding),
             onClick = onClick,
         ) {
             Icon(
@@ -98,6 +106,9 @@ fun BoxScope.HideOnScrollFAB(
     offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
+    val (frostedGlassNavBar) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val bottomPadding = if (frostedGlassNavBar) 16.dp else 84.dp
+
     AnimatedVisibility(
         visible = visible && scrollState.isScrollingUp(),
         enter = slideInVertically { it },
@@ -112,7 +123,7 @@ fun BoxScope.HideOnScrollFAB(
             ),
     ) {
         FloatingActionButton(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(end = 16.dp, bottom = bottomPadding),
             onClick = onClick,
         ) {
             Icon(
