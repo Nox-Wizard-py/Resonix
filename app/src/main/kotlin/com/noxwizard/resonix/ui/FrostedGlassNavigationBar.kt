@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,10 +19,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.Text
+import com.noxwizard.resonix.ui.component.ListDialog
+import com.noxwizard.resonix.ui.component.MenuState
+import com.noxwizard.resonix.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -53,7 +69,7 @@ import io.github.fletchmckee.liquid.liquid
 import io.github.fletchmckee.liquid.rememberLiquidState
 
 private val NavBarHeight = 56.dp
-private val NavBarHorizontalMargin = 72.dp
+private val NavBarHorizontalMargin = 92.dp
 private val NavBarBottomMargin = 16.dp
 private val NavBarCornerRadius = 32.dp
 private val IconSize = 24.dp
@@ -74,6 +90,10 @@ fun FrostedGlassNavigationBar(
     slimNav: Boolean,
     navigationItems: List<Screens>,
     onItemClick: (Screens, Boolean) -> Unit,
+    onItemLongClick: (Screens) -> Unit = {},
+    isUtilityFabExpanded: Boolean,
+    onUtilityFabExpandedChange: (Boolean) -> Unit,
+    menuState: MenuState
 ) {
     val isDarkTheme = if (pureBlack) true
     else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
@@ -153,16 +173,22 @@ fun FrostedGlassNavigationBar(
                             y = (slideOffset + hideOffset).roundToPx(),
                         )
                     }
-                }
-                .shadow(
-                    elevation = 8.dp,
-                    shape = RoundedCornerShape(NavBarCornerRadius),
-                    ambientColor = shadowColor,
-                    spotColor = shadowColor,
-                )
-                .clip(RoundedCornerShape(NavBarCornerRadius))
-                .background(glassBg)
-                .liquid(rememberLiquidState()) {
+                },
+        ) {
+            // Pill
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(NavBarHeight)
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(NavBarCornerRadius),
+                        ambientColor = shadowColor,
+                        spotColor = shadowColor,
+                    )
+                    .clip(RoundedCornerShape(NavBarCornerRadius))
+                    .background(glassBg)
+                    .liquid(rememberLiquidState()) {
                     shape = RoundedCornerShape(NavBarCornerRadius)
                     frost = if (isDarkTheme) 32.dp else 28.dp
                     curve = if (isDarkTheme) 0.40f else 0.50f
@@ -280,10 +306,12 @@ fun FrostedGlassNavigationBar(
                             isSelected = isSelected,
                             isDarkTheme = isDarkTheme,
                             onSelect = { onItemClick(screen, isSelected) },
+                            onLongSelect = { onItemLongClick(screen) },
                         )
                     }
                 }
             }
+        }
         }
 
         // Bottom inset fill
@@ -300,12 +328,14 @@ fun FrostedGlassNavigationBar(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun RowScope.CompactNavItem(
     screen: Screens,
     isSelected: Boolean,
     isDarkTheme: Boolean,
     onSelect: () -> Unit,
+    onLongSelect: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -347,10 +377,12 @@ private fun RowScope.CompactNavItem(
             .weight(1f)
             .height(NavBarHeight)
             .clip(CircleShape)
-            .clickable(
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-            ) { onSelect() }
+                onClick = onSelect,
+                onLongClick = onLongSelect
+            )
             .graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale
@@ -370,6 +402,246 @@ private fun RowScope.CompactNavItem(
                     alpha = iconAlpha
                 },
             tint = iconTint,
+        )
+    }
+}
+
+
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun GlassUtilityFab(
+    isExpanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    isDarkTheme: Boolean,
+    glassBg: Color,
+    shadowColor: Color,
+    borderColor: Color,
+    innerReflectionColor: Color,
+    menuState: MenuState,
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    useGlassTheme: Boolean = true
+) {
+    val iconRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 45f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "utility_fab_icon_rotation",
+    )
+
+    // Child animation states — computed here so graphicsLayer lambdas can capture them
+    val recogStiffness = Spring.StiffnessMediumLow
+    val syncStiffness  = Spring.StiffnessMediumLow + 50f
+
+    val menuTransY by animateDpAsState(
+        targetValue = if (isExpanded) 0.dp else 24.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "menu_transY",
+    )
+    val recogAlpha by animateFloatAsState(
+        targetValue = if (isExpanded) 1f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "recog_alpha",
+    )
+    val syncAlpha by animateFloatAsState(
+        targetValue = if (isExpanded) 1f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "sync_alpha",
+    )
+
+    // Outer anchor: wrapContentSize so nothing clips children, but children
+    // placed in a 0-size overflow box so they don't shift the FAB position.
+    Box(modifier = modifier, contentAlignment = Alignment.BottomEnd) {
+
+        // Zero-layout-footprint overflow container — renders children above
+        // the FAB without affecting the parent's measured size at all.
+        Box(
+            modifier = Modifier
+                .size(0.dp)
+                .wrapContentSize(unbounded = true)
+                .padding(end = 28.dp),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier
+                    .padding(bottom = 230.dp)
+                    .offset(x = (-70).dp, y = menuTransY),
+            ) {
+                if (syncAlpha > 0.01f) {
+                    ChildFabItem(
+                        icon = R.drawable.sync,
+                        label = "Resonance",
+                        onClick = {
+                            onExpandedChange(false)
+                            navController.navigate("listen_together")
+                        },
+                        onLongClick = {
+                            onExpandedChange(false)
+                            menuState.show {
+                                ListDialog(onDismiss = menuState::dismiss) {
+                                    item {
+                                        ListItem(
+                                            headlineContent = { Text("Invite users") },
+                                            leadingContent = { Icon(painterResource(R.drawable.share), contentDescription = null) },
+                                            modifier = Modifier.clickable { menuState.dismiss() }
+                                        )
+                                    }
+                                    item {
+                                        ListItem(
+                                            headlineContent = { Text("Copy session code") },
+                                            leadingContent = { Icon(painterResource(R.drawable.link), contentDescription = null) },
+                                            modifier = Modifier.clickable { menuState.dismiss() }
+                                        )
+                                    }
+                                    item {
+                                        ListItem(
+                                            headlineContent = { Text("Leave session", color = MaterialTheme.colorScheme.error) },
+                                            leadingContent = { Icon(painterResource(R.drawable.logout), contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                            modifier = Modifier.clickable { menuState.dismiss() }
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = syncAlpha.coerceIn(0f, 1f)
+                                scaleY = syncAlpha.coerceIn(0f, 1f)
+                                alpha = syncAlpha
+                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
+                            },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                if (recogAlpha > 0.01f) {
+                    ChildFabItem(
+                        icon = R.drawable.mic_24,
+                        label = "Music Recognition",
+                        onClick = {
+                            onExpandedChange(false)
+                            navController.navigate("recognition")
+                        },
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = recogAlpha.coerceIn(0f, 1f)
+                                scaleY = recogAlpha.coerceIn(0f, 1f)
+                                alpha = recogAlpha
+                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
+                            },
+                    )
+                }
+            }
+        }
+
+        // Main anchor FAB — always at BottomEnd, never moves
+        if (useGlassTheme) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = CircleShape,
+                        ambientColor = shadowColor,
+                        spotColor = shadowColor,
+                    )
+                    .clip(CircleShape)
+                    .background(glassBg)
+                    .liquid(rememberLiquidState()) {
+                        shape = CircleShape
+                        frost = if (isDarkTheme) 32.dp else 28.dp
+                        curve = if (isDarkTheme) 0.40f else 0.50f
+                        refraction = if (isDarkTheme) 0.06f else 0.10f
+                        dispersion = if (isDarkTheme) 0.15f else 0.22f
+                        saturation = if (isDarkTheme) 0.70f else 0.90f
+                        contrast = if (isDarkTheme) 1.9f else 1.2f
+                    }
+                    .drawBehind {
+                        drawRoundRect(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, innerReflectionColor, innerReflectionColor, Color.Transparent),
+                                startX = size.width * 0.15f,
+                                endX = size.width * 0.85f,
+                            ),
+                            topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
+                            size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
+                            cornerRadius = CornerRadius(1.dp.toPx()),
+                        )
+                        drawRoundRect(
+                            color = borderColor,
+                            topLeft = Offset.Zero,
+                            size = size,
+                            cornerRadius = CornerRadius(size.width / 2),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5f.dp.toPx()),
+                        )
+                    }
+                    .clickable { onExpandedChange(!isExpanded) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = null,
+                    modifier = Modifier.graphicsLayer { rotationZ = iconRotation },
+                    tint = if (isDarkTheme) Color.White else Color.Black,
+                )
+            }
+        } else {
+            androidx.compose.material3.FloatingActionButton(
+                onClick = { onExpandedChange(!isExpanded) },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = null,
+                    modifier = Modifier.graphicsLayer { rotationZ = iconRotation },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChildFabItem(
+    @DrawableRes icon: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier,
+    ) {
+        SmallFloatingActionButton(
+            onClick = onClick,
+            shape = CircleShape,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = if (onLongClick != null) {
+                Modifier.pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { onClick() },
+                        onLongPress = { onLongClick() },
+                    )
+                }
+            } else Modifier,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = label,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+
+        Spacer(Modifier.size(10.dp))
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
