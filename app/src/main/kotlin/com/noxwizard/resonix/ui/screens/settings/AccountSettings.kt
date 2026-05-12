@@ -220,8 +220,8 @@ fun AccountSettings(
             SettingsSection(title = "Social") {
                 SettingsClickableItem(
                     icon = painterResource(R.drawable.lucide_headphones),
-                    title = "Listen Together",
-                    subtitle = "Music in perfect sync",
+                    title = "Resonance",
+                    subtitle = "Feel every beat together, perfectly synced across every connected listener.",
                     onClick = {
                         onClose()
                         if (com.noxwizard.resonix.ui.screens.ListenTogetherSessionManager.isActive) {
