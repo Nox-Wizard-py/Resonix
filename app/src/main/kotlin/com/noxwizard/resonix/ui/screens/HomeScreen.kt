@@ -33,6 +33,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.foundation.clickable
 
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.component.MeshGradientBackground
@@ -138,6 +140,8 @@ import com.noxwizard.resonix.constants.DynamicThemeKey
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.noxwizard.resonix.ui.component.LocalCategoryAccentCallback
+import com.noxwizard.resonix.ui.component.ListDialog
+import com.noxwizard.resonix.ui.utils.isScrollingUp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -610,15 +614,6 @@ fun HomeScreen(
                         }
                     }
                 }
-            )
-
-            // ── Mic / Recognition FAB — sits above shuffle ────────────────────────────
-            HideOnScrollFAB(
-                visible = true,
-                lazyListState = lazylistState,
-                icon = R.drawable.mic_24,
-                offsetY = 76.dp,
-                onClick = { navController.navigate("recognition") }
             )
 
             Indicator(
