@@ -122,20 +122,75 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       
+      - name: Resolve Version & Title
+        id: resolve
+        run: |
+          VERSION="${{ needs.check-version.outputs.new_version }}"
+          if [ -z "$VERSION" ]; then
+            echo "Error: Version string is empty or malformed."
+            exit 1
+          fi
+          
+          # Parse Base and Suffix for Cinematic Title
+          if [[ "$VERSION" == *"-"* ]]; then
+            BASE=$(echo "$VERSION" | cut -d'-' -f1)
+            SUFFIX=$(echo "$VERSION" | cut -d'-' -f2-)
+            TITLE="Resonix v$BASE — $SUFFIX"
+          else
+            BASE="$VERSION"
+            TITLE="Resonix v$VERSION"
+          fi
+          
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "base_version=$BASE" >> $GITHUB_OUTPUT
+          
+          # Prerelease tag check
+          if echo "$VERSION" | grep -qiE '(alpha|beta|rc|dev)'; then
+             echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+             echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Find Release Notes
+        id: notes
+        run: |
+          BASE="${{ steps.resolve.outputs.base_version }}"
+          # Search for markdown file dynamically using wildcard
+          if [ ! -d "release-notes" ]; then
+            echo "Error: release-notes/ directory is missing."
+            exit 1
+          fi
+          
+          NOTE_FILE=$(find release-notes/ -type f -iname "v${BASE}*.md" | head -n 1)
+          
+          if [ -z "$NOTE_FILE" ]; then
+            echo "Error: No markdown release notes found for version $BASE in release-notes/"
+            exit 1
+          fi
+          
+          echo "Found release notes: $NOTE_FILE"
+          echo "file_path=$NOTE_FILE" >> $GITHUB_OUTPUT
+
       - name: Download all APKs
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v4
         with:
           path: downloaded_artifacts/
           
-      - name: Create Release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Verify APKs
         run: |
-          UNIVERSAL_APK=$(find downloaded_artifacts/Resonix -name "*.apk")
-          ABI_APKS=$(find downloaded_artifacts -path "*/app-*-release/*.apk")
+          APK_COUNT=$(find downloaded_artifacts -name "*.apk" | wc -l)
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "Error: No APK files found in downloaded_artifacts/ to attach to release."
+            exit 1
+          fi
+          echo "Found $APK_COUNT APKs ready for release."
           
-          gh release create "v${{ needs.check-version.outputs.new_version }}" \
-            --title "${{ needs.check-version.outputs.new_version }}" \
-            --notes "Release of version ${{ needs.check-version.outputs.new_version }}" \
-            "$UNIVERSAL_APK" \
-            $ABI_APKS
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-version.outputs.new_version }}
+          name: ${{ steps.resolve.outputs.title }}
+          body_path: ${{ steps.notes.outputs.file_path }}
+          prerelease: ${{ steps.resolve.outputs.prerelease == 'true' }}
+          files: downloaded_artifacts/**/*.apk
+          fail_on_unmatched_files: true
