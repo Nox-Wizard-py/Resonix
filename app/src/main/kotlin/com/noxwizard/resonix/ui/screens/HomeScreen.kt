@@ -57,6 +57,21 @@ import com.noxwizard.resonix.viewmodels.LocalContentState
 import com.noxwizard.resonix.viewmodels.OnlineContentState
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.ui.zIndex
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -231,12 +246,7 @@ fun HomeScreen(
             }
     }
 
-    if (selectedChip != null) {
-        BackHandler {
-            // if a chip is selected, go back to the normal homepage first
-            viewModel.toggleChip(selectedChip)
-        }
-    }
+    // removed BackHandler
 
     val localGridItem: @Composable (LocalItem) -> Unit =
         remember(
@@ -458,18 +468,7 @@ fun HomeScreen(
                 state = lazylistState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
             ) {
-            item(key = "chips_row", contentType = CONTENT_TYPE_CHIPS) {
-                val chipPairs = remember(homePage?.chips) {
-                    homePage?.chips?.map { it to it.title } ?: emptyList()
-                }
-                ChipsRow(
-                    chips = chipPairs,
-                    currentValue = selectedChip,
-                    onValueUpdate = {
-                        viewModel.toggleChip(it)
-                    }
-                )
-            }
+            // Removed chips_row item
 
             quickPicks?.takeIf { it.isNotEmpty() }?.let { quickPicks ->
                 QuickPicksSection(
@@ -616,6 +615,13 @@ fun HomeScreen(
                 }
             )
 
+            val topPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding()
+            FloatingConnectivityBanner(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = topPadding + 12.dp)
+            )
+
             Indicator(
                 isRefreshing = isRefreshing,
                 state = pullRefreshState,
@@ -627,5 +633,86 @@ fun HomeScreen(
     }
 }
 
+enum class ConnectionState {
+    Online, Offline, Reconnected
+}
 
+@Composable
+fun FloatingConnectivityBanner(
+    modifier: Modifier = Modifier
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val networkObserver = remember { com.noxwizard.resonix.utils.NetworkConnectivityObserver(context) }
+    val isOnline by networkObserver.networkStatus.collectAsState(initial = true)
+    
+    DisposableEffect(networkObserver) {
+        onDispose { networkObserver.unregister() }
+    }
 
+    var connectionState by remember { mutableStateOf<ConnectionState>(ConnectionState.Online) }
+    var showBanner by remember { mutableStateOf(false) }
+    
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+    LaunchedEffect(isOnline) {
+        if (!isOnline) {
+            connectionState = ConnectionState.Offline
+            showBanner = true
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+        } else {
+            if (connectionState == ConnectionState.Offline) {
+                connectionState = ConnectionState.Reconnected
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) 
+                showBanner = true
+                kotlinx.coroutines.delay(1500)
+                showBanner = false
+            } else {
+                connectionState = ConnectionState.Online
+                showBanner = false
+            }
+        }
+    }
+
+    AnimatedVisibility(
+        visible = showBanner,
+        enter = slideInVertically(
+            initialOffsetY = { -it - 50 },
+            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+        ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+        exit = slideOutVertically(
+            targetOffsetY = { -it - 50 },
+            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+        ) + fadeOut(animationSpec = tween(durationMillis = 300)),
+        modifier = modifier.zIndex(10f)
+    ) {
+        val backgroundColor = if (connectionState == ConnectionState.Offline) {
+            Color(0xFF5A1E29) // muted wine/red tint
+        } else {
+            Color(0xFF1A4D33) // muted emerald tint
+        }
+
+        val text = if (connectionState == ConnectionState.Offline) {
+            "💔 Your internet broke up with you"
+        } else {
+            "💚 Did you just patch things up?"
+        }
+
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .shadow(16.dp, RoundedCornerShape(24.dp), ambientColor = Color.Black, spotColor = backgroundColor)
+                .clip(RoundedCornerShape(24.dp))
+                .background(backgroundColor)
+                .border(0.5.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                color = Color.White.copy(alpha = 0.9f),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
