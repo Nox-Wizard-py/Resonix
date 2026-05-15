@@ -99,7 +99,7 @@ import com.noxwizard.resonix.ui.component.Lyrics
 import com.noxwizard.resonix.ui.component.LocalMenuState
 import com.noxwizard.resonix.ui.component.PlayerSliderTrack
 import com.noxwizard.resonix.ui.component.WaveformSlider
-import com.noxwizard.resonix.ui.component.BigSeekBar
+import com.noxwizard.resonix.ui.component.VolumeSlider
 import androidx.navigation.NavController
 import me.saket.squiggles.SquigglySlider
 import com.noxwizard.resonix.ui.menu.LyricsMenu
@@ -107,6 +107,11 @@ import com.noxwizard.resonix.ui.theme.PlayerColorExtractor
 import com.noxwizard.resonix.ui.theme.PlayerSliderColors
 import com.noxwizard.resonix.utils.rememberEnumPreference
 import com.noxwizard.resonix.utils.rememberPreference
+import com.noxwizard.resonix.constants.SliderEmojiKey
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.unit.sp
 import com.noxwizard.resonix.constants.PlayerCustomImageUriKey
 import com.noxwizard.resonix.constants.PlayerCustomBlurKey
 import com.noxwizard.resonix.constants.PlayerCustomContrastKey
@@ -669,6 +674,25 @@ fun LyricsScreen(
                             // Slider
                             when (sliderStyle) {
                                 SliderStyle.DEFAULT -> {
+                                    val (sliderEmoji) = rememberPreference(SliderEmojiKey, defaultValue = "")
+                                    var isDragging by remember { mutableStateOf(false) }
+                                    val interactionSource = remember { MutableInteractionSource() }
+
+                                    LaunchedEffect(interactionSource) {
+                                        interactionSource.interactions.collect { interaction ->
+                                            when (interaction) {
+                                                is androidx.compose.foundation.interaction.DragInteraction.Start,
+                                                is androidx.compose.foundation.interaction.PressInteraction.Press -> isDragging = true
+                                                is androidx.compose.foundation.interaction.DragInteraction.Stop,
+                                                is androidx.compose.foundation.interaction.DragInteraction.Cancel,
+                                                is androidx.compose.foundation.interaction.PressInteraction.Release,
+                                                is androidx.compose.foundation.interaction.PressInteraction.Cancel -> isDragging = false
+                                            }
+                                        }
+                                    }
+
+                                    val sliderColors = PlayerSliderColors.defaultSliderColors(textBackgroundColor)
+
                                     Slider(
                                         value = (sliderPosition ?: position).toFloat(),
                                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
@@ -682,8 +706,32 @@ fun LyricsScreen(
                                             }
                                             sliderPosition = null
                                         },
-                                        colors = PlayerSliderColors.defaultSliderColors(textBackgroundColor),
-                                        modifier = Modifier.fillMaxWidth()
+                                        colors = sliderColors,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        interactionSource = interactionSource,
+                                        thumb = {
+                                            if (sliderEmoji.isNotEmpty()) {
+                                                val scale by animateFloatAsState(
+                                                    targetValue = if (isDragging) 1.25f else 1f,
+                                                    animationSpec = tween(200, easing = FastOutSlowInEasing),
+                                                    label = "thumbScale"
+                                                )
+                                                Box(
+                                                    modifier = Modifier.scale(scale),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = sliderEmoji,
+                                                        fontSize = 20.sp
+                                                    )
+                                                }
+                                            } else {
+                                                androidx.compose.material3.SliderDefaults.Thumb(
+                                                    interactionSource = interactionSource,
+                                                    colors = sliderColors
+                                                )
+                                            }
+                                        }
                                     )
                                 }
                                 SliderStyle.SQUIGGLY -> {
@@ -906,7 +954,7 @@ fun LyricsScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 48.dp),
+                                    .padding(horizontal = 24.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -917,13 +965,13 @@ fun LyricsScreen(
                                     tint = textBackgroundColor
                                 )
 
-                                BigSeekBar(
+                                VolumeSlider(
                                     progressProvider = playerVolume::value,
                                     onProgressChange = { playerConnection.service.playerVolume.value = it },
-                                    color = textBackgroundColor,
+                                    activeColor = textBackgroundColor,
+                                    inactiveColor = textBackgroundColor.copy(alpha = 0.3f),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(24.dp)
                                         .padding(horizontal = 16.dp)
                                 )
 
@@ -1042,6 +1090,25 @@ fun LyricsScreen(
                     ) {
                         when (sliderStyle) {
                             SliderStyle.DEFAULT -> {
+                                val (sliderEmoji) = rememberPreference(SliderEmojiKey, defaultValue = "")
+                                var isDragging by remember { mutableStateOf(false) }
+                                val interactionSource = remember { MutableInteractionSource() }
+
+                                LaunchedEffect(interactionSource) {
+                                    interactionSource.interactions.collect { interaction ->
+                                        when (interaction) {
+                                            is androidx.compose.foundation.interaction.DragInteraction.Start,
+                                            is androidx.compose.foundation.interaction.PressInteraction.Press -> isDragging = true
+                                            is androidx.compose.foundation.interaction.DragInteraction.Stop,
+                                            is androidx.compose.foundation.interaction.DragInteraction.Cancel,
+                                            is androidx.compose.foundation.interaction.PressInteraction.Release,
+                                            is androidx.compose.foundation.interaction.PressInteraction.Cancel -> isDragging = false
+                                        }
+                                    }
+                                }
+
+                                val sliderColors = PlayerSliderColors.defaultSliderColors(textBackgroundColor)
+
                                 Slider(
                                     value = (sliderPosition ?: position).toFloat(),
                                     valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
@@ -1055,8 +1122,32 @@ fun LyricsScreen(
                                         }
                                         sliderPosition = null
                                     },
-                                    colors = PlayerSliderColors.defaultSliderColors(textBackgroundColor),
-                                    modifier = Modifier.fillMaxWidth()
+                                    colors = sliderColors,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    interactionSource = interactionSource,
+                                    thumb = {
+                                        if (sliderEmoji.isNotEmpty()) {
+                                            val scale by animateFloatAsState(
+                                                targetValue = if (isDragging) 1.25f else 1f,
+                                                animationSpec = tween(200, easing = FastOutSlowInEasing),
+                                                label = "thumbScale"
+                                            )
+                                            Box(
+                                                modifier = Modifier.scale(scale),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = sliderEmoji,
+                                                    fontSize = 20.sp
+                                                )
+                                            }
+                                        } else {
+                                            androidx.compose.material3.SliderDefaults.Thumb(
+                                                interactionSource = interactionSource,
+                                                colors = sliderColors
+                                            )
+                                        }
+                                    }
                                 )
                             }
                             SliderStyle.SQUIGGLY -> {
@@ -1283,7 +1374,7 @@ fun LyricsScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 48.dp),
+                                .padding(horizontal = 24.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -1294,13 +1385,13 @@ fun LyricsScreen(
                                 tint = textBackgroundColor
                             )
 
-                            BigSeekBar(
+                            VolumeSlider(
                                 progressProvider = playerVolume::value,
                                 onProgressChange = { playerConnection.service.playerVolume.value = it },
-                                color = textBackgroundColor,
+                                activeColor = textBackgroundColor,
+                                inactiveColor = textBackgroundColor.copy(alpha = 0.3f),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(20.dp)
                                     .padding(horizontal = 16.dp)
                             )
 
