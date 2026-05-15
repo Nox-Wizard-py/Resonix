@@ -84,6 +84,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.scale
 import android.net.Uri
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -1111,6 +1112,21 @@ fun BottomSheetPlayer(
 
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
+                    val (sliderEmoji) = com.noxwizard.resonix.utils.rememberPreference(com.noxwizard.resonix.constants.SliderEmojiKey, defaultValue = "")
+                    var isDragging by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    val interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+
+                    androidx.compose.runtime.LaunchedEffect(interactionSource) {
+                        interactionSource.interactions.collect { interaction ->
+                            when (interaction) {
+                                is androidx.compose.foundation.interaction.DragInteraction.Start, is androidx.compose.foundation.interaction.PressInteraction.Press -> isDragging = true
+                                is androidx.compose.foundation.interaction.DragInteraction.Stop, is androidx.compose.foundation.interaction.DragInteraction.Cancel, is androidx.compose.foundation.interaction.PressInteraction.Release, is androidx.compose.foundation.interaction.PressInteraction.Cancel -> isDragging = false
+                            }
+                        }
+                    }
+
+                    val sliderColors = PlayerSliderColors.defaultSliderColors(textButtonColor)
+
                     Slider(
                         value = (sliderPosition ?: position).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
@@ -1124,8 +1140,31 @@ fun BottomSheetPlayer(
                             }
                             sliderPosition = null
                         },
-                        colors = PlayerSliderColors.defaultSliderColors(textButtonColor),
+                        colors = sliderColors,
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
+                        interactionSource = interactionSource,
+                        thumb = {
+                            if (sliderEmoji.isNotEmpty()) {
+                                val scale by androidx.compose.animation.core.animateFloatAsState(
+                                    targetValue = if (isDragging) 1.25f else 1f,
+                                    animationSpec = androidx.compose.animation.core.tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "thumbScale"
+                                )
+                                Box(
+                                    modifier = Modifier.scale(scale),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    androidx.compose.material3.Text(
+                                        text = sliderEmoji,
+                                        fontSize = 20.sp
+                                    )
+                                }
+                            } else {
+                                androidx.compose.material3.SliderDefaults.Thumb(
+                                    interactionSource = interactionSource,
+                                    colors = sliderColors
+                                )
+                            }
+                        }
                     )
                 }
 
@@ -1369,7 +1408,8 @@ fun BottomSheetPlayer(
                             // Shuffle button
                             Surface(
                                 onClick = {
-                                    if (canControl) playerConnection.setShuffleModeEnabled(!playerConnection.player.shuffleModeEnabled)
+                                    if (canControl) playerConnection.setShuffleModeEnabled(!playerConnection.player.shuffleModeEnabled
+)
                                 },
                                 enabled = canControl,
                                 shape = RoundedCornerShape(16.dp),
@@ -1534,7 +1574,8 @@ fun BottomSheetPlayer(
                             ) {
                                 Surface(
                                     onClick = {
-                                        if (canControl) playerConnection.setShuffleModeEnabled(!shuffleModeEnabled)
+                                        if (canControl) playerConnection.setShuffleModeEnabled(!shuffleModeEnabled
+)
                                     },
                                     enabled = canControl,
                                     shape = RoundedCornerShape(smallRadius),
@@ -1826,7 +1867,8 @@ fun BottomSheetPlayer(
                         ) {
                             Surface(
                                 onClick = {
-                                    if (canControl) playerConnection.setShuffleModeEnabled(!shuffleModeEnabled)
+                                    if (canControl) playerConnection.setShuffleModeEnabled(!shuffleModeEnabled
+)
                                 },
                                 enabled = canControl,
                                 shape = RoundedCornerShape(50),
