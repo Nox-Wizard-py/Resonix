@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,6 +111,16 @@ import me.saket.squiggles.SquigglySlider
 import kotlin.math.roundToInt
 import timber.log.Timber
 import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
+import com.noxwizard.resonix.ui.component.VolumeSlider
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import com.noxwizard.resonix.constants.SliderEmojiKey
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -271,7 +282,126 @@ fun AppearanceSettings(
             onCheckedChange = onUseSystemFontChange,
         )
 
+        val (sliderEmoji, onSliderEmojiChange) = rememberPreference(
+            key = SliderEmojiKey,
+            defaultValue = ""
+        )
+        var showEmojiDialog by rememberSaveable { mutableStateOf(false) }
 
+        PreferenceEntry(
+            title = { Text("Custom Slider Knob") },
+            description = "Add your vibe to every slider",
+            icon = { Icon(painterResource(R.drawable.tune), null) },
+            onClick = { showEmojiDialog = true },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (sliderEmoji.isNotEmpty()) sliderEmoji else "default",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        )
+
+        if (showEmojiDialog) {
+            val haptic = LocalHapticFeedback.current
+            var tempEmoji by remember { mutableStateOf(sliderEmoji) }
+
+            val errorMessage = remember(tempEmoji) {
+                if (tempEmoji.isEmpty()) "Invalid emoji format"
+                else if (tempEmoji.codePointCount(0, tempEmoji.length) > 1 && !tempEmoji.contains("\u200D")) "Please use only one emoji"
+                else if (tempEmoji.any { it.isLetterOrDigit() && it.code < 128 }) "Invalid emoji format"
+                else if (tempEmoji.any { " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".contains(it) }) "Invalid emoji format"
+                else null
+            }
+
+            LaunchedEffect(Unit) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
+
+            DefaultDialog(
+                onDismiss = { showEmojiDialog = false },
+                title = { Text("Choose your slider emoji") },
+                buttons = {
+                    TextButton(onClick = { showEmojiDialog = false }) {
+                        Text(stringResource(android.R.string.cancel))
+                    }
+                    TextButton(
+                        enabled = errorMessage == null,
+                        onClick = {
+                            if (errorMessage == null) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onSliderEmojiChange(tempEmoji)
+                                showEmojiDialog = false
+                            }
+                        }
+                    ) {
+                        Text(stringResource(android.R.string.ok))
+                    }
+                }
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "This emoji will appear on supported sliders across Resonix.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = tempEmoji,
+                        onValueChange = { tempEmoji = it },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .padding(bottom = 8.dp),
+                        textStyle = MaterialTheme.typography.headlineLarge.copy(textAlign = TextAlign.Center),
+                        isError = errorMessage != null,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (errorMessage == null) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onSliderEmojiChange(tempEmoji)
+                                    showEmojiDialog = false
+                                }
+                            }
+                        )
+                    )
+
+                    if (errorMessage != null) {
+                        Text(
+                            text = errorMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(bottom = 24.dp)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+
+                    // Live preview of the slider
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        VolumeSlider(
+                            progressProvider = { 0.5f },
+                            onProgressChange = {},
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
 
         }
 
