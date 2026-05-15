@@ -24,7 +24,8 @@ fun PlayerSliderTrack(
     sliderState: SliderState,
     modifier: Modifier = Modifier,
     colors: SliderColors = SliderDefaults.colors(),
-    trackHeight: Dp = 10.dp
+    trackHeight: Dp = 10.dp,
+    hasEmoji: Boolean = false
 ) {
     val inactiveTrackColor = colors.inactiveTrackColor
     val activeTrackColor = colors.activeTrackColor
@@ -48,7 +49,8 @@ fun PlayerSliderTrack(
             activeTrackColor,
             inactiveTickColor,
             activeTickColor,
-            trackHeight
+            trackHeight,
+            hasEmoji
         )
     }
 }
@@ -61,7 +63,8 @@ private fun DrawScope.drawTrack(
     activeTrackColor: Color,
     inactiveTickColor: Color,
     activeTickColor: Color,
-    trackHeight: Dp = 2.dp
+    trackHeight: Dp = 2.dp,
+    hasEmoji: Boolean = false
 ) {
     val isRtl = layoutDirection == LayoutDirection.Rtl
     val sliderLeft = Offset(0f, center.y)
@@ -70,30 +73,41 @@ private fun DrawScope.drawTrack(
     val sliderEnd = if (isRtl) sliderLeft else sliderRight
     val tickSize = 2.0.dp.toPx()
     val trackStrokeWidth = trackHeight.toPx()
-    drawLine(
-        inactiveTrackColor,
-        sliderStart,
-        sliderEnd,
-        trackStrokeWidth,
-        StrokeCap.Round
-    )
-    val sliderValueEnd = Offset(
-        sliderStart.x +
-                (sliderEnd.x - sliderStart.x) * activeRangeEnd,
-        center.y
-    )
+    
+    val gapWidth = if (hasEmoji) 4.dp.toPx() else 0f
+    val emojiHalfWidth = if (hasEmoji) 10.dp.toPx() else 0f
+    val gapTotalHalf = emojiHalfWidth + gapWidth
+
+    val activePx = sliderStart.x + (sliderEnd.x - sliderStart.x) * activeRangeEnd
+    val activeTrackEndX = (activePx - gapTotalHalf).coerceAtLeast(sliderStart.x)
+    val inactiveTrackStartX = (activePx + gapTotalHalf).coerceAtMost(sliderEnd.x)
+
+    // Draw inactive track (after the gap)
+    if (inactiveTrackStartX < sliderEnd.x) {
+        drawLine(
+            inactiveTrackColor,
+            Offset(inactiveTrackStartX, center.y),
+            sliderEnd,
+            trackStrokeWidth,
+            StrokeCap.Round
+        )
+    }
+
+    // Draw active track (before the gap)
     val sliderValueStart = Offset(
         sliderStart.x +
                 (sliderEnd.x - sliderStart.x) * activeRangeStart,
         center.y
     )
-    drawLine(
-        activeTrackColor,
-        sliderValueStart,
-        sliderValueEnd,
-        trackStrokeWidth,
-        StrokeCap.Round
-    )
+    if (activeTrackEndX > sliderValueStart.x) {
+        drawLine(
+            activeTrackColor,
+            sliderValueStart,
+            Offset(activeTrackEndX, center.y),
+            trackStrokeWidth,
+            StrokeCap.Round
+        )
+    }
     for (tick in tickFractions) {
         val outsideFraction = tick > activeRangeEnd || tick < activeRangeStart
         drawCircle(
