@@ -74,7 +74,7 @@ import com.noxwizard.resonix.constants.ListItemHeight
 import com.noxwizard.resonix.models.MediaMetadata
 import com.noxwizard.resonix.playback.ExoDownloadService
 import com.noxwizard.resonix.playback.queues.YouTubeQueue
-import com.noxwizard.resonix.ui.component.BigSeekBar
+import com.noxwizard.resonix.ui.component.VolumeSlider
 import com.noxwizard.resonix.ui.component.BottomSheetState
 import com.noxwizard.resonix.ui.component.ListDialog
 import com.noxwizard.resonix.ui.component.NewAction
@@ -211,7 +211,7 @@ fun PlayerMenu(
 
     if (isQueueTrigger != true) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier =
             Modifier
@@ -220,17 +220,23 @@ fun PlayerMenu(
                 .padding(top = 24.dp, bottom = 6.dp),
         ) {
             Icon(
-                painter = painterResource(R.drawable.volume_up),
+                painter = painterResource(R.drawable.volume_off),
                 contentDescription = null,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
 
-            BigSeekBar(
+            VolumeSlider(
                 progressProvider = playerVolume::value,
                 onProgressChange = { playerConnection.service.playerVolume.value = it },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp), // Reduced height from default (assumed ~48.dp) to 36.dp
+                modifier = Modifier.weight(1f)
+            )
+
+            Icon(
+                painter = painterResource(R.drawable.volume_up),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }
