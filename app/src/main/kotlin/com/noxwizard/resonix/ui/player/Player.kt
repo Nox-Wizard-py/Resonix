@@ -1034,29 +1034,22 @@ fun BottomSheetPlayer(
                     }
                     
                     PlayerDesignStyle.V1 -> {
+                        val isLiked = currentSong?.song?.liked == true
                         Box(
+                            contentAlignment = Alignment.Center,
                             modifier =
                             Modifier
                                 .size(40.dp)
                                 .clip(RoundedCornerShape(24.dp))
                                 .background(textButtonColor)
                                 .clickable {
-                                    val intent =
-                                        Intent().apply {
-                                            action = Intent.ACTION_SEND
-                                            type = "text/plain"
-                                            putExtra(
-                                                Intent.EXTRA_TEXT,
-                                                "https://music.youtube.com/watch?v=${mediaMetadata.id}"
-                                            )
-                                        }
-                                    context.startActivity(Intent.createChooser(intent, null))
+                                    playerConnection.toggleLike()
                                 },
                         ) {
                             Image(
-                                painter = painterResource(R.drawable.share),
+                                painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
                                 contentDescription = null,
-                                colorFilter = ColorFilter.tint(iconButtonColor),
+                                colorFilter = ColorFilter.tint(if (isLiked) MaterialTheme.colorScheme.error else iconButtonColor),
                                 modifier =
                                 Modifier
                                     .align(Alignment.Center)
@@ -1926,14 +1919,15 @@ fun BottomSheetPlayer(
                     }
                 }
                 
-                PlayerDesignStyle.V1 -> {            
+                PlayerDesignStyle.V1 -> {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier =
-                        Modifier
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = PlayerHorizontalPadding),
                     ) {
+                        // Loop/Repeat button (far left)
                         Box(modifier = Modifier.weight(1f)) {
                             ResizableIconButton(
                                 icon = when (repeatMode) {
@@ -1941,7 +1935,7 @@ fun BottomSheetPlayer(
                                     Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
                                     else -> throw IllegalStateException()
                                 },
-                                color = TextBackgroundColor,
+                                color = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else TextBackgroundColor,
                                 enabled = canControl,
                                 modifier = Modifier
                                     .size(32.dp)
@@ -1954,24 +1948,23 @@ fun BottomSheetPlayer(
                             )
                         }
 
+                        // Previous button (plain icon)
                         Box(modifier = Modifier.weight(1f)) {
                             ResizableIconButton(
                                 icon = R.drawable.skip_previous,
                                 enabled = canSkipPrevious,
                                 color = TextBackgroundColor,
-                                modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .align(Alignment.Center),
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .align(Alignment.Center)
+                                    .alpha(if (canSkipPrevious) 1f else 0.5f),
                                 onClick = playerConnection::seekToPrevious,
                             )
                         }
 
-                        Spacer(Modifier.width(8.dp))
-
+                        // Play/Pause button (large circle center)
                         Box(
-                            modifier =
-                            Modifier
+                            modifier = Modifier
                                 .size(72.dp)
                                 .clip(RoundedCornerShape(playPauseRoundness))
                                 .background(textButtonColor)
@@ -1996,8 +1989,7 @@ fun BottomSheetPlayer(
                                 )
                             } else {
                                 Image(
-                                    painter =
-                                    painterResource(
+                                    painter = painterResource(
                                         when {
                                             playbackState == STATE_ENDED -> R.drawable.replay
                                             !canControl -> if (!isMuted) R.drawable.volume_up else R.drawable.volume_off
@@ -2007,35 +1999,34 @@ fun BottomSheetPlayer(
                                     ),
                                     contentDescription = null,
                                     colorFilter = ColorFilter.tint(iconButtonColor),
-                                    modifier =
-                                    Modifier
+                                    modifier = Modifier
                                         .align(Alignment.Center)
                                         .size(36.dp),
                                 )
                             }
                         }
 
-                        Spacer(Modifier.width(8.dp))
-
+                        // Next button (plain icon)
                         Box(modifier = Modifier.weight(1f)) {
                             ResizableIconButton(
                                 icon = R.drawable.skip_next,
                                 enabled = canSkipNext,
                                 color = TextBackgroundColor,
-                                modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .align(Alignment.Center),
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .align(Alignment.Center)
+                                    .alpha(if (canSkipNext) 1f else 0.5f),
                                 onClick = playerConnection::seekToNext,
                             )
                         }
 
+                        // Like button (far right)
                         Box(modifier = Modifier.weight(1f)) {
+                            val isLiked = currentSong?.song?.liked == true
                             ResizableIconButton(
-                                icon = if (currentSong?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border,
-                                color = if (currentSong?.song?.liked == true) MaterialTheme.colorScheme.error else TextBackgroundColor,
-                                modifier =
-                                Modifier
+                                icon = if (isLiked) R.drawable.favorite else R.drawable.favorite_border,
+                                color = if (isLiked) MaterialTheme.colorScheme.error else TextBackgroundColor,
+                                modifier = Modifier
                                     .size(32.dp)
                                     .padding(4.dp)
                                     .align(Alignment.Center),
@@ -2046,7 +2037,6 @@ fun BottomSheetPlayer(
                 }
             }
         }
-
         // Background Layer - Previous background as base layer during transitions
         if (!state.isCollapsed) {
             Box(modifier = Modifier.fillMaxSize()) {
