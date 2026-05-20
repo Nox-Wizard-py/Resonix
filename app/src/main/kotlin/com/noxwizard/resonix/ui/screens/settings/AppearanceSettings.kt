@@ -331,6 +331,19 @@ fun AppearanceSettings(
                 onDismiss = { showEmojiDialog = false },
                 title = { Text("Choose your slider emoji") },
                 buttons = {
+                    TextButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            tempEmoji = ""
+                            onSliderEmojiChange("")
+                            showEmojiDialog = false
+                        }
+                    ) {
+                        Text("Default")
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
                     TextButton(onClick = { showEmojiDialog = false }) {
                         Text(stringResource(android.R.string.cancel))
                     }

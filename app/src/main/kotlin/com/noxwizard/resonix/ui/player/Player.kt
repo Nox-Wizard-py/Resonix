@@ -1,3 +1,4 @@
+
 package com.noxwizard.resonix.ui.player
 
 import android.content.ClipData
@@ -19,6 +20,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -163,6 +165,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import me.saket.squiggles.SquigglySlider
 import kotlin.math.roundToInt
+import androidx.datastore.preferences.core.booleanPreferencesKey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -189,6 +192,12 @@ fun BottomSheetPlayer(
         UseNewMiniPlayerDesignKey,
         defaultValue = true
     )
+
+    val (showCodecOnPlayer) = rememberPreference(
+        key = booleanPreferencesKey("show_codec_on_player"),
+        defaultValue = false
+    )
+    val codecRowHeight = if (showCodecOnPlayer) 28.dp else 0.dp
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
@@ -425,34 +434,32 @@ fun BottomSheetPlayer(
         mutableFloatStateOf(30f)
     }
     if (showSleepTimerDialog) {
-        AlertDialog(
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-            onDismissRequest = { showSleepTimerDialog = false },
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.bedtime),
-                    contentDescription = null
-                )
-            },
-            title = { Text(stringResource(R.string.sleep_timer)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSleepTimerDialog = false
-                        playerConnection.service.sleepTimer.start(sleepTimerValue.roundToInt())
-                    },
+        com.noxwizard.resonix.ui.component.ActionPromptDialog(
+            titleBar = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Text(stringResource(android.R.string.ok))
+                    Text(
+                        text = stringResource(R.string.sleep_timer),
+                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 1,
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
                 }
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showSleepTimerDialog = false },
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
+            onDismiss = { showSleepTimerDialog = false },
+            onConfirm = {
+                showSleepTimerDialog = false
+                playerConnection.service.sleepTimer.start(sleepTimerValue.roundToInt())
             },
-            text = {
+            onCancel = {
+                showSleepTimerDialog = false
+            },
+            onReset = {
+                sleepTimerValue = 30f // Default value
+            },
+            content = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = pluralStringResource(
@@ -463,23 +470,79 @@ fun BottomSheetPlayer(
                         style = MaterialTheme.typography.bodyLarge,
                     )
 
+                    Spacer(Modifier.height(16.dp))
+
+                    val (sliderEmoji) = com.noxwizard.resonix.utils.rememberPreference(com.noxwizard.resonix.constants.SliderEmojiKey, defaultValue = "")
+                    var isDragging by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    val interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+
+                    androidx.compose.runtime.LaunchedEffect(interactionSource) {
+                        interactionSource.interactions.collect { interaction ->
+                            when (interaction) {
+                                is androidx.compose.foundation.interaction.DragInteraction.Start, is androidx.compose.foundation.interaction.PressInteraction.Press -> isDragging = true
+                                is androidx.compose.foundation.interaction.DragInteraction.Stop, is androidx.compose.foundation.interaction.DragInteraction.Cancel, is androidx.compose.foundation.interaction.PressInteraction.Release, is androidx.compose.foundation.interaction.PressInteraction.Cancel -> isDragging = false
+                            }
+                        }
+                    }
+
+                    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+                    var lastHapticValue by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(sleepTimerValue) }
+
+                    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
                     Slider(
                         value = sleepTimerValue,
-                        onValueChange = { sleepTimerValue = it },
+                        onValueChange = {
+                            sleepTimerValue = it
+                            if (it != lastHapticValue) {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                lastHapticValue = it
+                            }
+                        },
                         valueRange = 5f..120f,
                         steps = (120 - 5) / 5 - 1,
+                        modifier = Modifier.fillMaxWidth(),
+                        interactionSource = interactionSource,
+                        track = { sliderState ->
+                            com.noxwizard.resonix.ui.component.PlayerSliderTrack(
+                                sliderState = sliderState,
+                                hasEmoji = sliderEmoji.isNotEmpty()
+                            )
+                        },
+                        thumb = {
+                            if (sliderEmoji.isNotEmpty()) {
+                                val scale by androidx.compose.animation.core.animateFloatAsState(
+                                    targetValue = if (isDragging) 1.25f else 1f,
+                                    animationSpec = androidx.compose.animation.core.tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "thumbScale"
+                                )
+                                Box(
+                                    modifier = Modifier.scale(scale),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = sliderEmoji,
+                                        fontSize = 20.sp
+                                    )
+                                }
+                            } else {
+                                androidx.compose.material3.SliderDefaults.Thumb(
+                                    interactionSource = interactionSource,
+                                )
+                            }
+                        }
                     )
 
-                    OutlinedIconButton(
+                    Spacer(Modifier.height(8.dp))
+
+                    androidx.compose.material3.OutlinedButton(
                         onClick = {
                             showSleepTimerDialog = false
                             playerConnection.service.sleepTimer.start(-1)
-                        },
+                        }
                     ) {
                         Text(stringResource(R.string.end_of_song))
                     }
                 }
-            },
+            }
         )
     }
 
@@ -503,7 +566,7 @@ fun BottomSheetPlayer(
     val queueSheetState = rememberBottomSheetState(
         dismissedBound = dismissedBound,
         expandedBound = state.expandedBound,
-        collapsedBound = dismissedBound + 1.dp,
+        collapsedBound = dismissedBound + codecRowHeight + 1.dp,
         initialAnchor = 1
     )
     
@@ -702,55 +765,27 @@ fun BottomSheetPlayer(
 
                 when (playerDesignStyle) {
                     PlayerDesignStyle.V2 -> {
-                        val shareShape = RoundedCornerShape(
+                        // Mockup: heart + more-menu, right-aligned next to title
+                        val favShape = RoundedCornerShape(
                             topStart = 50.dp, bottomStart = 50.dp,
                             topEnd = 10.dp, bottomEnd = 10.dp
                         )
-
-                        val favShape = RoundedCornerShape(
+                        val moreShape = RoundedCornerShape(
                             topStart = 10.dp, bottomStart = 10.dp,
-                            topEnd = 50.dp, bottomEnd = 50.dp  
+                            topEnd = 50.dp, bottomEnd = 50.dp
                         )
 
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(shareShape)
-                                    .background(textButtonColor)
-                                    .clickable {
-                                        val intent = Intent().apply {
-                                            action = Intent.ACTION_SEND
-                                            type = "text/plain"
-                                            putExtra(
-                                                Intent.EXTRA_TEXT,
-                                                "https://music.youtube.com/watch?v=${mediaMetadata.id}"
-                                            )
-                                        }
-                                        context.startActivity(Intent.createChooser(intent, null))
-                                    }
-                            ) {
-                                Image(
-                                    painter = painterResource(R.drawable.share),
-                                    contentDescription = null,
-                                    colorFilter = ColorFilter.tint(iconButtonColor),
-                                    modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .size(24.dp)
-                                )
-                            }
-
+                            // Like / Favorite
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
                                     .clip(favShape)
                                     .background(textButtonColor)
-                                    .clickable {
-                                        playerConnection.toggleLike()
-                                    }
+                                    .clickable { playerConnection.toggleLike() }
                             ) {
                                 Image(
                                     painter = painterResource(
@@ -759,29 +794,63 @@ fun BottomSheetPlayer(
                                         else R.drawable.favorite_border
                                     ),
                                     contentDescription = null,
+                                    colorFilter = ColorFilter.tint(
+                                        if (currentSong?.song?.liked == true)
+                                            MaterialTheme.colorScheme.error
+                                        else iconButtonColor
+                                    ),
+                                    modifier = Modifier.align(Alignment.Center).size(24.dp)
+                                )
+                            }
+
+                            // More menu
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(moreShape)
+                                    .background(textButtonColor)
+                                    .clickable {
+                                        menuState.show {
+                                            PlayerMenu(
+                                                mediaMetadata = mediaMetadata,
+                                                navController = navController,
+                                                playerBottomSheetState = state,
+                                                onShowDetailsDialog = {
+                                                    mediaMetadata.id.let {
+                                                        bottomSheetPageState.show {
+                                                            ShowMediaInfo(it)
+                                                        }
+                                                    }
+                                                },
+                                                onDismiss = menuState::dismiss,
+                                            )
+                                        }
+                                    }
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.more_horiz),
+                                    contentDescription = null,
                                     colorFilter = ColorFilter.tint(iconButtonColor),
-                                    modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .size(24.dp)
+                                    modifier = Modifier.align(Alignment.Center).size(24.dp)
                                 )
                             }
                         }
                     }
                     
                     PlayerDesignStyle.V3 -> {
-                        // V3 Modern Design - Floating pill-shaped action buttons
+                        // V3 Modern Design - Circular action buttons
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Favorite button with animated heart
                             Surface(
                                 onClick = { playerConnection.toggleLike() },
-                                shape = RoundedCornerShape(20.dp),
+                                shape = CircleShape,
                                 color = if (currentSong?.song?.liked == true)
                                     MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
                                 else textButtonColor.copy(alpha = 0.85f),
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(42.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
@@ -817,16 +886,16 @@ fun BottomSheetPlayer(
                                         )
                                     }
                                 },
-                                shape = RoundedCornerShape(20.dp),
+                                shape = CircleShape,
                                 color = textButtonColor.copy(alpha = 0.85f),
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(42.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         painter = painterResource(R.drawable.more_horiz),
                                         contentDescription = null,
                                         tint = iconButtonColor,
-                                        modifier = Modifier.size(22.dp)
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
@@ -834,33 +903,27 @@ fun BottomSheetPlayer(
                     }
 
                     PlayerDesignStyle.CINEMATIC -> {
-                        // Cinematic V4 Design - Glass-card action buttons
+                        // Cinematic V4 - Glass-card action buttons: Share + Heart + More
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Share button
+                            // Sleep timer button
                             Surface(
                                 onClick = {
-                                    val intent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        type = "text/plain"
-                                        putExtra(
-                                            Intent.EXTRA_TEXT,
-                                            "https://music.youtube.com/watch?v=${mediaMetadata.id}"
-                                        )
+                                    if (sleepTimerEnabled) {
+                                        playerConnection.service.sleepTimer.clear()
+                                    } else {
+                                        showSleepTimerDialog = true
                                     }
-                                    context.startActivity(Intent.createChooser(intent, null))
                                 },
                                 shape = RoundedCornerShape(14.dp),
                                 color = TextBackgroundColor.copy(alpha = 0.12f),
-                                modifier = Modifier
-                                    .height(44.dp)
-                                    .width(44.dp)
+                                modifier = Modifier.size(44.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
-                                        painter = painterResource(R.drawable.share),
+                                        painter = painterResource(R.drawable.bedtime),
                                         contentDescription = null,
                                         tint = TextBackgroundColor,
                                         modifier = Modifier.size(22.dp)
@@ -875,9 +938,7 @@ fun BottomSheetPlayer(
                                 color = if (currentSong?.song?.liked == true)
                                     MaterialTheme.colorScheme.error.copy(alpha = 0.25f)
                                 else TextBackgroundColor.copy(alpha = 0.12f),
-                                modifier = Modifier
-                                    .height(44.dp)
-                                    .width(44.dp)
+                                modifier = Modifier.size(44.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
@@ -894,7 +955,7 @@ fun BottomSheetPlayer(
                                 }
                             }
 
-                            // More menu button - cinematic glass card
+                            // More menu button
                             Surface(
                                 onClick = {
                                     menuState.show {
@@ -915,9 +976,7 @@ fun BottomSheetPlayer(
                                 },
                                 shape = RoundedCornerShape(14.dp),
                                 color = TextBackgroundColor.copy(alpha = 0.12f),
-                                modifier = Modifier
-                                    .height(44.dp)
-                                    .width(44.dp)
+                                modifier = Modifier.size(44.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
@@ -935,31 +994,22 @@ fun BottomSheetPlayer(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Share button
+                            // Sleep timer button
                             Surface(
                                 onClick = {
-                                    val intent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        type = "text/plain"
-                                        putExtra(
-                                            Intent.EXTRA_TEXT,
-                                            "https://music.youtube.com/watch?v=${mediaMetadata.id}"
-                                        )
+                                    if (sleepTimerEnabled) {
+                                        playerConnection.service.sleepTimer.clear()
+                                    } else {
+                                        showSleepTimerDialog = true
                                     }
-                                    context.startActivity(Intent.createChooser(intent, null))
                                 },
-                                shape = RoundedCornerShape(
-                                    topStart = 50.dp, bottomStart = 50.dp,
-                                    topEnd = 6.dp, bottomEnd = 6.dp
-                                ),
+                                shape = CircleShape,
                                 color = TextBackgroundColor.copy(alpha = 0.12f),
-                                modifier = Modifier
-                                    .height(42.dp)
-                                    .width(42.dp)
+                                modifier = Modifier.size(42.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
-                                        painter = painterResource(R.drawable.share),
+                                        painter = painterResource(R.drawable.bedtime),
                                         contentDescription = null,
                                         tint = TextBackgroundColor,
                                         modifier = Modifier.size(20.dp)
@@ -970,13 +1020,11 @@ fun BottomSheetPlayer(
                             // Favorite button
                             Surface(
                                 onClick = { playerConnection.toggleLike() },
-                                shape = RoundedCornerShape(50),
+                                shape = CircleShape,
                                 color = if (currentSong?.song?.liked == true)
                                     MaterialTheme.colorScheme.error.copy(alpha = 0.18f)
                                 else TextBackgroundColor.copy(alpha = 0.12f),
-                                modifier = Modifier
-                                    .height(42.dp)
-                                    .width(42.dp)
+                                modifier = Modifier.size(42.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
@@ -1003,27 +1051,20 @@ fun BottomSheetPlayer(
                                             playerBottomSheetState = state,
                                             onShowDetailsDialog = {
                                                 mediaMetadata.id.let {
-                                                    bottomSheetPageState.show {
-                                                        ShowMediaInfo(it)
-                                                    }
+                                                    bottomSheetPageState.show { ShowMediaInfo(it) }
                                                 }
                                             },
                                             onDismiss = menuState::dismiss,
                                         )
                                     }
                                 },
-                                shape = RoundedCornerShape(
-                                    topStart = 6.dp, bottomStart = 6.dp,
-                                    topEnd = 50.dp, bottomEnd = 50.dp
-                                ),
+                                shape = CircleShape,
                                 color = TextBackgroundColor.copy(alpha = 0.12f),
-                                modifier = Modifier
-                                    .height(42.dp)
-                                    .width(42.dp)
+                                modifier = Modifier.size(42.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
-                                        painter = painterResource(R.drawable.more_horiz),
+                                        painter = painterResource(R.drawable.more_vert),
                                         contentDescription = null,
                                         tint = TextBackgroundColor,
                                         modifier = Modifier.size(20.dp)
