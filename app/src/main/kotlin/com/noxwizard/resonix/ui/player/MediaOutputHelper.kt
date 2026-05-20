@@ -22,6 +22,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -451,11 +472,48 @@ fun rememberMediaOutputController(player: ExoPlayer): MediaOutputController {
 // 6. MediaOutputSelectorSheet composable
 // ─────────────────────────────────────────────────────────────────────────────
 
+@Composable
+fun AnimatedAudioVisualizer(modifier: Modifier = Modifier, color: Color) {
+    val infiniteTransition = rememberInfiniteTransition(label = "visualizer")
+    
+    val bar1 by infiniteTransition.animateFloat(
+        initialValue = 0.4f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(400, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "bar1"
+    )
+    val bar2 by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(300, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "bar2"
+    )
+    val bar3 by infiniteTransition.animateFloat(
+        initialValue = 0.5f, targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "bar3"
+    )
+
+    Row(
+        modifier = modifier.height(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.width(3.dp).fillMaxHeight(bar1).clip(RoundedCornerShape(50)).background(color))
+        Box(modifier = Modifier.width(3.dp).fillMaxHeight(bar2).clip(RoundedCornerShape(50)).background(color))
+        Box(modifier = Modifier.width(3.dp).fillMaxHeight(bar3).clip(RoundedCornerShape(50)).background(color))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MediaOutputSelectorSheet(
     controller: MediaOutputController,
-    TextBackgroundColor: Color,
+    TextBackgroundColor: Color, // Kept for API compatibility, though not used for container background anymore
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -463,15 +521,23 @@ fun MediaOutputSelectorSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        scrimColor = Color.Black.copy(alpha = 0.4f),
+        dragHandle = {
+            androidx.compose.material3.BottomSheetDefaults.DragHandle(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            )
+        }
     ) {
         Column(modifier = Modifier.padding(bottom = 32.dp)) {
             Text(
                 text = "Play on",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
-            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
 
             val devices = controller.state.availableDevices
             if (devices.isEmpty()) {
@@ -479,65 +545,104 @@ fun MediaOutputSelectorSheet(
                     text = "No output devices detected",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier.padding(24.dp),
                 )
             } else {
                 LazyColumn {
                     items(items = devices, key = { it.id }) { device ->
                         val isSelected = device.id == controller.state.activeDeviceId
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        
+                        val cardBgColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                        val iconBgColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                        val activeColor = MaterialTheme.colorScheme.onSurface
+                        
+                        val subtitleText = when {
+                            isSelected -> "Connected"
+                            device.isPersonalBluetoothAudio -> "Bluetooth earbuds"
+                            device.isWiredPersonalAudio -> "Wired headset"
+                            device.type == OutputType.BLUETOOTH_A2DP || device.type == OutputType.BLUETOOTH_SCO -> "Bluetooth device"
+                            device.type == OutputType.PHONE_SPEAKER -> "Phone speaker"
+                            else -> "Audio output"
+                        }
+                        
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val isPressed by interactionSource.collectIsPressedAsState()
+                        val scale by animateFloatAsState(
+                            targetValue = if (isPressed) 0.97f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ), label = "cardScale"
+                        )
+                        
+                        androidx.compose.material3.Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .padding(horizontal = 20.dp, vertical = 6.dp)
+                                .scale(scale)
+                                .clip(RoundedCornerShape(24.dp))
+                                .clickable(
+                                    interactionSource = interactionSource, 
+                                    indication = LocalIndication.current
+                                ) {
                                     controller.selectDevice(device)
                                     onDismiss()
-                                }
-                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                                },
+                            color = cardBgColor,
+                            shape = RoundedCornerShape(24.dp),
                         ) {
-                            Icon(
-                                painter = painterResource(getMediaOutputIconType(device).iconRes()),
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                                tint = if (isSelected) MaterialTheme.colorScheme.primary
-                                       else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = device.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.onSurface,
-                                )
-                                if (isSelected) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(iconBgColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(getMediaOutputIconType(device).iconRes()),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = activeColor
+                                    )
+                                }
+                                
+                                Spacer(Modifier.width(16.dp))
+                                
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Connected",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        text = device.name,
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                        color = activeColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = subtitleText,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = activeColor.copy(alpha = 0.7f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                
+                                if (isSelected) {
+                                    AnimatedAudioVisualizer(
+                                        modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                     )
                                 }
                             }
-                            if (isSelected) {
-                                Icon(
-                                    painter = painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
                         }
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                        )
                     }
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
