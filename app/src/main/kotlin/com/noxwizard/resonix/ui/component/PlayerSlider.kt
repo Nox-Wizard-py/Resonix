@@ -82,11 +82,15 @@ private fun DrawScope.drawTrack(
     val activeTrackEndX = (activePx - gapTotalHalf).coerceAtLeast(sliderStart.x)
     val inactiveTrackStartX = (activePx + gapTotalHalf).coerceAtMost(sliderEnd.x)
 
+    val capCompensation = if (hasEmoji) trackStrokeWidth / 2 else 0f
+    val lineActiveTrackEndX = (activeTrackEndX - capCompensation).coerceAtLeast(sliderStart.x)
+    val lineInactiveTrackStartX = (inactiveTrackStartX + capCompensation).coerceAtMost(sliderEnd.x)
+
     // Draw inactive track (after the gap)
-    if (inactiveTrackStartX < sliderEnd.x) {
+    if (lineInactiveTrackStartX < sliderEnd.x) {
         drawLine(
             inactiveTrackColor,
-            Offset(inactiveTrackStartX, center.y),
+            Offset(lineInactiveTrackStartX, center.y),
             sliderEnd,
             trackStrokeWidth,
             StrokeCap.Round
@@ -99,20 +103,21 @@ private fun DrawScope.drawTrack(
                 (sliderEnd.x - sliderStart.x) * activeRangeStart,
         center.y
     )
-    if (activeTrackEndX > sliderValueStart.x) {
+    if (lineActiveTrackEndX > sliderValueStart.x) {
         drawLine(
             activeTrackColor,
             sliderValueStart,
-            Offset(activeTrackEndX, center.y),
+            Offset(lineActiveTrackEndX, center.y),
             trackStrokeWidth,
             StrokeCap.Round
         )
     }
     for (tick in tickFractions) {
-        val outsideFraction = tick > activeRangeEnd || tick < activeRangeStart
+        val tickPx = lerp(sliderStart, sliderEnd, tick).x
+        if (tickPx < lineInactiveTrackStartX) continue // Don't draw dots on active part or gap
         drawCircle(
-            color = if (outsideFraction) inactiveTickColor else activeTickColor,
-            center = Offset(lerp(sliderStart, sliderEnd, tick).x, center.y),
+            color = inactiveTickColor,
+            center = Offset(tickPx, center.y),
             radius = tickSize / 2f
         )
     }
