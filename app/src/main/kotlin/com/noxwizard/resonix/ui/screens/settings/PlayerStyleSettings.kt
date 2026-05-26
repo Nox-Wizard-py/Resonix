@@ -442,6 +442,7 @@ fun PlayerStyleSettings(
                     PlayerBackgroundStyle.COLORING -> stringResource(R.string.coloring)
                     PlayerBackgroundStyle.BLUR_GRADIENT -> stringResource(R.string.blur_gradient)
                     PlayerBackgroundStyle.GLOW -> stringResource(R.string.glow)
+                    PlayerBackgroundStyle.AURORA -> "Aurora"
                 }
             },
         )
