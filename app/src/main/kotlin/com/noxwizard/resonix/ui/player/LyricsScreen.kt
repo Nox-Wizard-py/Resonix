@@ -93,7 +93,7 @@ import com.noxwizard.resonix.constants.ThumbnailCornerRadius
 import com.noxwizard.resonix.db.entities.LyricsEntity
 import com.noxwizard.resonix.extensions.togglePlayPause
 import com.noxwizard.resonix.extensions.toggleRepeatMode
-import com.noxwizard.resonix.lyrics.LyricsHelper
+import com.noxwizard.resonix.lyrics.engine.UnifiedLyricsEngine
 import com.noxwizard.resonix.models.MediaMetadata
 import com.noxwizard.resonix.ui.component.Lyrics
 import com.noxwizard.resonix.ui.component.LocalMenuState
@@ -118,6 +118,9 @@ import com.noxwizard.resonix.constants.PlayerCustomContrastKey
 import com.noxwizard.resonix.constants.PlayerCustomBrightnessKey
 import com.noxwizard.resonix.constants.DisableBlurKey
 import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -126,8 +129,16 @@ import kotlinx.coroutines.withContext
 import kotlin.runCatching
 import com.noxwizard.resonix.utils.makeTimeString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
-@OptIn(ExperimentalMaterial3Api::class)
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface UnifiedLyricsEngineEntryPoint {
+    fun unifiedLyricsEngine(): UnifiedLyricsEngine
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun LyricsScreen(
     mediaMetadata: MediaMetadata,
@@ -161,20 +172,15 @@ fun LyricsScreen(
             
             coroutineScope.launch(Dispatchers.IO) {
                 try {
-                    // Get LyricsHelper from Hilt
+                    // Get UnifiedLyricsEngine from Hilt
                     val entryPoint = EntryPointAccessors.fromApplication(
                         context.applicationContext,
-                        com.noxwizard.resonix.di.LyricsHelperEntryPoint::class.java
+                        UnifiedLyricsEngineEntryPoint::class.java
                     )
-                    val lyricsHelper = entryPoint.lyricsHelper()
+                    val unifiedLyricsEngine = entryPoint.unifiedLyricsEngine()
                     
                     // Fetch lyrics automatically
-                    val lyrics = lyricsHelper.getLyrics(mediaMetadata)
-                    
-                    // Save to database
-                    database.query {
-                        upsert(LyricsEntity(mediaMetadata.id, lyrics))
-                    }
+                    unifiedLyricsEngine.resolveLyrics(mediaMetadata)
                 } catch (e: Exception) {
                     // Handle error silently - user can manually refetch if needed
                 }
@@ -204,7 +210,7 @@ fun LyricsScreen(
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
 
     LaunchedEffect(mediaMetadata.id, playerBackground) {
-        if (playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING || playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT || playerBackground == PlayerBackgroundStyle.GLOW) {
+        if (playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING || playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT || playerBackground == PlayerBackgroundStyle.GLOW || playerBackground == PlayerBackgroundStyle.AURORA) {
             if (mediaMetadata.thumbnailUrl != null) {
                 val cachedColors = gradientColorsCache[mediaMetadata.id]
                 if (cachedColors != null) {
@@ -261,6 +267,7 @@ fun LyricsScreen(
         PlayerBackgroundStyle.BLUR_GRADIENT -> Color.White
         PlayerBackgroundStyle.GLOW -> Color.White
         PlayerBackgroundStyle.CUSTOM -> Color.White
+        PlayerBackgroundStyle.AURORA -> Color.White
     }
 
     val icBackgroundColor = when (playerBackground) {
@@ -271,6 +278,7 @@ fun LyricsScreen(
         PlayerBackgroundStyle.BLUR_GRADIENT -> Color.Black
         PlayerBackgroundStyle.GLOW -> Color.Black
         PlayerBackgroundStyle.CUSTOM -> Color.Black
+        PlayerBackgroundStyle.AURORA -> Color.Black
     }
 
     LaunchedEffect(playbackState) {
@@ -535,6 +543,12 @@ fun LyricsScreen(
                             Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
                         }
                     }
+                }
+                PlayerBackgroundStyle.AURORA -> {
+                    com.noxwizard.resonix.ui.component.AuroraAnimatedBackground(
+                        colors = gradientColors,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
                 else -> {
                     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
