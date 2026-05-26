@@ -313,7 +313,7 @@ fun BottomSheetPlayer(
     }
     
     LaunchedEffect(mediaMetadata?.id, playerBackground) {
-        if (playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING || playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT || playerBackground == PlayerBackgroundStyle.GLOW) {
+        if (playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING || playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT || playerBackground == PlayerBackgroundStyle.GLOW || playerBackground == PlayerBackgroundStyle.AURORA) {
             val currentMetadata = mediaMetadata
             if (currentMetadata != null && currentMetadata.thumbnailUrl != null) {
                 // Check cache first
@@ -376,6 +376,7 @@ fun BottomSheetPlayer(
             PlayerBackgroundStyle.BLUR_GRADIENT -> Color.White
             PlayerBackgroundStyle.GLOW -> Color.White
             PlayerBackgroundStyle.CUSTOM -> Color.White
+            PlayerBackgroundStyle.AURORA -> Color.White
         }
 
     val icBackgroundColor =
@@ -387,6 +388,7 @@ fun BottomSheetPlayer(
             PlayerBackgroundStyle.BLUR_GRADIENT -> Color.Black
             PlayerBackgroundStyle.GLOW -> Color.Black
             PlayerBackgroundStyle.CUSTOM -> Color.Black
+            PlayerBackgroundStyle.AURORA -> Color.Black
         }
 
     val (textButtonColor, iconButtonColor) = when (playerButtonsStyle) {
@@ -581,7 +583,7 @@ fun BottomSheetPlayer(
         state = state,
         modifier = modifier,
         backgroundColor = when (playerBackground) {
-            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
+            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.AURORA -> {
                 // Apply same enhanced fade logic to blur/gradient backgrounds
                 val progress = ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
                     .coerceIn(0f, 1f)
@@ -2330,6 +2332,12 @@ fun BottomSheetPlayer(
                                 ) {}
                             }
                         }
+                    }
+                    PlayerBackgroundStyle.AURORA -> {
+                        com.noxwizard.resonix.ui.component.AuroraAnimatedBackground(
+                            colors = gradientColors,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                     else -> {
                         // DEFAULT or other modes - no background
