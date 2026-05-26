@@ -1,9 +1,6 @@
 package com.noxwizard.resonix.paxsenix.utils
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.contentOrNull
+import org.json.JSONObject
 
 /**
  * Sanitizes raw provider response strings before parsing.
@@ -22,13 +19,14 @@ object LyricsPayloadSanitizer {
         // 1. Detect JSON envelope
         val unwrapped = if (trimmed.startsWith("{")) {
             runCatching {
-                val element = Json.parseToJsonElement(trimmed)
-                val obj = element.jsonObject
-                val extracted = obj["rawText"]?.jsonPrimitive?.contentOrNull
-                    ?: obj["lyrics"]?.jsonPrimitive?.contentOrNull
-                    ?: obj["lrc"]?.jsonPrimitive?.contentOrNull
-                    ?: obj["syncedLyrics"]?.jsonPrimitive?.contentOrNull
-                
+                val obj = JSONObject(trimmed)
+                val extracted = when {
+                    obj.has("rawText") -> obj.getString("rawText")
+                    obj.has("lyrics") -> obj.getString("lyrics")
+                    obj.has("lrc") -> obj.getString("lrc")
+                    obj.has("syncedLyrics") -> obj.getString("syncedLyrics")
+                    else -> null
+                }
                 extracted?.takeIf { it.isNotBlank() } ?: trimmed
             }.getOrDefault(trimmed)
         } else {
