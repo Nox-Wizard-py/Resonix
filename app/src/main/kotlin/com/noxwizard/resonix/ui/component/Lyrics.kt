@@ -134,7 +134,6 @@ import com.noxwizard.resonix.constants.PlayerBackgroundStyleKey
 import com.noxwizard.resonix.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.noxwizard.resonix.lyrics.LyricsEntry
 import com.noxwizard.resonix.lyrics.LyricsUtils.isChinese
-import com.noxwizard.resonix.lyrics.LyricsUtils.findCurrentLineIndex
 import com.noxwizard.resonix.lyrics.LyricsUtils.isJapanese
 import com.noxwizard.resonix.lyrics.LyricsUtils.isKorean
 import com.noxwizard.resonix.lyrics.LyricsUtils.parseLyrics
@@ -150,6 +149,7 @@ import com.noxwizard.resonix.ui.utils.smoothFadingEdge
 import com.noxwizard.resonix.utils.ComposeToImage
 import com.noxwizard.resonix.utils.rememberEnumPreference
 import com.noxwizard.resonix.utils.rememberPreference
+import com.noxwizard.resonix.lyrics.playback.LyricsDiagnosticsHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -259,6 +259,18 @@ fun Lyrics(
             }
         }
     }
+    
+    val syncLines = remember(lines) {
+        val mapped = lines.map { entry ->
+            com.noxwizard.resonix.paxsenix.models.LyricsLine(
+                startMs = entry.time,
+                endMs = -1L,
+                text = entry.text,
+                words = emptyList()
+            )
+        }
+        com.noxwizard.resonix.lyrics.playback.LyricsPlaybackResolver.inferTimings(mapped)
+    }
     val isSynced =
         remember(lyrics) {
             !lyrics.isNullOrEmpty() && lyrics.startsWith("[")
@@ -363,6 +375,33 @@ fun Lyrics(
     LaunchedEffect(lines) {
         isSelectionModeActive = false
         selectedIndices.clear()
+        // Clear stale diagnostics on every new lyrics load
+        LyricsDiagnosticsHolder.clear()
+    }
+
+    // ── Toast when resolver selects a provider ────────────────────────────────
+    LaunchedEffect(Unit) {
+        var lastProvider = ""
+        LyricsDiagnosticsHolder.state.collect { snap ->
+            val prov = snap.providerName
+            if (prov.isNotBlank() && prov != "—" && prov != lastProvider) {
+                lastProvider = prov
+                // Logcat (Task 7 — always logged)
+                android.util.Log.i(
+                    "LyricsResolver",
+                    "[Resolver Selected] provider=$prov syncType=${snap.syncType} " +
+                            "confidence=${"%.2f".format(snap.confidence)} lines=${snap.totalLines}"
+                )
+                // Toast (Task 8 — visible debug notification)
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Lyrics: $prov | ${snap.syncType.name}",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
     }
 
     LaunchedEffect(lyrics) {
@@ -376,10 +415,15 @@ fun Lyrics(
             isSeeking = sliderPosition != null
             val position = sliderPosition ?: playerConnection.player.currentPosition
             currentPlaybackPosition = position
-            currentLineIndex = findCurrentLineIndex(
-                lines,
-                position
+            
+            val state = com.noxwizard.resonix.lyrics.playback.LyricsPlaybackResolver.resolve(
+                lines = syncLines,
+                currentPositionMs = position
             )
+            currentLineIndex = state.activeLineIndex
+
+            // ── Diagnostics update (same state as renderer) ───────────────────
+            LyricsDiagnosticsHolder.updatePlayback(state, lines.size)
         }
     }
 
