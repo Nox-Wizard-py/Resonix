@@ -5,9 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.noxwizard.resonix.db.MusicDatabase
 import com.noxwizard.resonix.db.entities.LyricsEntity
-import com.noxwizard.resonix.lyrics.LyricsHelper
-import com.noxwizard.resonix.lyrics.LyricsResult
+import com.noxwizard.resonix.lyrics.engine.UnifiedLyricsEngine
 import com.noxwizard.resonix.models.MediaMetadata
+import com.noxwizard.resonix.paxsenix.PaxsenixLyricsEngine
+import com.noxwizard.resonix.paxsenix.models.LyricsTrack
 import com.noxwizard.resonix.utils.NetworkConnectivityObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -20,16 +21,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
+data class LyricsSearchResult(
+    val lyrics: String,
+    val providerName: String
+)
+
 @HiltViewModel
 class LyricsMenuViewModel
 @Inject
 constructor(
-    private val lyricsHelper: LyricsHelper,
+    private val unifiedLyricsEngine: UnifiedLyricsEngine,
     val database: MusicDatabase,
     private val networkConnectivity: NetworkConnectivityObserver,
 ) : ViewModel() {
     private var job: Job? = null
-    val results = MutableStateFlow(emptyList<LyricsResult>())
+    val results = MutableStateFlow(emptyList<LyricsSearchResult>())
     val isLoading = MutableStateFlow(false)
 
     private val _isNetworkAvailable = MutableStateFlow(false)
@@ -61,11 +67,14 @@ constructor(
         job?.cancel()
         job =
             viewModelScope.launch(Dispatchers.IO) {
-                lyricsHelper.getAllLyrics(mediaId, title, artist, duration) { result ->
-                    results.update {
-                        it + result
-                    }
+                val track = LyricsTrack(title, artist, null, duration * 1000L)
+                val candidates = PaxsenixLyricsEngine.default().resolveRanked(track)
+                val searchResults = candidates.mapNotNull { candidate ->
+                    val raw = candidate.result.rawText
+                    if (raw.isBlank()) null
+                    else LyricsSearchResult(raw, candidate.result.providerName)
                 }
+                results.value = searchResults
                 isLoading.value = false
             }
     }
@@ -79,13 +88,11 @@ constructor(
         mediaMetadata: MediaMetadata,
         lyricsEntity: LyricsEntity?,
     ) {
-        database.query {
-            lyricsEntity?.let(::delete)
-            val lyrics =
-                runBlocking {
-                    lyricsHelper.getLyrics(mediaMetadata)
-                }
-            upsert(LyricsEntity(mediaMetadata.id, lyrics))
+        viewModelScope.launch(Dispatchers.IO) {
+            database.query {
+                lyricsEntity?.let(::delete)
+            }
+            unifiedLyricsEngine.resolveLyrics(mediaMetadata)
         }
     }
 }
