@@ -63,6 +63,7 @@ import com.noxwizard.resonix.LocalPlayerConnection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.noxwizard.resonix.ui.component.Material3PreferenceGroup
+import com.noxwizard.resonix.lyrics.playback.LyricsDiagnosticsHolder
 import kotlin.math.roundToInt
 
 // single GlobalLog import above
@@ -134,6 +135,20 @@ fun DebugSettings(
                 icon = { Icon(painterResource(R.drawable.info), null) },
                 trailingContent = {
                     Switch(checked = showCodecOnPlayer, onCheckedChange = onShowCodecOnPlayerChange)
+                }
+            )
+
+            val (showLyricsDiagnostics, onShowLyricsDiagnosticsChange) = rememberPreference(
+                key = booleanPreferencesKey("dev_show_lyrics_diagnostics"),
+                defaultValue = false
+            )
+
+            PreferenceEntry(
+                title = { Text("Lyrics Diagnostics") },
+                description = "Show live lyrics resolver + playback diagnostics",
+                icon = { Icon(painterResource(R.drawable.info), null) },
+                trailingContent = {
+                    Switch(checked = showLyricsDiagnostics, onCheckedChange = onShowLyricsDiagnosticsChange)
                 }
             )
             }
@@ -510,6 +525,73 @@ fun DebugSettings(
                     }
                 }
             }
+            // ─── Lyrics Diagnostics ───────────────────────────────────────────────
+            val (showLyricsDiagnosticsSection, _) = rememberPreference(
+                key = booleanPreferencesKey("dev_show_lyrics_diagnostics"),
+                defaultValue = false
+            )
+
+            if (showLyricsDiagnosticsSection) {
+                val diagSnapshot by LyricsDiagnosticsHolder.state.collectAsState()
+                val (logExpanded, setLogExpanded) = remember { mutableStateOf(false) }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "Lyrics Diagnostics",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        NerdStatRow("Provider", diagSnapshot.providerName)
+                        NerdStatRow("Sync Type", diagSnapshot.syncType.name)
+                        NerdStatRow("Confidence", "%.2f".format(diagSnapshot.confidence))
+                        NerdStatRow("Active Line", if (diagSnapshot.activeLineIndex >= 0) diagSnapshot.activeLineIndex.toString() else "—")
+                        NerdStatRow("Position", "${diagSnapshot.currentPositionMs} ms")
+                        NerdStatRow("Line Start", "${diagSnapshot.activeLineStartMs} ms")
+                        NerdStatRow("Line End", if (diagSnapshot.activeLineEndMs != -1L) "${diagSnapshot.activeLineEndMs} ms" else "—")
+                        NerdStatRow("Instrumental", if (diagSnapshot.isInstrumental) "YES" else "no")
+                        NerdStatRow("Total Lines", diagSnapshot.totalLines.toString())
+                        NerdStatRow("Resolve Cost", "${diagSnapshot.resolveDurationMs} ms")
+                        NerdStatRow("Validation Cost", "${diagSnapshot.validationCostMs} ms")
+                        NerdStatRow("Interpolation", "${diagSnapshot.interpolationDurationMs} ms")
+                        NerdStatRow("Cache Hit", if (diagSnapshot.cacheHit) "YES" else "no")
+
+                        if (diagSnapshot.lastResolverLog.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (logExpanded) "▲ Resolver Log" else "▼ Resolver Log",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { setLogExpanded(!logExpanded) }
+                            )
+                            if (logExpanded) {
+                                Text(
+                                    text = diagSnapshot.lastResolverLog,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.height(32.dp))
         }
     }
