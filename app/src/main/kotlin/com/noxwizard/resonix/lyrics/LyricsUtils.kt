@@ -7,8 +7,7 @@ import kotlinx.coroutines.withContext
 
 @Suppress("RegExpRedundantEscape")
 object LyricsUtils {
-    val LINE_REGEX = "((\\[\\d\\d:\\d\\d\\.\\d{2,3}\\] ?)+)(.+)".toRegex()
-    val TIME_REGEX = "\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\]".toRegex()
+
 
     private val KANA_ROMAJI_MAP: Map<String, String> = mapOf(
         // Digraphs (Yōon - combinations like kya, sho)
@@ -101,93 +100,7 @@ object LyricsUtils {
         Tokenizer()
     }
 
-    fun parseLyrics(lyrics: String): List<LyricsEntry> {
-        val lines = lyrics.lines()
-        val result = mutableListOf<LyricsEntry>()
-        
-        // First pass: parse all lyrics lines
-        var i = 0
-        while (i < lines.size) {
-            val line = lines[i]
-            if (!line.trim().startsWith("<") || !line.trim().endsWith(">")) {
-                // This is a lyrics line
-                val entries = parseLine(line, null)
-                if (entries != null) {
-                    // Check if next line has word timestamps
-                    val wordTimestamps = if (i + 1 < lines.size) {
-                        val nextLine = lines[i + 1]
-                        if (nextLine.trim().startsWith("<") && nextLine.trim().endsWith(">")) {
-                            parseWordTimestamps(nextLine.trim().removeSurrounding("<", ">"))
-                        } else null
-                    } else null
-                    
-                    // Add entries with word timestamps if available
-                    if (wordTimestamps != null) {
-                        result.addAll(entries.map { entry ->
-                            LyricsEntry(entry.time, entry.text, wordTimestamps)
-                        })
-                    } else {
-                        result.addAll(entries)
-                    }
-                }
-            }
-            i++
-        }
-        return result.sorted()
-    }
-    
-    private fun parseWordTimestamps(data: String): List<WordTimestamp>? {
-        if (data.isBlank()) return null
-        return try {
-            data.split("|").mapNotNull { wordData ->
-                val parts = wordData.split(":")
-                if (parts.size == 3) {
-                    WordTimestamp(
-                        text = parts[0],
-                        startTime = parts[1].toDouble(),
-                        endTime = parts[2].toDouble()
-                    )
-                } else null
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
 
-    private fun parseLine(line: String, words: List<WordTimestamp>? = null): List<LyricsEntry>? {
-        if (line.isEmpty()) {
-            return null
-        }
-        val matchResult = LINE_REGEX.matchEntire(line.trim()) ?: return null
-        val times = matchResult.groupValues[1]
-        val text = matchResult.groupValues[3]
-        val timeMatchResults = TIME_REGEX.findAll(times)
-
-        return timeMatchResults
-            .map { timeMatchResult ->
-                val min = timeMatchResult.groupValues[1].toLong()
-                val sec = timeMatchResult.groupValues[2].toLong()
-                val milString = timeMatchResult.groupValues[3]
-                var mil = milString.toLong()
-                if (milString.length == 2) {
-                    mil *= 10
-                }
-                val time = min * DateUtils.MINUTE_IN_MILLIS + sec * DateUtils.SECOND_IN_MILLIS + mil
-                LyricsEntry(time, text, words)
-            }.toList()
-    }
-
-    fun findCurrentLineIndex(
-        lines: List<LyricsEntry>,
-        position: Long,
-    ): Int {
-        for (index in lines.indices) {
-            if (lines[index].time >= position + 300L) { // Use constant instead of import
-                return index - 1
-            }
-        }
-        return lines.lastIndex
-    }
 
     /**
      * Converts a Katakana string to Romaji.
@@ -408,10 +321,58 @@ object LyricsUtils {
         val cjkCharCount = text.count { char -> char in '\u4E00'..'\u9FFF' }
         val hiraganaKatakanaCount = text.count { char -> (char in '\u3040'..'\u309F') || (char in '\u30A0'..'\u30FF') }
 
-        // Heuristic: If CJK characters are present and there are very few or no Hiragana/Katakana,
-        // it's more likely to be Chinese.
-        // The threshold (e.g., 0.1) can be adjusted based on desired sensitivity.
         return cjkCharCount > 0 && (hiraganaKatakanaCount.toDouble() / text.length.toDouble()) < 0.1
+    }
+
+    // ── LRC Parser ────────────────────────────────────────────────────────────
+
+    private val LRC_TIMESTAMP_REGEX = Regex("""^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)$""")
+    private val WORD_TIMESTAMP_REGEX = Regex("""<(\d{2}):(\d{2})\.(\d{2,3})>([^<]*)""")
+
+    /**
+     * Parses a raw LRC string into a sorted list of [LyricsEntry].
+     * Handles both basic LRC timestamps and extended word-level `<mm:ss.xx>word` syntax.
+     */
+    fun parseLyrics(lrc: String): List<LyricsEntry> {
+        val entries = mutableListOf<LyricsEntry>()
+        for (line in lrc.lines()) {
+            val trimmed = line.trim()
+            val match = LRC_TIMESTAMP_REGEX.matchEntire(trimmed) ?: continue
+            val (minStr, secStr, csStr, text) = match.destructured
+            val minutes = minStr.toLongOrNull() ?: continue
+            val seconds = secStr.toLongOrNull() ?: continue
+            val cs = csStr.toLongOrNull() ?: 0L
+            val multiplier = if (csStr.length == 3) 1L else 10L
+            val timeMs = minutes * 60_000L + seconds * 1_000L + cs * multiplier
+
+            // Parse inline word timestamps if present
+            val words: List<WordTimestamp>? = if (text.contains('<')) {
+                val wordMatches = WORD_TIMESTAMP_REGEX.findAll(text)
+                val wordList = mutableListOf<WordTimestamp>()
+                val wordMatchList = wordMatches.toList()
+                wordMatchList.forEachIndexed { i, wm ->
+                    val (wMin, wSec, wCs, wText) = wm.destructured
+                    val wMul = if (wCs.length == 3) 1L else 10L
+                    val startMs = wMin.toLong() * 60_000L + wSec.toLong() * 1_000L + wCs.toLong() * wMul
+                    val endMs = wordMatchList.getOrNull(i + 1)?.let { next ->
+                        val (nMin, nSec, nCs) = listOf(
+                            next.groupValues[1].toLong() * 60_000L,
+                            next.groupValues[2].toLong() * 1_000L,
+                            next.groupValues[3].toLong() * (if (next.groupValues[3].length == 3) 1L else 10L)
+                        )
+                        nMin + nSec + nCs
+                    } ?: (startMs + 500L)
+                    if (wText.isNotBlank()) {
+                        wordList += WordTimestamp(wText, startMs / 1000.0, endMs / 1000.0)
+                    }
+                }
+                wordList.takeIf { it.isNotEmpty() }
+            } else null
+
+            val cleanText = if (words != null) text.replace(Regex("<[^>]+>"), "").trim() else text.trim()
+            entries += LyricsEntry(time = timeMs, text = cleanText, words = words)
+        }
+        return entries.sortedBy { it.time }
     }
 }
 
