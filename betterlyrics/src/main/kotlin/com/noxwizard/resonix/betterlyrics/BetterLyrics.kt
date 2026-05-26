@@ -1,5 +1,6 @@
 package com.noxwizard.resonix.betterlyrics
 
+import com.noxwizard.resonix.betterlyrics.models.LyricsDocument
 import com.noxwizard.resonix.betterlyrics.models.TTMLResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -83,5 +84,18 @@ object BetterLyrics {
                 callback(lrcString)
             }
     }
+    /**
+     * Fetches lyrics and returns a render-ready [LyricsDocument].
+     * Prefer this over [getLyrics] — no LRC conversion, full timing preserved.
+     */
+    suspend fun fetchDocument(
+        title: String,
+        artist: String,
+        duration: Int = -1,
+    ): LyricsDocument? = runCatching {
+        val ttml = fetchTTML(artist, title, duration) ?: return null
+        val doc = TTMLParser.parseTTMLDocument(ttml)
+        if (doc.isEmpty) null else doc
+    }.getOrNull()
 }
 
