@@ -105,7 +105,8 @@ import com.noxwizard.resonix.extensions.metadata
 import com.noxwizard.resonix.extensions.toMediaItem
 import com.noxwizard.resonix.extensions.toPersistQueue
 import com.noxwizard.resonix.extensions.toQueue
-import com.noxwizard.resonix.lyrics.LyricsHelper
+import com.noxwizard.resonix.lyrics.engine.UnifiedLyricsEngine
+import com.noxwizard.resonix.lyrics.engine.LyricsPreloadManager
 import com.noxwizard.resonix.models.PersistQueue
 import com.noxwizard.resonix.models.PersistPlayerState
 import com.noxwizard.resonix.models.QueueData
@@ -188,7 +189,10 @@ class MusicService :
     lateinit var database: MusicDatabase
 
     @Inject
-    lateinit var lyricsHelper: LyricsHelper
+    lateinit var unifiedLyricsEngine: UnifiedLyricsEngine
+
+    @Inject
+    lateinit var lyricsPreloadManager: LyricsPreloadManager
 
     @Inject
     lateinit var syncUtils: SyncUtils
@@ -415,18 +419,8 @@ class MusicService :
         ) { mediaMetadata, showLyrics ->
             mediaMetadata to showLyrics
         }.collectLatest(scope) { (mediaMetadata, showLyrics) ->
-            if (showLyrics && mediaMetadata != null && database.lyrics(mediaMetadata.id)
-                    .first() == null
-            ) {
-                val lyrics = lyricsHelper.getLyrics(mediaMetadata)
-                database.query {
-                    upsert(
-                        LyricsEntity(
-                            id = mediaMetadata.id,
-                            lyrics = lyrics,
-                        ),
-                    )
-                }
+            if (showLyrics && mediaMetadata != null) {
+                unifiedLyricsEngine.resolveLyrics(mediaMetadata)
             }
         }
 
@@ -1236,6 +1230,12 @@ class MusicService :
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
     super.onMediaItemTransition(mediaItem, reason)
+
+    val upcoming = mutableListOf<com.noxwizard.resonix.models.MediaMetadata>()
+    for (i in player.currentMediaItemIndex + 1 until min(player.mediaItemCount, player.currentMediaItemIndex + 4)) {
+        player.getMediaItemAt(i).metadata?.let { upcoming.add(it) }
+    }
+    lyricsPreloadManager.onUpcomingTracksChanged(upcoming)
 
     // Scrobble: Stop previous song
     scrobbleManager?.onSongStop()
