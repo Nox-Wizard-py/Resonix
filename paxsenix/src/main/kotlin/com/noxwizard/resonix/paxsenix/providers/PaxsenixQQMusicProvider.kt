@@ -1,5 +1,6 @@
 package com.noxwizard.resonix.paxsenix.providers
 
+import com.noxwizard.resonix.paxsenix.api.PaxsenixLyrics
 import com.noxwizard.resonix.paxsenix.models.LyricsDocument
 import com.noxwizard.resonix.paxsenix.models.LyricsProviderCategory
 import com.noxwizard.resonix.paxsenix.models.LyricsTrack
