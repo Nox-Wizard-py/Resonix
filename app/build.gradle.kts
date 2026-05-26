@@ -228,6 +228,7 @@ dependencies {
     implementation(project(":playlist-import"))
     implementation(project(":shazamkit"))
     implementation(project(":resonix-sync"))
+    implementation(project(":paxsenix"))
     implementation("androidx.media3:media3-common:1.8.0")
 
     implementation(libs.ktor.client.core)
