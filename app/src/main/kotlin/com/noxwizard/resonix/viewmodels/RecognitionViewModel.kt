@@ -99,18 +99,12 @@ class RecognitionViewModel @Inject constructor(
     private fun searchByLyrics(query: String) {
         activeJob?.cancel()
         activeJob = viewModelScope.launch {
-            _uiState.value = RecognitionUiState.Processing("Searching all lyrics providers…")
+            _uiState.value = RecognitionUiState.Processing("Searching lyrics…")
             
-            val bestMatch = com.noxwizard.resonix.lyrics.ParallelLyricsSearcher.searchAllProviders(query)
+            val bestMatch = apiService.searchLyrics(query).getOrNull()
             
             if (bestMatch != null) {
-                val mappedResult = LyricsResult(
-                    title = bestMatch.title,
-                    artist = bestMatch.artist,
-                    album = bestMatch.album,
-                    youtubeSearchQuery = bestMatch.youtubeSearchQuery
-                )
-                _uiState.value = RecognitionUiState.Result(lyricsResult = mappedResult)
+                _uiState.value = RecognitionUiState.Result(lyricsResult = bestMatch)
                 
                 // Prefetch thumbnail to populate the blank disk icon
                 launch(Dispatchers.IO) {
