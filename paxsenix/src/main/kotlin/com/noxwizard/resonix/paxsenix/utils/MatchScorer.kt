@@ -29,6 +29,7 @@ object MatchScorer {
         val titleScore: Float,
         val durationScore: Float,
         val albumScore: Float,
+        val versionMismatchPenalty: Float,
         val finalScore: Float,
         val passesArtistGate: Boolean,
     )
@@ -68,17 +69,27 @@ object MatchScorer {
         }
         val durationScore = durationScore(track.durationSec, candidateDurationSec)
 
-        val final = artistScore * weights.artist +
+        // Penalize version mismatches (remix/mixed in one but not the other)
+        val targetIsMixed = track.title.contains("mixed", ignoreCase = true)
+        val targetIsRemix = track.title.contains("remix", ignoreCase = true)
+        val candidateIsMixed = candidateTitle.contains("mixed", ignoreCase = true)
+        val candidateIsRemix = candidateTitle.contains("remix", ignoreCase = true)
+        var versionMismatchPenalty = 0f
+        if (candidateIsMixed && !targetIsMixed) versionMismatchPenalty += 0.30f
+        if (candidateIsRemix && !targetIsRemix) versionMismatchPenalty += 0.20f
+
+        val final = (artistScore * weights.artist +
                 titleScore * weights.title +
                 albumScore * weights.album +
-                durationScore * weights.duration
+                durationScore * weights.duration) - versionMismatchPenalty
 
         return ScoreBreakdown(
             artistScore = artistScore,
             titleScore = titleScore,
             durationScore = durationScore,
             albumScore = albumScore,
-            finalScore = final,
+            versionMismatchPenalty = versionMismatchPenalty,
+            finalScore = final.coerceAtLeast(0f),
             passesArtistGate = artistScore >= MIN_ARTIST_SIMILARITY,
         )
     }
