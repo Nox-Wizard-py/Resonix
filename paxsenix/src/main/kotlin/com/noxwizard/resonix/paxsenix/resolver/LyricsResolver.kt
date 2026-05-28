@@ -57,10 +57,13 @@ class LyricsResolver(
     suspend fun resolve(track: LyricsTrack): LyricsDocument? {
         val candidates = collectAndRank(track)
         if (debugLogging) printDebugLog(track, candidates)
-        return candidates
+        val selected = candidates
             .filter { it.passesArtistGate && it.validationResult is ValidationResult.Accept && it.confidence >= minConfidence }
             .maxByOrNull { it.finalScore }
-            ?.result
+            ?: candidates  // fallback: relax confidence, keep validation gates
+                .filter { it.passesArtistGate && it.validationResult is ValidationResult.Accept }
+                .maxByOrNull { it.finalScore }
+        return selected?.result
     }
 
     suspend fun resolveAll(track: LyricsTrack): List<LyricsDocument> =
