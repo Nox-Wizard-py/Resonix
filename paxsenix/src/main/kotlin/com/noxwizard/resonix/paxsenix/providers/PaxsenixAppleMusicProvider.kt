@@ -11,47 +11,27 @@ import com.noxwizard.resonix.paxsenix.models.WordLine
 import com.noxwizard.resonix.paxsenix.parser.TTMLNormalizationPipeline
 import com.noxwizard.resonix.paxsenix.utils.LyricsPayloadSanitizer
 import com.noxwizard.resonix.paxsenix.utils.MatchScorer
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
+import com.noxwizard.resonix.paxsenix.utils.TrackNormalizer
 
 class PaxsenixAppleMusicProvider(
-    private val baseUrl: String = "https://paxsenixofc.my.id/server",
     private val confidenceThreshold: Float = 0.5f,
 ) : LyricsProvider {
 
     override val name: String = "AppleMusic (Paxsenix)"
     override val category: LyricsProviderCategory = LyricsProviderCategory.PREMIUM_WORD_SYNC
 
-    private val client by lazy {
-        HttpClient(CIO) {
-            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true; isLenient = true }) }
-            install(HttpTimeout) {
-                requestTimeoutMillis = 15_000
-                connectTimeoutMillis = 10_000
-                socketTimeoutMillis = 15_000
-            }
-            defaultRequest { url(baseUrl) }
-            expectSuccess = true
-        }
-    }
-
     override suspend fun search(track: LyricsTrack): LyricsDocument? = runCatching {
+        val cleanTitle = TrackNormalizer.cleanTitle(track.title)
+        val cleanArtist = TrackNormalizer.cleanArtist(track.artist)
+
         val raw = PaxsenixLyrics.getAppleMusicLyrics(
-            track.title, track.artist, track.durationSec.toInt()
+            cleanTitle, cleanArtist, track.durationSec
         ).getOrNull() ?: return@runCatching null
 
-        if (raw.isBlank()) return null
+        if (raw.isBlank()) return@runCatching null
         val sanitized = LyricsPayloadSanitizer.sanitize(raw)
         val parsedLines = TTMLParser.parseTTML(sanitized)
-        if (parsedLines.isEmpty()) return null
+        if (parsedLines.isEmpty()) return@runCatching null
 
         val rawLines = parsedLines.map { parsed ->
             val words = parsed.words.map { w ->
@@ -72,7 +52,7 @@ class PaxsenixAppleMusicProvider(
         val syncType = if (lines.any { it.hasWordSync }) SyncType.WORD_SYNCED else SyncType.LINE_SYNCED
         val confidence = MatchScorer.score(track, track.title, track.artist, candidateDurationSec = track.durationSec)
 
-        if (confidence < confidenceThreshold) return null
+        if (confidence < confidenceThreshold) return@runCatching null
 
         LyricsDocument(
             rawText = sanitized,
