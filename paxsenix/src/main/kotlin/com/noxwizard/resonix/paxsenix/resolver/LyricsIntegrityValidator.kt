@@ -20,8 +20,8 @@ import kotlin.math.max
  */
 object LyricsIntegrityValidator {
 
-    private const val MIN_ARTIST_SIMILARITY = 0.75f
-    private const val MIN_TITLE_SIMILARITY = 0.75f
+    private const val MIN_ARTIST_SIMILARITY = 0.65f
+    private const val MIN_TITLE_SIMILARITY = 0.70f
     private const val MAX_DURATION_DIFF_MS = 5_000L
 
     // Fraction of lyric lines that may contain a foreign title token before we reject
