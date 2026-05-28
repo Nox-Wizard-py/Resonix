@@ -25,6 +25,18 @@ internal fun List<Track>.bestMatchingFor(duration: Int): Track? {
         ?.takeIf { abs(it.duration.toInt() - duration) <= 2 }
 }
 
+/** Relaxed matching: ±5 seconds instead of ±2, matching Metrolist behavior. */
+internal fun List<Track>.bestMatchingForRelaxed(duration: Int): Track? {
+    if (isEmpty()) return null
+
+    if (duration == -1) {
+        return firstOrNull { it.syncedLyrics != null } ?: firstOrNull()
+    }
+
+    return filter { abs(it.duration.toInt() - duration) <= 5 }
+        .maxByOrNull { if (it.syncedLyrics != null) 1 else 0 }
+}
+
 internal fun List<Track>.bestMatchingFor(
     duration: Int,
     trackName: String? = null,
