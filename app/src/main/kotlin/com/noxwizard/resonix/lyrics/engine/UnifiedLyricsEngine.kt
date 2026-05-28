@@ -10,6 +10,7 @@ import com.noxwizard.resonix.paxsenix.models.LyricsDocument
 import com.noxwizard.resonix.paxsenix.models.LyricsTrack
 import com.noxwizard.resonix.paxsenix.models.SyncType
 import com.noxwizard.resonix.utils.NetworkConnectivityObserver
+import com.noxwizard.resonix.paxsenix.utils.TrackNormalizer
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,8 +64,8 @@ class UnifiedLyricsEngine @Inject constructor(
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val deferred = scope.async {
             val track = LyricsTrack(
-                title = mediaMetadata.title,
-                artist = mediaMetadata.artists.joinToString { it.name },
+                title = TrackNormalizer.cleanTitle(mediaMetadata.title),
+                artist = TrackNormalizer.cleanArtist(mediaMetadata.artists.joinToString { it.name }),
                 album = mediaMetadata.album?.title,
                 durationMs = mediaMetadata.duration * 1000L,
             )
@@ -82,7 +83,7 @@ class UnifiedLyricsEngine @Inject constructor(
 
             // 2. Select the top candidate (the resolver already filters by minConfidence and validates)
             val selected = rankedCandidates
-                .filter { it.passesArtistGate && it.confidence >= 0.5f }
+                .filter { it.passesArtistGate && it.confidence >= 0.35f }
                 .maxByOrNull { it.finalScore }
 
             if (selected == null) {
