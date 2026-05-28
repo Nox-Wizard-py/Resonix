@@ -133,6 +133,7 @@ import com.noxwizard.resonix.constants.PlayerBackgroundStyle
 import com.noxwizard.resonix.constants.PlayerBackgroundStyleKey
 import com.noxwizard.resonix.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.noxwizard.resonix.lyrics.LyricsEntry
+import com.noxwizard.resonix.paxsenix.utils.LyricsPayloadSanitizer
 import com.noxwizard.resonix.lyrics.LyricsUtils.isChinese
 import com.noxwizard.resonix.lyrics.LyricsUtils.isJapanese
 import com.noxwizard.resonix.lyrics.LyricsUtils.isKorean
@@ -213,11 +214,42 @@ fun Lyrics(
         if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
     }
 
-    val lines = remember(lyrics, scope) {
-        if (lyrics == null || lyrics == LYRICS_NOT_FOUND) {
+    // Deserialize JSON-wrapped LyricsDocument stored in DB, or pass raw LRC through unchanged.
+    val lyricsDocument: String? = remember(lyrics) {
+        if (lyrics == null || lyrics == LYRICS_NOT_FOUND) null
+        else if (lyrics.trimStart().startsWith("{")) {
+            runCatching {
+                val obj = org.json.JSONObject(lyrics)
+                val rawText = obj.optString("rawText", "")
+                val sanitized = LyricsPayloadSanitizer.sanitize(rawText)
+                // TTML inside JSON envelope — convert to LRC
+                if (sanitized.trimStart().startsWith("<tt") ||
+                    sanitized.trimStart().startsWith("<?xml")) {
+                    val parsedLines = com.noxwizard.resonix.betterlyrics.TTMLParser.parseTTML(sanitized)
+                    @Suppress("DEPRECATION")
+                    if (parsedLines.isEmpty()) null
+                    else com.noxwizard.resonix.betterlyrics.TTMLParser.toLRC(parsedLines)
+                } else {
+                    sanitized
+                }
+            }.getOrNull()
+        } else if (lyrics.trimStart().startsWith("<tt") ||
+                   lyrics.trimStart().startsWith("<?xml")) {
+            // Raw TTML stored directly (not wrapped in JSON) — convert to LRC
+            runCatching {
+                val parsedLines = com.noxwizard.resonix.betterlyrics.TTMLParser.parseTTML(lyrics)
+                @Suppress("DEPRECATION")
+                if (parsedLines.isEmpty()) null
+                else com.noxwizard.resonix.betterlyrics.TTMLParser.toLRC(parsedLines)
+            }.getOrNull()
+        } else lyrics
+    }
+
+    val lines = remember(lyricsDocument, scope) {
+        if (lyricsDocument == null) {
             emptyList()
-        } else if (lyrics.startsWith("[")) {
-            val parsedLines = parseLyrics(lyrics)
+        } else if (lyricsDocument.startsWith("[")) {
+            val parsedLines = parseLyrics(lyricsDocument)
             parsedLines.map { entry ->
                 val newEntry = LyricsEntry(entry.time, entry.text, entry.words)
                 if (romanizeJapaneseLyrics) {
@@ -239,7 +271,8 @@ fun Lyrics(
                 listOf(LyricsEntry.HEAD_LYRICS_ENTRY) + it
             }
         } else {
-            lyrics.lines().mapIndexed { index, line ->
+            if (lyricsDocument.isBlank()) emptyList()
+            else lyricsDocument.lines().mapIndexed { index, line ->
                 val newEntry = LyricsEntry(index * 100L, line)
                 if (romanizeJapaneseLyrics) {
                     if (isJapanese(line) && !isChinese(line)) {
@@ -272,8 +305,8 @@ fun Lyrics(
         com.noxwizard.resonix.lyrics.playback.LyricsPlaybackResolver.inferTimings(mapped)
     }
     val isSynced =
-        remember(lyrics) {
-            !lyrics.isNullOrEmpty() && lyrics.startsWith("[")
+        remember(lyricsDocument) {
+            !lyricsDocument.isNullOrEmpty() && lyricsDocument.startsWith("[")
         }
 
     val expressiveAccent = when (playerBackground) {
@@ -404,8 +437,8 @@ fun Lyrics(
         }
     }
 
-    LaunchedEffect(lyrics) {
-        if (lyrics.isNullOrEmpty() || !lyrics.startsWith("[")) {
+    LaunchedEffect(lyricsDocument) {
+        if (lyricsDocument.isNullOrEmpty() || !lyricsDocument.startsWith("[")) {
             currentLineIndex = -1
             return@LaunchedEffect
         }
