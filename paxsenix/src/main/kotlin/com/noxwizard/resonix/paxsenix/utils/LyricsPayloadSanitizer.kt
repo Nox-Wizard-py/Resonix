@@ -36,7 +36,13 @@ object LyricsPayloadSanitizer {
         // 2. Unescape literal \n sequences
         val unescaped = unwrapped.replace("\\n", "\n").replace("\\r", "")
 
-        // 3. Strip any residual JSON artifacts (e.g. trailing `}` from partial wraps)
-        return unescaped.trim()
+        // 3. If result is raw TTML/XML, return as-is — caller handles TTML parsing
+        val trimmedResult = unescaped.trim()
+        if (trimmedResult.startsWith("<tt") || trimmedResult.startsWith("<?xml")) {
+            return trimmedResult
+        }
+
+        // 4. Strip any residual JSON artifacts (e.g. trailing `}` from partial wraps)
+        return trimmedResult
     }
 }
