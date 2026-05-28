@@ -1,35 +1,57 @@
 package com.noxwizard.resonix.paxsenix.utils
 
-private val FEAT_REGEX = Regex("""\s*[\(\[]?(?:feat|ft|featuring)\.?\s+[^\)\]]+[\)\]]?""", RegexOption.IGNORE_CASE)
-private val PARENS_REGEX = Regex("""\s*\([^)]*(?:official|audio|video|lyric|music|remaster|remix|live|version|edit|mv|hd|4k)[^)]*\)""", RegexOption.IGNORE_CASE)
-private val BRACKET_REGEX = Regex("""\s*\[[^\]]*(?:official|audio|video|lyric|music|remaster|remix|live|version|edit|mv|hd|4k)[^\]]*\]""", RegexOption.IGNORE_CASE)
+private val titleCleanupPatterns = listOf(
+    Regex("""\\s*\(.*?(official|video|audio|lyrics|lyric|visualizer|hd|hq|4k|remaster|remix|live|acoustic|version|edit|extended|radio|clean|explicit).*?\)""", RegexOption.IGNORE_CASE),
+    Regex("""\\s*\[.*?(official|video|audio|lyrics|lyric|visualizer|hd|hq|4k|remaster|remix|live|acoustic|version|edit|extended|radio|clean|explicit).*?\]""", RegexOption.IGNORE_CASE),
+    Regex("""\\s*【.*?】"""),
+    Regex("""\\s*\|.*$"""),
+    Regex("""\\s*-\s*(official|video|audio|lyrics|lyric|visualizer).*$""", RegexOption.IGNORE_CASE),
+    Regex("""\\s*\(feat\..*?\)""", RegexOption.IGNORE_CASE),
+    Regex("""\\s*\(ft\..*?\)""", RegexOption.IGNORE_CASE),
+    Regex("""\\s*feat\..*$""", RegexOption.IGNORE_CASE),
+    Regex("""\\s*ft\..*$""", RegexOption.IGNORE_CASE),
+    Regex("""\\s*\([^)]*\d{4}[^)]*\)""", RegexOption.IGNORE_CASE),
+)
+
+private val artistSeparators = listOf(
+    " & ", " and ", ", ", " x ", " X ", " feat. ", " feat ", " ft. ", " ft ", " featuring ", " with "
+)
+
 private val MULTI_SPACE = Regex("""\s{2,}""")
 
 object TrackNormalizer {
 
-    fun normalizeTitle(title: String): String =
-        title
-            .replace(FEAT_REGEX, "")
-            .replace(PARENS_REGEX, "")
-            .replace(BRACKET_REGEX, "")
-            .replace(MULTI_SPACE, " ")
-            .trim()
-            .lowercase()
+    fun cleanTitle(title: String): String {
+        var cleaned = title.trim()
+        for (pattern in titleCleanupPatterns) {
+            cleaned = cleaned.replace(pattern, "")
+        }
+        return cleaned.replace(MULTI_SPACE, " ").trim()
+    }
 
+    fun cleanArtist(artist: String): String {
+        var cleaned = artist.trim()
+        for (separator in artistSeparators) {
+            if (cleaned.contains(separator, ignoreCase = true)) {
+                cleaned = cleaned.split(separator, ignoreCase = true, limit = 2)[0]
+                break
+            }
+        }
+        return cleaned.trim()
+    }
+
+    /** Lowercase normalized title for scoring/matching. */
+    fun normalizeTitle(title: String): String =
+        cleanTitle(title).lowercase()
+
+    /** Lowercase normalized primary artist for scoring/matching. */
     fun normalizeArtist(artist: String): String =
-        artist
-            .replace(FEAT_REGEX, "")
-            .replace(Regex("""\s*[,&]\s*.+"""), "")  // keep only primary artist
-            .trim()
-            .lowercase()
+        cleanArtist(artist).lowercase()
 
     fun normalizeAlbum(album: String?): String? =
         album?.trim()?.lowercase()
 
-    // Full normalization used as search key
+    /** Generic collapse — used for cache keys etc. */
     fun normalize(text: String): String =
-        text
-            .replace(MULTI_SPACE, " ")
-            .trim()
-            .lowercase()
+        text.replace(MULTI_SPACE, " ").trim().lowercase()
 }
