@@ -1,39 +1,42 @@
 package com.noxwizard.resonix.paxsenix.providers
 
-import com.noxwizard.resonix.kugou.KuGou
+import com.noxwizard.resonix.paxsenix.api.PaxsenixLyrics
 import com.noxwizard.resonix.paxsenix.models.LyricsDocument
 import com.noxwizard.resonix.paxsenix.models.LyricsProviderCategory
 import com.noxwizard.resonix.paxsenix.models.LyricsTrack
 import com.noxwizard.resonix.paxsenix.parser.LrcParser
-import com.noxwizard.resonix.paxsenix.utils.MatchScorer
 import com.noxwizard.resonix.paxsenix.utils.LyricsPayloadSanitizer
 
 /**
- * Adapter wrapping the existing :kugou module.
- * KuGou returns LRC strings decoded from base64.
+ * Paxsenix KuGou provider.
+ *
+ * Delegates to PaxsenixLyrics.getKugouLyrics() — the AT-identical HTTP layer —
+ * which handles search via paxsenix kugou/search, duration matching (< 10s tolerance),
+ * and extracts the "lyrics" field from kugou/lyrics response.
+ *
+ * Previously used the :kugou module directly; now uses the Paxsenix API endpoint
+ * to match ArchiveTune behavior exactly.
  */
-class KuGouProvider : LyricsProvider {
+class KuGouProvider(
+    @Suppress("unused") private val confidenceThreshold: Float = 0.35f,
+) : LyricsProvider {
 
-    override val name: String = "KuGou"
+    override val name: String = "KuGou (Paxsenix)"
     override val category: LyricsProviderCategory = LyricsProviderCategory.STANDARD_SYNC
 
     override suspend fun search(track: LyricsTrack): LyricsDocument? = runCatching {
-        val lrcString = KuGou.getLyrics(
+        val raw = PaxsenixLyrics.getKugouLyrics(
             title = track.title,
             artist = track.artist,
-            duration = track.durationSec,
-        ).getOrNull() ?: return null
+            durationSeconds = track.durationSec,
+        ).getOrNull()
 
-        val sanitized = LyricsPayloadSanitizer.sanitize(lrcString)
+        if (raw.isNullOrBlank()) return@runCatching null
+
+        val sanitized = LyricsPayloadSanitizer.sanitize(raw)
         val parsed = LrcParser.parse(sanitized)
-        if (parsed.lines.isEmpty()) return null
 
-        val confidence = MatchScorer.score(
-            track = track,
-            candidateTitle = track.title,
-             candidateArtist = track.artist,
-            candidateDurationSec = track.durationSec,
-        )
+        if (parsed.lines.isEmpty() || parsed.lines.none { it.text.isNotBlank() }) return@runCatching null
 
         LyricsDocument(
             rawText = sanitized,
