@@ -7,33 +7,35 @@ import com.noxwizard.resonix.paxsenix.models.LyricsTrack
 import com.noxwizard.resonix.paxsenix.models.SyncType
 import com.noxwizard.resonix.paxsenix.parser.LrcParser
 import com.noxwizard.resonix.paxsenix.utils.LyricsPayloadSanitizer
-import com.noxwizard.resonix.paxsenix.utils.MatchScorer
-import com.noxwizard.resonix.paxsenix.utils.TrackNormalizer
 
+/**
+ * Paxsenix NetEase provider.
+ *
+ * Delegates to PaxsenixLyrics.getNeteaseLyrics() — the AT-identical HTTP layer —
+ * which handles search, duration matching (< 10s tolerance), klyric→lrc fallback.
+ */
 class PaxsenixNetEaseProvider(
-    private val confidenceThreshold: Float = 0.5f,
+    @Suppress("unused") private val confidenceThreshold: Float = 0.35f,
 ) : LyricsProvider {
 
     override val name: String = "NetEase (Paxsenix)"
     override val category: LyricsProviderCategory = LyricsProviderCategory.PREMIUM_WORD_SYNC
 
     override suspend fun search(track: LyricsTrack): LyricsDocument? = runCatching {
-        val cleanTitle = TrackNormalizer.cleanTitle(track.title)
-        val cleanArtist = TrackNormalizer.cleanArtist(track.artist)
-
         val raw = PaxsenixLyrics.getNeteaseLyrics(
-            cleanTitle, cleanArtist, track.durationSec
-        ).getOrNull() ?: return@runCatching null
+            title = track.title,
+            artist = track.artist,
+            durationSeconds = track.durationSec,
+        ).getOrNull()
 
-        if (raw.isBlank()) return@runCatching null
+        if (raw.isNullOrBlank()) return@runCatching null
+
         val sanitized = LyricsPayloadSanitizer.sanitize(raw)
         val parsed = LrcParser.parse(sanitized)
-        if (parsed.lines.isEmpty()) return@runCatching null
+
+        if (parsed.lines.isEmpty() || parsed.lines.none { it.text.isNotBlank() }) return@runCatching null
 
         val syncType = if (parsed.syncType == SyncType.WORD_SYNCED) SyncType.WORD_SYNCED else SyncType.LINE_SYNCED
-        val confidence = MatchScorer.score(track, track.title, track.artist, candidateDurationSec = track.durationSec)
-
-        if (confidence < confidenceThreshold) return@runCatching null
 
         LyricsDocument(
             rawText = sanitized,
