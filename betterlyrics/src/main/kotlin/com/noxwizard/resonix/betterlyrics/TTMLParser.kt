@@ -25,6 +25,49 @@ object TTMLParser {
         val startTime: Double,
         val endTime: Double
     )
+
+    private fun isCjk(text: String): Boolean {
+        return text.any { c ->
+            Character.UnicodeBlock.of(c) in setOf(
+                Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS,
+                Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A,
+                Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B,
+                Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS,
+                Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS_SUPPLEMENT,
+                Character.UnicodeBlock.HIRAGANA,
+                Character.UnicodeBlock.KATAKANA,
+                Character.UnicodeBlock.HANGUL_SYLLABLES,
+                Character.UnicodeBlock.HANGUL_JAMO,
+                Character.UnicodeBlock.HANGUL_COMPATIBILITY_JAMO
+            )
+        }
+    }
+
+    private fun getElementsByTagNameAgnostic(doc: org.w3c.dom.Document, tagName: String): List<Element> {
+        val result = mutableListOf<Element>()
+        val allElements = doc.getElementsByTagName("*")
+        for (i in 0 until allElements.length) {
+            val el = allElements.item(i) as? Element ?: continue
+            val name = el.tagName
+            if (name.equals(tagName, ignoreCase = true) || name.endsWith(":$tagName", ignoreCase = true)) {
+                result.add(el)
+            }
+        }
+        return result
+    }
+
+    private fun getElementsByTagNameAgnostic(parent: Element, tagName: String): List<Element> {
+        val result = mutableListOf<Element>()
+        val allElements = parent.getElementsByTagName("*")
+        for (i in 0 until allElements.length) {
+            val el = allElements.item(i) as? Element ?: continue
+            val name = el.tagName
+            if (name.equals(tagName, ignoreCase = true) || name.endsWith(":$tagName", ignoreCase = true)) {
+                result.add(el)
+            }
+        }
+        return result
+    }
     
     fun parseTTML(ttml: String): List<ParsedLine> {
         val lines = mutableListOf<ParsedLine>()
@@ -34,38 +77,21 @@ object TTMLParser {
             factory.isNamespaceAware = true
             
             // Secure XML parser configuration against XXE and Entity Expansion (Billion Laughs) attacks
-            try {
-                factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-            } catch (e: Exception) {
-                // Feature might not be supported by some older/alternative parsers
-            }
-            try {
-                factory.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true)
-            } catch (e: Exception) {}
-            try {
-                factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
-            } catch (e: Exception) {}
-            try {
-                factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-            } catch (e: Exception) {}
-            try {
-                factory.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "")
-            } catch (e: Exception) {}
-            try {
-                factory.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
-            } catch (e: Exception) {}
-            try {
-                factory.setExpandEntityReferences(false)
-            } catch (e: Exception) {}
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            factory.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true)
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            factory.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "")
+            factory.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
+            factory.setExpandEntityReferences(false)
 
             val builder = factory.newDocumentBuilder()
             val doc = builder.parse(ttml.byteInputStream())
             
             // Find all <p> elements (paragraphs/lines)
-            val pElements = doc.getElementsByTagName("p")
+            val pElements = getElementsByTagNameAgnostic(doc, "p")
             
-            for (i in 0 until pElements.length) {
-                val pElement = pElements.item(i) as? Element ?: continue
+            for (pElement in pElements) {
                 
                 val begin = pElement.getAttribute("begin")
                 if (begin.isNullOrEmpty()) continue
@@ -75,29 +101,57 @@ object TTMLParser {
                 val lineText = StringBuilder()
                 
                 // Parse <span> elements (words)
-                val spans = pElement.getElementsByTagName("span")
-                for (j in 0 until spans.length) {
-                    val span = spans.item(j) as? Element ?: continue
+                val spans = getElementsByTagNameAgnostic(pElement, "span")
+                for (span in spans) {
                     
                     val wordBegin = span.getAttribute("begin")
                     val wordEnd = span.getAttribute("end")
-                    val wordText = span.textContent.trim()
+                    val wordTextRaw = span.textContent ?: ""
                     
-                    if (wordText.isNotEmpty()) {
-                        if (lineText.isNotEmpty()) {
-                            lineText.append(" ")
+                    if (wordTextRaw.isNotBlank()) {
+                        val wordText = wordTextRaw.trim()
+                        val isSyllableContinuation = words.isNotEmpty() && !lineText.endsWith(" ") && !wordTextRaw.startsWith(" ")
+                        
+                        if (!isSyllableContinuation && lineText.isNotEmpty() && !lineText.endsWith(" ")) {
+                            // Only append a space if the raw text implies a break, or if it's the first non-continuation
+                            // Actually, TTML often relies on raw whitespace. If it's not a continuation and there's no space, 
+                            // we should probably add one unless it's CJK.
+                            if (!isCjk(wordText) || lineText.last().isWhitespace() == false) {
+                                lineText.append(" ")
+                            }
                         }
-                        lineText.append(wordText)
+                        
+                        lineText.append(wordTextRaw)
                         
                         if (wordBegin.isNotEmpty() && wordEnd.isNotEmpty()) {
-                            words.add(
-                                ParsedWord(
-                                    text = wordText,
-                                    startTime = parseTime(wordBegin),
-                                    endTime = parseTime(wordEnd)
+                            val newWordStart = parseTime(wordBegin)
+                            val newWordEnd = parseTime(wordEnd)
+                            
+                            val lastWord = words.lastOrNull()
+                            if (isSyllableContinuation && lastWord != null && 
+                                !lastWord.text.endsWith(" ") && 
+                                !isCjk(lastWord.text.trim()) && !isCjk(wordText)
+                            ) {
+                                words[words.lastIndex] = lastWord.copy(
+                                    text = lastWord.text + wordText,
+                                    endTime = newWordEnd
                                 )
-                            )
+                            } else {
+                                words.add(
+                                    ParsedWord(
+                                        text = wordTextRaw,
+                                        startTime = newWordStart,
+                                        endTime = newWordEnd
+                                    )
+                                )
+                            }
                         }
+                    } else if (wordTextRaw.isNotEmpty() && !wordTextRaw.contains('\n')) {
+                         if (words.isNotEmpty() && !words.last().text.endsWith(" ")) {
+                             lineText.append(" ")
+                             val lastWord = words.last()
+                             words[words.lastIndex] = lastWord.copy(text = lastWord.text + " ")
+                         }
                     }
                 }
                 
