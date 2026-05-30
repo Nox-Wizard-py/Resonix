@@ -5,39 +5,34 @@ import com.noxwizard.resonix.paxsenix.models.LyricsDocument
 import com.noxwizard.resonix.paxsenix.models.LyricsProviderCategory
 import com.noxwizard.resonix.paxsenix.models.LyricsTrack
 import com.noxwizard.resonix.paxsenix.parser.MusixMatchLyricsParser
-import com.noxwizard.resonix.paxsenix.utils.MatchScorer
 import com.noxwizard.resonix.paxsenix.utils.LyricsPayloadSanitizer
-import com.noxwizard.resonix.paxsenix.utils.TrackNormalizer
 
+/**
+ * Paxsenix Musixmatch provider.
+ *
+ * Delegates to PaxsenixLyrics.getMusixmatchLyrics() — the AT-identical HTTP layer —
+ * which tries word-type first, then falls back to default (line-synced).
+ */
 class MusixMatchProvider(
-    private val confidenceThreshold: Float = 0.5f,
+    @Suppress("unused") private val confidenceThreshold: Float = 0.35f,
 ) : LyricsProvider {
 
     override val name: String = "MusixMatch (Paxsenix)"
     override val category: LyricsProviderCategory = LyricsProviderCategory.PREMIUM_WORD_SYNC
 
     override suspend fun search(track: LyricsTrack): LyricsDocument? = runCatching {
-        val cleanTitle = TrackNormalizer.cleanTitle(track.title)
-        val cleanArtist = TrackNormalizer.cleanArtist(track.artist)
-
         val raw = PaxsenixLyrics.getMusixmatchLyrics(
-            cleanTitle, cleanArtist, track.durationSec
-        ).getOrNull() ?: return@runCatching null
+            title = track.title,
+            artist = track.artist,
+            durationSeconds = track.durationSec,
+        ).getOrNull()
 
-        if (raw.isBlank()) return@runCatching null
+        if (raw.isNullOrBlank()) return@runCatching null
 
         val sanitized = LyricsPayloadSanitizer.sanitize(raw)
         val parsed = MusixMatchLyricsParser.parse(sanitized)
-        if (parsed.lines.isEmpty()) return@runCatching null
 
-        val confidence = MatchScorer.score(
-            track = track,
-            candidateTitle = track.title,
-            candidateArtist = track.artist,
-            candidateDurationSec = track.durationSec,
-        )
-
-        if (confidence < confidenceThreshold) return@runCatching null
+        if (parsed.lines.isEmpty() || parsed.lines.none { it.text.isNotBlank() }) return@runCatching null
 
         LyricsDocument(
             rawText = sanitized,
