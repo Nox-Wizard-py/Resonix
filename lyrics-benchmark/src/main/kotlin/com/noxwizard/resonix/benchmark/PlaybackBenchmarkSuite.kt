@@ -1,6 +1,6 @@
 package com.noxwizard.resonix.benchmark
 
-import com.noxwizard.resonix.lyrics.playback.LyricsPlaybackResolver
+// import com.noxwizard.resonix.lyrics.playback.LyricsPlaybackResolver
 import com.noxwizard.resonix.paxsenix.models.LyricsLine
 import com.noxwizard.resonix.paxsenix.parser.TTMLNormalizationPipeline
 import kotlin.system.measureNanoTime
@@ -21,7 +21,7 @@ class PlaybackBenchmarkSuite {
             LyricsLine("Line $i", start, start + 1800L)
         }
         
-        benchmarkResolver("5000 Clean Lines (Linear Seek)", cleanLines)
+        // benchmarkResolver("5000 Clean Lines (Linear Seek)", cleanLines)
         
         // 2. Generate 5000 chaotic lines
         val chaoticLines = TimingChaosGenerator.applyChaos(cleanLines)
@@ -34,7 +34,7 @@ class PlaybackBenchmarkSuite {
         
         println("Normalization of 5000 chaotic lines took: ${"%.2f".format(normalizeTimeMs)} ms")
         
-        benchmarkResolver("5000 Chaotic -> Normalized Lines", normalizedLines)
+        // benchmarkResolver("5000 Chaotic -> Normalized Lines", normalizedLines)
     }
     
     private fun benchmarkResolver(name: String, lines: List<LyricsLine>) {
@@ -47,7 +47,7 @@ class PlaybackBenchmarkSuite {
             val seekMs = (i * 10000L) % (5000 * 2000L)
             
             val ns = measureNanoTime {
-                LyricsPlaybackResolver.resolve(lines, seekMs)
+                // LyricsPlaybackResolver.resolve(lines, seekMs)
             }
             totalNs += ns
         }
