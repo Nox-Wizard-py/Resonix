@@ -128,6 +128,24 @@ object LyricsPlaybackResolver {
         }
     }
 
+    /**
+     * Phase 9: Ensures strict monotonic ordering of [LyricsLine.startMs].
+     * Any line where startMs <= previous line's startMs is nudged to previousMs + 1.
+     *
+     * Call this AFTER [inferTimings] and before handing lines to the renderer.
+     * Required for [resolve]'s binary search to produce correct results.
+     */
+    fun enforceMonotonicTimings(lines: List<LyricsLine>): List<LyricsLine> {
+        if (lines.size < 2) return lines
+        val result = lines.toMutableList()
+        for (i in 1 until result.size) {
+            if (result[i].startMs <= result[i - 1].startMs) {
+                result[i] = result[i].copy(startMs = result[i - 1].startMs + 1L)
+            }
+        }
+        return result
+    }
+
     // ─── Internal helpers ─────────────────────────────────────────────────────
 
     /** Compute the effective endMs for a line without mutating it. */
