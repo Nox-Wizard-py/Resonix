@@ -3,33 +3,42 @@ package com.noxwizard.resonix.lyrics
 /**
  * Registry of all active lyrics providers in priority order.
  *
- * Priority (highest first):
- *   1. BetterLyrics : Musixmatch  — word-synced, premium metadata
- *   2. Paxsenix : Musixmatch      — word-synced, broad coverage
- *   3. BetterLyrics : Spotify     — word-synced karaoke
- *   4. Paxsenix : Spotify         — word-synced fallback
- *   5. Paxsenix : Apple Music     — TTML word-sync
- *   6. BetterLyrics TTML          — generic TTML word-sync
- *   7. LRCLib                     — line-synced community
- *   8. KuGou                      — line-synced community
- *   9. SimpMusic                  — line-synced fallback
+ * Two-tier registry:
  *
- * Legacy providers (LyricsPlus, YouTubeSubtitle, YouTube Music) are removed.
+ * **App-layer providers** (resolved by UnifiedLyricsEngine directly):
+ *   BetterLyrics, LRCLib, KuGou, SimpMusic
+ *
+ * **Paxsenix engine providers** (resolved by PaxsenixLyricsEngine):
+ *   MusixMatch (Paxsenix), Spotify (Paxsenix), BetterLyrics (Paxsenix),
+ *   Apple Music (Paxsenix), NetEase (Paxsenix), KuGou (Paxsenix), YouTube (Paxsenix)
  */
 object LyricsProviderRegistry {
-    private val providerMap = mapOf(
+    // ── App-layer providers (have their own isEnabled(Context) gate) ──────────
+    private val appProviderMap = mapOf(
         "BetterLyrics" to BetterLyricsProvider,
         "LrcLib" to LrcLibLyricsProvider,
         "Kugou" to KuGouLyricsProvider,
         "SimpMusic" to SimpMusicLyricsProvider,
     )
 
-    val providerNames = providerMap.keys.toList()
+    // ── Paxsenix engine provider canonical names (default priority order) ─────
+    val paxsenixProviderNames = listOf(
+        "MusixMatch",
+        "Spotify",
+        "BetterLyrics",
+        "PaxsenixAppleMusic",
+        "PaxsenixNetEase",
+        "PaxsenixKuGou",
+        "PaxsenixYouTube",
+    )
 
-    fun getProviderByName(name: String): LyricsProvider? = providerMap[name]
+    // ── App-layer names (used by priority drag screen) ────────────────────────
+    val providerNames = appProviderMap.keys.toList()
+
+    fun getProviderByName(name: String): LyricsProvider? = appProviderMap[name]
 
     fun getProviderName(provider: LyricsProvider): String? =
-        providerMap.entries.find { it.value == provider }?.key
+        appProviderMap.entries.find { it.value == provider }?.key
 
     fun deserializeProviderOrder(orderString: String): List<String> {
         if (orderString.isBlank()) return getDefaultProviderOrder()
@@ -48,4 +57,14 @@ object LyricsProviderRegistry {
 
     fun getOrderedProviders(orderString: String): List<LyricsProvider> =
         deserializeProviderOrder(orderString).mapNotNull { getProviderByName(it) }
+
+    // ── Paxsenix order helpers ────────────────────────────────────────────────
+
+    fun deserializePaxsenixOrder(orderString: String): List<String> {
+        if (orderString.isBlank()) return paxsenixProviderNames
+        return orderString.split(",").map { it.trim() }.filter { it in paxsenixProviderNames }
+    }
+
+    fun serializePaxsenixOrder(providers: List<String>): String =
+        providers.filter { it in paxsenixProviderNames }.joinToString(",")
 }
