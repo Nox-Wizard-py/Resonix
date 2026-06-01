@@ -74,31 +74,32 @@ private val FlowEasing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1.0f)
 fun LyricsStyle.toThemeSpec(): LyricsThemeSpec = when (this) {
 
     LyricsStyle.FLOW -> LyricsThemeSpec(
-        // Opacity — matches CSS `opacity: 0.5` on previous lines
+        // Opacity — CSS `opacity: 0.5` on previous lines
         activeLineAlpha = 1.0f,
         previousLineAlpha = 0.5f,
         futureLineAlpha = 0.65f,
-        futureAlphaFalloff = listOf(0.65f, 0.45f, 0.30f),
+        futureAlphaFalloff = listOf(0.65f, 0.42f, 0.28f),
 
-        // Blur — CSS: `filter: blur(.5rem)` ≈ 8dp → ~20–24px at 2.5x density
-        // Only on PREVIOUS lines. Future lines explicitly excluded (CSS ~div rule).
+        // Blur — CSS `filter: blur(.5rem)` ≈ 8px logical.
+        // 14f at high density produces a natural depth without smearing too aggressively.
         blurPreviousLines = true,
-        blurRadiusPx = 20f,
+        blurRadiusPx = 14f,
         blurFutureLines = false,
 
-        // Scale — subtle, Spotify doesn't resize aggressively
+        // Scale — minimal, Spotify doesn't resize lines
         activeLineScale = 1.0f,
         inactiveScaleFalloff = listOf(0.97f, 0.94f, 0.92f),
 
-        // Typography — SpotifyMixUITitle is a variable display font, heavy weight
+        // Typography — SpotifyMixUITitle is ExtraBold display; active line is dominant
         activeFontWeight = FontWeight.ExtraBold,
         inactiveFontWeight = FontWeight.Bold,
         lineHeightMultiplier = 1.25f,  // CSS: --blyrics-line-height: 1.25
 
-        // Word glow — soft bloom on active word
+        // Word glow — soft white Shadow on active word via SpanStyle.
+        // Radius 10f: subtle bloom, not a neon halo.
         glowActiveWord = true,
-        wordGlowRadiusPx = 14f,
-        futureWordAlpha = 0.35f,
+        wordGlowRadiusPx = 10f,
+        futureWordAlpha = 0.45f,   // dim but readable — Spotify shows upcoming words faintly
         passedWordAlpha = 1.0f,
 
         // Transitions — CSS: `transition: 0.5s 0.3s`
