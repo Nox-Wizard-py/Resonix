@@ -49,7 +49,10 @@ val EnableLyricsPlusKey = booleanPreferencesKey("enableLyricsPlus")
 val EnablePaxsenixMusixmatchKey = booleanPreferencesKey("enablePaxsenixMusixmatch")
 val EnablePaxsenixSpotifyKey = booleanPreferencesKey("enablePaxsenixSpotify")
 val EnablePaxsenixAppleMusicKey = booleanPreferencesKey("enablePaxsenixAppleMusic")
+val EnablePaxsenixNetEaseKey = booleanPreferencesKey("enablePaxsenixNetEase")
+val EnablePaxsenixYouTubeKey = booleanPreferencesKey("enablePaxsenixYouTube")
 val EnableBetterLyricsMusixmatchKey = booleanPreferencesKey("enableBetterLyricsMusixmatch")
+val PaxsenixProviderOrderKey = stringPreferencesKey("paxsenixProviderOrder")
 
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val ProxyEnabledKey = booleanPreferencesKey("proxyEnabled")
@@ -374,14 +377,12 @@ val PlayerCustomContrastKey = floatPreferencesKey("playerCustomContrast")
 val PlayerCustomBrightnessKey = floatPreferencesKey("playerCustomBrightness")
 
 
-val LyricsAnimationStyleKey = stringPreferencesKey("lyricsAnimationStyle")
-enum class LyricsAnimationStyle {
-    NONE,
-    FADE,
-    GLOW,
-    SLIDE,
-    KARAOKE,
-    APPLE,
+val LyricsStyleKey = stringPreferencesKey("lyricsStyle")
+enum class LyricsStyle {
+    FLOW,
+    VELVET,
+    HALO,
+    AURORA
 }
 
 val LyricsTextSizeKey = floatPreferencesKey("lyricsTextSize")
