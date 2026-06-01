@@ -76,10 +76,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Rect
-import android.graphics.BlurMaskFilter
 import androidx.compose.ui.graphics.ClipOp
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -863,10 +860,22 @@ fun Lyrics(
                                         else          -> FontWeight.Medium
                                     }
 
+                                    // Per-word glow via SpanStyle shadow — only on active word.
+                                    // Shadow(color, offset=zero, blurRadius) produces soft bloom
+                                    // without affecting layout or requiring separate composable nodes.
+                                    val wordShadow: Shadow? = if (themeSpec.glowActiveWord && isWordActive && isActiveLine) {
+                                        Shadow(
+                                            color = Color.White.copy(alpha = 0.75f),
+                                            offset = Offset.Zero,
+                                            blurRadius = themeSpec.wordGlowRadiusPx
+                                        )
+                                    } else null
+
                                     withStyle(
                                         style = SpanStyle(
                                             color = wordColor,
-                                            fontWeight = wordWeight
+                                            fontWeight = wordWeight,
+                                            shadow = wordShadow
                                         )
                                     ) {
                                         append(word.text)
@@ -878,34 +887,11 @@ fun Lyrics(
                                 }
                             }
 
-                            // Word glow: draw active word with BlurMaskFilter on a separate layer
-                            val glowEnabled = themeSpec.glowActiveWord && isActiveLine
-                            val glowModifier = if (glowEnabled) {
-                                Modifier.drawWithContent {
-                                    // Draw glow layer first (offset slightly larger for bloom effect)
-                                    val glowPaint = Paint().apply {
-                                        asFrameworkPaint().apply {
-                                            isAntiAlias = true
-                                            maskFilter = BlurMaskFilter(
-                                                themeSpec.wordGlowRadiusPx,
-                                                BlurMaskFilter.Blur.NORMAL
-                                            )
-                                        }
-                                    }
-                                    drawIntoCanvas { canvas ->
-                                        canvas.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), glowPaint)
-                                        drawContent()
-                                        canvas.restore()
-                                    }
-                                }
-                            } else Modifier
-
                             Text(
                                 text = styledText,
                                 fontSize = lyricsTextSize.sp,
                                 textAlign = alignment,
                                 lineHeight = specLineHeight,
-                                modifier = glowModifier
                             )
                         } else {
                             val popInScale = remember { androidx.compose.animation.core.Animatable(1f) }
@@ -926,7 +912,7 @@ fun Lyrics(
                             Text(
                                 text = item.text,
                                 fontSize = lyricsTextSize.sp,
-                                color = if (!isActiveLine) lineColor else expressiveAccent.copy(alpha = 0.35f),
+                                color = if (isActiveLine) expressiveAccent else lineColor,
                                 textAlign = alignment,
                                 fontWeight = if (isActiveLine) themeSpec.activeFontWeight else themeSpec.inactiveFontWeight,
                                 lineHeight = specLineHeight,
