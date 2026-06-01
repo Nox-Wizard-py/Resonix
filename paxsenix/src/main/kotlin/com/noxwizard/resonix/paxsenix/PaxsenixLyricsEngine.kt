@@ -30,6 +30,10 @@ import com.noxwizard.resonix.paxsenix.resolver.RankedLyricsCandidate
  * All providers are queried concurrently; results are ranked by confidence.
  * A hard artist-similarity gate (≥ 0.65) prevents cross-artist false positives.
  * Adaptive validation (MAINSTREAM / OBSCURE) handles niche tracks.
+ *
+ * Pass [enabledProviderNames] to filter which providers are active (from Settings).
+ * Pass [orderedProviderNames] to change the resolution priority (from Settings).
+ * An empty/null set means all providers are enabled.
  */
 class PaxsenixLyricsEngine(
     providers: List<LyricsProvider> = defaultProviders(),
@@ -51,6 +55,17 @@ class PaxsenixLyricsEngine(
         resolver.resolveRanked(track)
 
     companion object {
+        /** Canonical map from display/settings name → provider factory. */
+        fun allProvidersByName(): Map<String, () -> LyricsProvider> = mapOf(
+            "MusixMatch"        to { MusixMatchProvider() },
+            "Spotify"           to { SpotifyProvider() },
+            "BetterLyrics"      to { BetterLyricsProvider() },
+            "PaxsenixAppleMusic" to { PaxsenixAppleMusicProvider() },
+            "PaxsenixNetEase"   to { PaxsenixNetEaseProvider() },
+            "PaxsenixKuGou"     to { KuGouProvider() },
+            "PaxsenixYouTube"   to { PaxsenixYouTubeProvider() },
+        )
+
         fun defaultProviders(): List<LyricsProvider> = listOf(
             MusixMatchProvider(),          // priority 1  — word-synced, best metadata
             SpotifyProvider(),             // priority 2  — word-synced karaoke
@@ -62,9 +77,21 @@ class PaxsenixLyricsEngine(
             PaxsenixYouTubeProvider(),     // priority 8 — transcript fallback
         )
 
+        /** Build an engine respecting user-configured enabled set and priority order. */
+        fun fromPreferences(
+            enabledNames: Set<String>,
+            orderedNames: List<String>,
+        ): PaxsenixLyricsEngine {
+            val factory = allProvidersByName()
+            val providers = orderedNames
+                .filter { enabledNames.isEmpty() || it in enabledNames }
+                .mapNotNull { factory[it]?.invoke() }
+                .ifEmpty { defaultProviders() }
+            return PaxsenixLyricsEngine(providers = providers)
+        }
+
         fun default(): PaxsenixLyricsEngine = PaxsenixLyricsEngine()
 
         fun withDebug(): PaxsenixLyricsEngine = PaxsenixLyricsEngine(debugLogging = true)
     }
 }
-
