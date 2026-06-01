@@ -33,6 +33,7 @@ import androidx.navigation.NavController
 import com.noxwizard.resonix.LocalPlayerAwareWindowInsets
 import com.noxwizard.resonix.R
 import com.noxwizard.resonix.constants.LyricsProviderOrderKey
+import com.noxwizard.resonix.constants.PaxsenixProviderOrderKey
 import com.noxwizard.resonix.lyrics.LyricsProviderRegistry
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.utils.backToMain
@@ -40,12 +41,15 @@ import com.noxwizard.resonix.utils.rememberPreference
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
+private const val PAX_PREFIX = "pax_"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LyricsProviderPriorityScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
 ) {
+    // ── App-layer provider order ──────────────────────────────────────────────
     val (providerOrderString, onProviderOrderChange) = rememberPreference(
         key = LyricsProviderOrderKey,
         defaultValue = ""
@@ -54,27 +58,63 @@ fun LyricsProviderPriorityScreen(
         LyricsProviderRegistry.deserializeProviderOrder(providerOrderString).toMutableList()
     }
 
+    // ── Paxsenix engine provider order ────────────────────────────────────────
+    val (paxsenixOrderString, onPaxsenixOrderChange) = rememberPreference(
+        key = PaxsenixProviderOrderKey,
+        defaultValue = ""
+    )
+    val orderedPaxsenixProviders = remember(paxsenixOrderString) {
+        LyricsProviderRegistry.deserializePaxsenixOrder(paxsenixOrderString).toMutableList()
+    }
+
     var hasDragged by remember { mutableStateOf(false) }
+    var hasDraggedPaxsenix by remember { mutableStateOf(false) }
+
+    // Single LazyListState shared by the single LazyColumn.
     val lazyListState = rememberLazyListState()
 
+    // Single reorderable state for the shared LazyColumn.
+    // Dispatch to the correct list based on key prefix.
     val reorderableState = rememberReorderableLazyListState(lazyListState = lazyListState) { from, to ->
-        val fromProvider = from.key as? String ?: return@rememberReorderableLazyListState
-        val toProvider = to.key as? String ?: return@rememberReorderableLazyListState
+        val fromKey = from.key as? String ?: return@rememberReorderableLazyListState
+        val toKey   = to.key   as? String ?: return@rememberReorderableLazyListState
 
-        val fromIndex = orderedProviders.indexOf(fromProvider)
-        val toIndex = orderedProviders.indexOf(toProvider)
+        val fromIsPax = fromKey.startsWith(PAX_PREFIX)
+        val toIsPax   = toKey.startsWith(PAX_PREFIX)
 
-        if (fromIndex != -1 && toIndex != -1) {
-            val moved = orderedProviders.removeAt(fromIndex)
-            orderedProviders.add(toIndex, moved)
-            hasDragged = true
+        // Only allow reordering within the same section
+        if (fromIsPax != toIsPax) return@rememberReorderableLazyListState
+
+        if (fromIsPax) {
+            // Paxsenix section — strip prefix for list lookup
+            val fromName = fromKey.removePrefix(PAX_PREFIX)
+            val toName   = toKey.removePrefix(PAX_PREFIX)
+            val fi = orderedPaxsenixProviders.indexOf(fromName)
+            val ti = orderedPaxsenixProviders.indexOf(toName)
+            if (fi != -1 && ti != -1) {
+                orderedPaxsenixProviders.add(ti, orderedPaxsenixProviders.removeAt(fi))
+                hasDraggedPaxsenix = true
+            }
+        } else {
+            // App-layer section
+            val fi = orderedProviders.indexOf(fromKey)
+            val ti = orderedProviders.indexOf(toKey)
+            if (fi != -1 && ti != -1) {
+                orderedProviders.add(ti, orderedProviders.removeAt(fi))
+                hasDragged = true
+            }
         }
     }
 
+    // Persist app-layer order when drag ends
     LaunchedEffect(reorderableState.isAnyItemDragging) {
         if (!reorderableState.isAnyItemDragging && hasDragged) {
             onProviderOrderChange(LyricsProviderRegistry.serializeProviderOrder(orderedProviders))
             hasDragged = false
+        }
+        if (!reorderableState.isAnyItemDragging && hasDraggedPaxsenix) {
+            onPaxsenixOrderChange(LyricsProviderRegistry.serializePaxsenixOrder(orderedPaxsenixProviders))
+            hasDraggedPaxsenix = false
         }
     }
 
@@ -114,56 +154,112 @@ fun LyricsProviderPriorityScreen(
                 )
             }
 
+            // ── App Providers section ─────────────────────────────────────────
+            item {
+                Text(
+                    text = "App Providers",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                )
+            }
+
             itemsIndexed(orderedProviders, key = { _, item -> item }) { index, item ->
                 ReorderableItem(
                     state = reorderableState,
                     key = item,
                 ) {
-                    val shape = when {
-                        orderedProviders.size == 1 -> RoundedCornerShape(24.dp)
-                        index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                        index == orderedProviders.size - 1 -> RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
-                        else -> RoundedCornerShape(0.dp)
-                    }
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = if (index != orderedProviders.size - 1) 1.dp else 0.dp),
-                        shape = shape,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            IconButton(
-                                onClick = { },
-                                modifier = Modifier.draggableHandle(),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.drag_handle),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                    ProviderDragRow(
+                        name = item,
+                        index = index,
+                        total = orderedProviders.size,
+                        dragHandleModifier = Modifier.draggableHandle(),
+                    )
+                }
+            }
 
-                            Text(
-                                text = item,
-                                style = MaterialTheme.typography.bodyLarge,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
+            // ── Paxsenix Engine Providers section ─────────────────────────────
+            item {
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    text = "Paxsenix Engine Providers",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                )
+                Text(
+                    text = "Controls priority inside the Paxsenix lyrics engine.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                )
+            }
+
+            itemsIndexed(orderedPaxsenixProviders, key = { _, item -> "$PAX_PREFIX$item" }) { index, item ->
+                ReorderableItem(
+                    state = reorderableState,          // ← same state, same LazyColumn
+                    key = "$PAX_PREFIX$item",
+                ) {
+                    ProviderDragRow(
+                        name = item,
+                        index = index,
+                        total = orderedPaxsenixProviders.size,
+                        dragHandleModifier = Modifier.draggableHandle(),
+                    )
                 }
             }
 
             item {
                 Spacer(Modifier.height(32.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun ProviderDragRow(
+    name: String,
+    index: Int,
+    total: Int,
+    dragHandleModifier: Modifier = Modifier,
+) {
+    val shape = when {
+        total == 1       -> RoundedCornerShape(24.dp)
+        index == 0       -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        index == total - 1 -> RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+        else             -> RoundedCornerShape(0.dp)
+    }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = if (index != total - 1) 1.dp else 0.dp),
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = { },
+                modifier = dragHandleModifier,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.drag_handle),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
