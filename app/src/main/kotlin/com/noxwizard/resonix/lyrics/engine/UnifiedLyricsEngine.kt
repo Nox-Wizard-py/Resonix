@@ -2,6 +2,13 @@ package com.noxwizard.resonix.lyrics.engine
 
 import android.content.Context
 import android.util.Log
+import com.noxwizard.resonix.constants.EnablePaxsenixAppleMusicKey
+import com.noxwizard.resonix.constants.EnablePaxsenixMusixmatchKey
+import com.noxwizard.resonix.constants.EnablePaxsenixNetEaseKey
+import com.noxwizard.resonix.constants.EnablePaxsenixSpotifyKey
+import com.noxwizard.resonix.constants.EnablePaxsenixYouTubeKey
+import com.noxwizard.resonix.constants.PaxsenixProviderOrderKey
+import com.noxwizard.resonix.lyrics.LyricsProviderRegistry
 import com.noxwizard.resonix.lyrics.playback.LyricsDiagnosticsHolder
 import com.noxwizard.resonix.lyrics.playback.LyricsPlaybackResolver
 import com.noxwizard.resonix.models.MediaMetadata
@@ -11,6 +18,8 @@ import com.noxwizard.resonix.paxsenix.models.LyricsTrack
 import com.noxwizard.resonix.paxsenix.models.SyncType
 import com.noxwizard.resonix.utils.NetworkConnectivityObserver
 import com.noxwizard.resonix.paxsenix.utils.TrackNormalizer
+import com.noxwizard.resonix.utils.dataStore
+import com.noxwizard.resonix.utils.get
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +37,34 @@ class UnifiedLyricsEngine @Inject constructor(
     private val networkConnectivity: NetworkConnectivityObserver,
     private val lyricsCacheManager: LyricsCacheManager,
 ) {
-    private val paxsenixEngine = PaxsenixLyricsEngine.default()
+    /**
+     * Builds a [PaxsenixLyricsEngine] honoring user-configured enabled providers
+     * and priority order from DataStore preferences.
+     *
+     * Called fresh per [resolveLyrics] invocation so preference changes take effect
+     * without requiring an app restart.
+     */
+    private fun buildPaxsenixEngine(): PaxsenixLyricsEngine {
+        val ds = context.dataStore
+        val enabledNames = buildSet<String> {
+            if (ds[EnablePaxsenixMusixmatchKey] != false) add("MusixMatch")
+            if (ds[EnablePaxsenixSpotifyKey] != false) add("Spotify")
+            // BetterLyrics in paxsenix engine is always enabled (separate from BetterLyricsKey)
+            add("BetterLyrics")
+            if (ds[EnablePaxsenixAppleMusicKey] != false) add("PaxsenixAppleMusic")
+            if (ds[EnablePaxsenixNetEaseKey] != false) add("PaxsenixNetEase")
+            // PaxsenixKuGou enabled alongside regular KuGou
+            add("PaxsenixKuGou")
+            if (ds[EnablePaxsenixYouTubeKey] != false) add("PaxsenixYouTube")
+        }
+        val orderString = ds[PaxsenixProviderOrderKey] ?: ""
+        val orderedNames = LyricsProviderRegistry.deserializePaxsenixOrder(orderString)
+        return PaxsenixLyricsEngine.fromPreferences(
+            enabledNames = enabledNames,
+            orderedNames = orderedNames,
+        )
+    }
+
     private var currentLyricsJob: Job? = null
 
     /**
@@ -77,7 +113,7 @@ class UnifiedLyricsEngine @Inject constructor(
             val startResolveMs = System.currentTimeMillis()
 
             // 1. Resolve & Rank Candidates (racing, adaptive validation, variant retry)
-            val rankedCandidates = paxsenixEngine.resolveRanked(track)
+            val rankedCandidates = buildPaxsenixEngine().resolveRanked(track)
 
             if (rankedCandidates.isEmpty()) {
                 Log.w("UnifiedLyricsEngine", "[Reject] No candidates found")
