@@ -58,7 +58,9 @@ import com.noxwizard.resonix.constants.EnableKugouKey
 import com.noxwizard.resonix.constants.EnableLrcLibKey
 import com.noxwizard.resonix.constants.EnablePaxsenixAppleMusicKey
 import com.noxwizard.resonix.constants.EnablePaxsenixMusixmatchKey
+import com.noxwizard.resonix.constants.EnablePaxsenixNetEaseKey
 import com.noxwizard.resonix.constants.EnablePaxsenixSpotifyKey
+import com.noxwizard.resonix.constants.EnablePaxsenixYouTubeKey
 import com.noxwizard.resonix.constants.EnableSimpMusicKey
 import com.noxwizard.resonix.ui.component.IconButton
 import com.noxwizard.resonix.ui.utils.backToMain
@@ -91,6 +93,8 @@ fun LyricsProvidersSettings(
     val (enablePaxMusixmatch, onPaxMusixmatch) = rememberPreference(EnablePaxsenixMusixmatchKey, true)
     val (enablePaxSpotify, onPaxSpotify) = rememberPreference(EnablePaxsenixSpotifyKey, true)
     val (enablePaxApple, onPaxApple) = rememberPreference(EnablePaxsenixAppleMusicKey, true)
+    val (enablePaxNetEase, onPaxNetEase) = rememberPreference(EnablePaxsenixNetEaseKey, true)
+    val (enablePaxYouTube, onPaxYouTube) = rememberPreference(EnablePaxsenixYouTubeKey, true)
     val (enableBLMusixmatch, onBLMusixmatch) = rememberPreference(EnableBetterLyricsMusixmatchKey, true)
     val (enableBetterLyrics, onBetterLyrics) = rememberPreference(EnableBetterLyricsKey, true)
     val (enableLrclib, onLrclib) = rememberPreference(EnableLrcLibKey, true)
@@ -99,7 +103,8 @@ fun LyricsProvidersSettings(
 
     // ── Provider model lists ─────────────────────────────────────────────────
     val premiumProviders = remember(
-        enablePaxMusixmatch, enablePaxSpotify, enablePaxApple, enableBLMusixmatch
+        enablePaxMusixmatch, enablePaxSpotify, enablePaxApple, enablePaxNetEase,
+        enablePaxYouTube, enableBLMusixmatch
     ) {
         listOf(
             LyricsProviderUiModel(
@@ -139,6 +144,18 @@ fun LyricsProvidersSettings(
                 onToggle = onPaxApple,
             ),
             LyricsProviderUiModel(
+                id = "paxsenix_netease",
+                displayName = "Paxsenix : NetEase",
+                category = "PREMIUM_LINE_SYNC",
+                capabilities = listOf("LINE_SYNC", "CJK"),
+                reliability = "91%",
+                averageLatency = "550ms",
+                supportsWordSync = false,
+                sourceType = "NetEase",
+                enabled = enablePaxNetEase,
+                onToggle = onPaxNetEase,
+            ),
+            LyricsProviderUiModel(
                 id = "betterlyrics_musixmatch",
                 displayName = "BetterLyrics : Musixmatch",
                 category = "PREMIUM_WORD_SYNC",
@@ -154,7 +171,7 @@ fun LyricsProvidersSettings(
     }
 
     val standardProviders = remember(
-        enableBetterLyrics, enableLrclib, enableKugou, enableSimpMusic
+        enableBetterLyrics, enableLrclib, enableKugou, enableSimpMusic, enablePaxYouTube
     ) {
         listOf(
             LyricsProviderUiModel(
@@ -192,6 +209,18 @@ fun LyricsProvidersSettings(
                 sourceType = "KuGou",
                 enabled = enableKugou,
                 onToggle = onKugou,
+            ),
+            LyricsProviderUiModel(
+                id = "paxsenix_youtube",
+                displayName = "Paxsenix : YouTube",
+                category = "FALLBACK",
+                capabilities = listOf("FALLBACK", "TRANSCRIPT"),
+                reliability = "82%",
+                averageLatency = "750ms",
+                supportsWordSync = false,
+                sourceType = "YouTube",
+                enabled = enablePaxYouTube,
+                onToggle = onPaxYouTube,
             ),
             LyricsProviderUiModel(
                 id = "simpmusic",
