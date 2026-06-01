@@ -286,13 +286,8 @@
     <string name="big">Groß</string>
 
     <!-- Lyrics animation style -->
-    <string name="lyrics_animation_style">Songtext-Animationsstil</string>
     <!-- Animation options -->
     <string name="none">Keiner</string>
-    <string name="fade">Verblassen</string>
-    <string name="slide">Gleiten</string>
-    <string name="karaoke">Karaoke</string>
-    <string name="apple_music_style">Apple Music</string>
 
 
     <string name="content">Inhalt</string>
