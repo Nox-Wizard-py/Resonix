@@ -74,10 +74,10 @@ import com.noxwizard.resonix.constants.PlayerBackgroundStyleKey
 import com.noxwizard.resonix.constants.PureBlackKey
 import com.noxwizard.resonix.constants.PlayerButtonsStyle
 import com.noxwizard.resonix.constants.PlayerButtonsStyleKey
-import com.noxwizard.resonix.constants.LyricsAnimationStyleKey
-import com.noxwizard.resonix.constants.LyricsAnimationStyle
 import com.noxwizard.resonix.constants.LyricsTextSizeKey
 import com.noxwizard.resonix.constants.LyricsLineSpacingKey
+import com.noxwizard.resonix.constants.LyricsStyle
+import com.noxwizard.resonix.constants.LyricsStyleKey
 import com.noxwizard.resonix.constants.SliderStyle
 import com.noxwizard.resonix.constants.SliderStyleKey
 import com.noxwizard.resonix.constants.FrostedGlassNavBarKey
@@ -147,14 +147,11 @@ fun AppearanceSettings(
         LyricsTextPositionKey,
         defaultValue = LyricsPosition.LEFT
     )
-    val (lyricsAnimation, onLyricsAnimationChange) = rememberEnumPreference<LyricsAnimationStyle>(
-        key = LyricsAnimationStyleKey,
-        defaultValue = LyricsAnimationStyle.APPLE
-    )
     val (lyricsClick, onLyricsClickChange) = rememberPreference(LyricsClickKey, defaultValue = true)
     val (lyricsScroll, onLyricsScrollChange) = rememberPreference(LyricsScrollKey, defaultValue = true)
     val (lyricsTextSize, onLyricsTextSizeChange) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
     val (lyricsLineSpacing, onLyricsLineSpacingChange) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.3f)
+    val (lyricsStyle, onLyricsStyleChange) = rememberEnumPreference(LyricsStyleKey, defaultValue = LyricsStyle.FLOW)
 
     val (gridItemSize, onGridItemSizeChange) = rememberEnumPreference(
         GridItemsSizeKey,
@@ -423,34 +420,32 @@ fun AppearanceSettings(
         ) {
 
         EnumListPreference(
+            title = { Text("Lyrics Style") },
+            icon = { Icon(painterResource(R.drawable.lyrics), null) },
+            selectedValue = lyricsStyle,
+            onValueSelected = onLyricsStyleChange,
+            valueText = {
+                when (it) {
+                    LyricsStyle.FLOW   -> "Flow"
+                    LyricsStyle.VELVET -> "Velvet"
+                    LyricsStyle.HALO   -> "Halo"
+                    LyricsStyle.AURORA -> "Aurora"
+                }
+            },
+        )
+
+        EnumListPreference(
             title = { Text(stringResource(R.string.lyrics_text_position)) },
             icon = { Icon(painterResource(R.drawable.lyrics), null) },
             selectedValue = lyricsPosition,
             onValueSelected = onLyricsPositionChange,
             valueText = {
                 when (it) {
-                    LyricsPosition.LEFT -> stringResource(R.string.left)
+                    LyricsPosition.LEFT   -> stringResource(R.string.left)
                     LyricsPosition.CENTER -> stringResource(R.string.center)
-                    LyricsPosition.RIGHT -> stringResource(R.string.right)
+                    LyricsPosition.RIGHT  -> stringResource(R.string.right)
                 }
             },
-        )
-
-        EnumListPreference(
-          title = { Text(stringResource(R.string.lyrics_animation_style)) },
-          icon = { Icon(painterResource(R.drawable.animation), null) },
-          selectedValue = lyricsAnimation,
-          onValueSelected = onLyricsAnimationChange,
-          valueText = {
-              when (it) {
-                  LyricsAnimationStyle.NONE -> stringResource(R.string.none)
-                  LyricsAnimationStyle.FADE -> stringResource(R.string.fade)
-                  LyricsAnimationStyle.GLOW -> stringResource(R.string.glow)
-                  LyricsAnimationStyle.SLIDE -> stringResource(R.string.slide)
-                  LyricsAnimationStyle.KARAOKE -> stringResource(R.string.karaoke)
-                  LyricsAnimationStyle.APPLE -> stringResource(R.string.apple_music_style)
-              }
-          }
         )
 
         SwitchPreference(
