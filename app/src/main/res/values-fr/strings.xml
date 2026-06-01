@@ -283,13 +283,8 @@
     <string name="big">Grand</string>
 
     <!-- Lyrics animation style -->
-    <string name="lyrics_animation_style">Animation des paroles</string>
     <!-- Animation options -->
     <string name="none">Aucune</string>
-    <string name="fade">Fondu</string>
-    <string name="slide">Glissement</string>
-    <string name="karaoke">Karaoké</string>
-    <string name="apple_music_style">Apple Music</string>
     <!-- Lyrics line spacing -->
     <string name="lyrics_line_spacing">Interligne des paroles</string>
 
