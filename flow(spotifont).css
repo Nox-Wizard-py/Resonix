@@ -1,0 +1,42 @@
+/* Spotifont, a marketplace theme by mukeenanyafiq */
+
+@font-face {
+    font-family: "SpotifyMixUITitle";
+    src: url("https://encore.scdn.co/fonts/SpotifyMixUITitleVariable-8769ccfde3379b7ebcadd9529b49d0cc.woff2");
+    font-stretch: 100%;
+    font-display: swap;
+}
+
+:root {
+    --blyrics-font-family: SpotifyMixUITitle, Satoshi, var(--noto-sans-universal), Avenir, -apple-system,
+		BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Open Sans,
+		Helvetica Neue, sans-serif;
+    --blyrics-line-height: 1.25;
+    --blyrics-padding: 1.5rem;
+    --blyrics-font-size: 3.25rem;
+    --blyrics-wobble-duration: 2s;
+    --blyrics-fullscreen-panel-size: 60%;
+}
+
+ytmusic-player-page:not([is-mweb-modernization-enabled]):not([blyrics-video-mode]):not([video-mode]) {
+    &[player-fullscreened] {
+        #player.ytmusic-player-page {
+            max-width: none !important;
+        }
+    }
+    
+    #player.ytmusic-player-page {
+        border-radius: 0.75rem;
+        max-width: 85%;
+    }
+}
+
+#blyrics-song-info > p {
+    font-family: var(--blyrics-font-family);
+}
+
+.blyrics-container:has(.blyrics--active):not(.blyrics-user-scrolling) > div:not(.blyrics--active):not(.blyrics--active ~ div) {
+    opacity: 0.5;
+    filter: blur(.5rem);
+    transition: 0.5s 0.3s, transform 0.15s var(--blyrics-anim-delay, 0s) !important;
+}
