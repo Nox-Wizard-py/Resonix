@@ -295,13 +295,8 @@
     <string name="big">Big</string>
 
     <!-- Lyrics animation style -->
-    <string name="lyrics_animation_style">Lyrics animation style</string>
     <!-- Animation options -->
     <string name="none">None</string>
-    <string name="fade">Fade</string>
-    <string name="slide">Slide</string>
-    <string name="karaoke">Karaoke</string>
-    <string name="apple_music_style">Apple Music</string>
     <!-- Lyrics line spacing -->
     <string name="lyrics_line_spacing">Lyrics line spacing</string>
 
