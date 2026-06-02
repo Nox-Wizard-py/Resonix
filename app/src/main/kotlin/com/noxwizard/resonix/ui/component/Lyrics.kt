@@ -313,11 +313,14 @@ fun Lyrics(
             !lyricsDocument.isNullOrEmpty() && lyricsDocument.startsWith("[")
         }
 
-    val expressiveAccent = when (playerBackground) {
+    val baseAccent = when (playerBackground) {
         PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.primary
         else -> Color.White
     }
-    val textColor = expressiveAccent
+    val themeAccent = themeSpec.themeAccentColor ?: baseAccent
+    // Base text color remains neutral (white)
+    val expressiveAccent = baseAccent
+    val textColor = baseAccent
 
     var currentLineIndex by remember {
         mutableIntStateOf(-1)
@@ -811,7 +814,13 @@ fun Lyrics(
                         }
                     ) {
                         val isActiveLine = index == displayedCurrentLineIndex && isSynced
-                        val lineColor = if (isActiveLine) expressiveAccent else expressiveAccent.copy(alpha = 0.7f)
+                        val isNextLine = index == displayedCurrentLineIndex + 1 && isSynced
+                        
+                        val lineColor = when {
+                            isActiveLine -> expressiveAccent
+                            themeSpec.tintNextLineWithAccent && isNextLine -> themeAccent.copy(alpha = 0.9f)
+                            else -> expressiveAccent.copy(alpha = 0.7f)
+                        }
                         val alignment = when (lyricsTextPosition) {
                             LyricsPosition.LEFT   -> TextAlign.Left
                             LyricsPosition.CENTER -> TextAlign.Center
@@ -844,14 +853,34 @@ fun Lyrics(
                                         else -> 0f
                                     }
 
-                                    val wordAlpha = when {
-                                        !isActiveLine -> 0.7f
-                                        hasWordPassed -> themeSpec.passedWordAlpha
-                                        isWordActive  -> 0.5f + (0.5f * transitionProgress)
-                                        else          -> themeSpec.futureWordAlpha
+                                    val wordColor = when {
+                                        !isActiveLine -> {
+                                            if (themeSpec.tintNextLineWithAccent && isNextLine) {
+                                                themeAccent.copy(alpha = 0.9f)
+                                            } else {
+                                                expressiveAccent.copy(alpha = 0.7f)
+                                            }
+                                        }
+                                        hasWordPassed -> expressiveAccent.copy(alpha = themeSpec.passedWordAlpha)
+                                        isWordActive -> {
+                                            if (themeSpec.activeLineProgressFill) {
+                                                androidx.compose.ui.graphics.lerp(
+                                                    themeAccent.copy(alpha = 0.9f),
+                                                    expressiveAccent.copy(alpha = themeSpec.passedWordAlpha),
+                                                    transitionProgress
+                                                )
+                                            } else {
+                                                expressiveAccent.copy(alpha = 0.5f + (0.5f * transitionProgress))
+                                            }
+                                        }
+                                        else -> {
+                                            if (themeSpec.activeLineProgressFill) {
+                                                themeAccent.copy(alpha = 0.9f)
+                                            } else {
+                                                expressiveAccent.copy(alpha = themeSpec.futureWordAlpha)
+                                            }
+                                        }
                                     }
-
-                                    val wordColor = expressiveAccent.copy(alpha = wordAlpha)
 
                                     val wordWeight = when {
                                         !isActiveLine -> themeSpec.inactiveFontWeight
@@ -865,7 +894,8 @@ fun Lyrics(
                                     // without affecting layout or requiring separate composable nodes.
                                     val wordShadow: Shadow? = if (themeSpec.glowActiveWord && isWordActive && isActiveLine) {
                                         Shadow(
-                                            color = Color.White.copy(alpha = 0.75f),
+                                            color = if (themeSpec.useAccentForWordGlow) themeAccent.copy(alpha = themeSpec.activeWordGlowAlpha)
+                                                    else Color.White.copy(alpha = themeSpec.activeWordGlowAlpha),
                                             offset = Offset.Zero,
                                             blurRadius = themeSpec.wordGlowRadiusPx
                                         )
@@ -928,6 +958,25 @@ fun Lyrics(
                             val romanizedFontSize = 16.sp
                             romanizedText?.let { romanized ->
 
+                                val romanizedModifier = Modifier
+                                    .padding(top = 2.dp)
+                                    .then(
+                                        if (themeSpec.romanizedBackgroundAlpha > 0f) {
+                                            Modifier
+                                                .padding(top = 4.dp)
+                                                .background(
+                                                    color = themeAccent.copy(alpha = themeSpec.romanizedBackgroundAlpha),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = themeAccent.copy(alpha = themeSpec.romanizedBackgroundAlpha * 2f),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                                        } else Modifier
+                                    )
+
                                 if (hasWordTimings && item.words != null && isActiveLine) {
 
                                     val romanizedWords = romanized.split(" ")
@@ -942,15 +991,14 @@ fun Lyrics(
                                             if (word != null) {
                                                 val wordStartMs = (word.startTime * 1000).toLong()
                                                 val wordEndMs = (word.endTime * 1000).toLong()
-                                                val wordDuration = wordEndMs - wordStartMs
                                                 val isWordActive = currentPlaybackPosition in wordStartMs..wordEndMs
                                                 val hasWordPassed = currentPlaybackPosition > wordEndMs
 
                                                 val romColor = when {
-                                                    !isActiveLine -> expressiveAccent.copy(alpha = 0.5f)
-                                                    isWordActive -> expressiveAccent.copy(alpha = 0.8f)
-                                                    hasWordPassed -> expressiveAccent.copy(alpha = 0.7f)
-                                                    else -> expressiveAccent.copy(alpha = 0.4f)
+                                                    !isActiveLine -> expressiveAccent.copy(alpha = themeSpec.romanizedTextAlpha)
+                                                    isWordActive -> expressiveAccent.copy(alpha = (themeSpec.romanizedTextAlpha + 0.3f).coerceAtMost(1f))
+                                                    hasWordPassed -> expressiveAccent.copy(alpha = (themeSpec.romanizedTextAlpha + 0.2f).coerceAtMost(1f))
+                                                    else -> expressiveAccent.copy(alpha = (themeSpec.romanizedTextAlpha - 0.1f).coerceAtLeast(0.2f))
                                                 }
 
                                                 withStyle(
@@ -964,7 +1012,7 @@ fun Lyrics(
                                             } else {
                                                 withStyle(
                                                     style = SpanStyle(
-                                                        color = expressiveAccent.copy(alpha = 0.5f),
+                                                        color = expressiveAccent.copy(alpha = themeSpec.romanizedTextAlpha),
                                                         fontWeight = FontWeight.Normal
                                                     )
                                                 ) {
@@ -986,21 +1034,21 @@ fun Lyrics(
                                             LyricsPosition.CENTER -> TextAlign.Center
                                             LyricsPosition.RIGHT -> TextAlign.Right
                                         },
-                                        modifier = Modifier.padding(top = 2.dp)
+                                        modifier = romanizedModifier
                                     )
                                 } else {
 
                                     Text(
                                         text = romanized,
                                         fontSize = romanizedFontSize,
-                                        color = expressiveAccent.copy(alpha = if (isActiveLine) 0.6f else 0.5f),
+                                        color = expressiveAccent.copy(alpha = if (isActiveLine) (themeSpec.romanizedTextAlpha + 0.1f).coerceAtMost(1f) else themeSpec.romanizedTextAlpha),
                                         textAlign = when (lyricsTextPosition) {
                                             LyricsPosition.LEFT -> TextAlign.Left
                                             LyricsPosition.CENTER -> TextAlign.Center
                                             LyricsPosition.RIGHT -> TextAlign.Right
                                         },
                                         fontWeight = FontWeight.Normal,
-                                        modifier = Modifier.padding(top = 2.dp)
+                                        modifier = romanizedModifier
                                     )
                                 }
                             }
