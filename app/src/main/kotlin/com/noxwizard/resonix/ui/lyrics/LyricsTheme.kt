@@ -4,6 +4,7 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import com.noxwizard.resonix.constants.LyricsStyle
 
 /**
@@ -54,6 +55,24 @@ data class LyricsThemeSpec(
     val futureWordAlpha: Float = 0.35f,
     /** Alpha of past (already-sung) words within the active line. */
     val passedWordAlpha: Float = 1.0f,
+    /** Use the expressive accent color for the active word's glow instead of white. */
+    val useAccentForWordGlow: Boolean = false,
+    /** Base alpha for the active word glow. */
+    val activeWordGlowAlpha: Float = 0.75f,
+    /** Theme-specific accent color override. If null, the app's default accent is used. */
+    val themeAccentColor: Color? = null,
+    /** Whether the line immediately after the active line should be tinted with the accent color. */
+    val tintNextLineWithAccent: Boolean = false,
+    /** Whether the active line should use a left-to-right progress fill animation. */
+    val activeLineProgressFill: Boolean = false,
+
+    // ── Romanized / Translated ─────────────────────────────────────────────
+    /** Alpha for the romanized text. */
+    val romanizedTextAlpha: Float = 0.5f,
+    /** Background container alpha for romanized text. 0.0f = no background. */
+    val romanizedBackgroundAlpha: Float = 0.0f,
+    /** Alpha for the translated text. */
+    val translatedTextAlpha: Float = 0.5f,
 
     // ── Transitions ────────────────────────────────────────────────────────
     /** Duration (ms) for opacity/blur transitions on inactive lines. */
@@ -101,6 +120,14 @@ fun LyricsStyle.toThemeSpec(): LyricsThemeSpec = when (this) {
         wordGlowRadiusPx = 10f,
         futureWordAlpha = 0.45f,   // dim but readable — Spotify shows upcoming words faintly
         passedWordAlpha = 1.0f,
+        useAccentForWordGlow = false,
+        activeWordGlowAlpha = 0.75f,
+
+        // Romanized / Translated
+        romanizedTextAlpha = 0.5f,
+        romanizedBackgroundAlpha = 0.0f,
+        translatedTextAlpha = 0.5f,
+        themeAccentColor = null,
 
         // Transitions — CSS: `transition: 0.5s 0.3s`
         transitionDurationMs = 500,
@@ -108,8 +135,50 @@ fun LyricsStyle.toThemeSpec(): LyricsThemeSpec = when (this) {
         transitionEasing = FlowEasing,
     )
 
+    LyricsStyle.VELVET -> LyricsThemeSpec(
+        // Opacity
+        activeLineAlpha = 1.0f,
+        previousLineAlpha = 0.7f,
+        futureLineAlpha = 0.7f,
+        futureAlphaFalloff = listOf(0.7f, 0.6f, 0.5f),
+
+        // Blur — No blur in Velvet
+        blurPreviousLines = false,
+        blurRadiusPx = 0f,
+        blurFutureLines = false,
+
+        // Scale — 1.05 for active, no shrinking for inactive
+        activeLineScale = 1.05f,
+        inactiveScaleFalloff = listOf(1.0f),
+
+        // Typography — Softer than Flow
+        activeFontWeight = FontWeight.SemiBold,
+        inactiveFontWeight = FontWeight.Medium,
+        lineHeightMultiplier = 1.35f,
+
+        // Word glow — Gentle color emphasis, soft pulse using expressive accent
+        glowActiveWord = true,
+        wordGlowRadiusPx = 10f,
+        futureWordAlpha = 0.6f, // softer contrast
+        passedWordAlpha = 0.8f,
+        useAccentForWordGlow = true,
+        activeWordGlowAlpha = 0.4f, // soft pulse
+        tintNextLineWithAccent = true,
+        activeLineProgressFill = true,
+
+        // Romanized / Translated — Special container styling for romanized
+        romanizedTextAlpha = 0.7f,
+        romanizedBackgroundAlpha = 0.05f,
+        translatedTextAlpha = 0.7f,
+        themeAccentColor = Color(0xFFD49E9B),
+
+        // Transitions
+        transitionDurationMs = 500,
+        transitionDelayMs = 0,
+        transitionEasing = FlowEasing,
+    )
+
     // Placeholder specs — fall back to Flow visuals until implemented.
-    LyricsStyle.VELVET -> LyricsStyle.FLOW.toThemeSpec()
     LyricsStyle.HALO   -> LyricsStyle.FLOW.toThemeSpec()
     LyricsStyle.AURORA -> LyricsStyle.FLOW.toThemeSpec()
 }
