@@ -10,12 +10,11 @@ import com.noxwizard.resonix.paxsenix.utils.LyricsPayloadSanitizer
 /**
  * Paxsenix KuGou provider.
  *
- * Delegates to PaxsenixLyrics.getKugouLyrics() — the AT-identical HTTP layer —
+ * Delegates to PaxsenixLyrics.getKugouLyrics() — the HTTP layer —
  * which handles search via paxsenix kugou/search, duration matching (< 10s tolerance),
  * and extracts the "lyrics" field from kugou/lyrics response.
  *
- * Previously used the :kugou module directly; now uses the Paxsenix API endpoint
- * to match ArchiveTune behavior exactly.
+ * Previously used the :kugou module directly; now uses the Paxsenix API endpoint.
  */
 class KuGouProvider(
     @Suppress("unused") private val confidenceThreshold: Float = 0.35f,
