@@ -35,8 +35,6 @@ private val AuroraFallback = listOf(
 
 /**
  * Reusable cinematic aurora background composable.
- *
- * Architecture mirrors ArchiveTune's GLOW_ANIMATED style:
  * - Single [progress] float (0→1, 12s linear loop) drives all blob positions via sin() oscillation.
  *   This guarantees seamless looping with zero stutter at reversal points.
  * - [rotatedColorAt] cycles the palette over time so colors organically shift.
