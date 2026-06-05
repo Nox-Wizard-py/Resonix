@@ -20,11 +20,10 @@ import java.util.Locale
 import kotlin.math.abs
 
 /**
- * Canonical Paxsenix HTTP client — ported 1:1 from ArchiveTune.
+ * Canonical Paxsenix HTTP client.
  *
  * Base URL, engine, headers, duration tolerance, fallback order, and
- * all parsing helpers are identical to ArchiveTune's PaxsenixLyrics object.
- * Do NOT modify this file without updating ArchiveTune in lock-step.
+ * all parsing helpers are defined here.
  */
 object PaxsenixLyrics {
     private const val BASE_URL = "https://lyrics.paxsenix.org/"
@@ -49,7 +48,7 @@ object PaxsenixLyrics {
 
             defaultRequest {
                 url(BASE_URL)
-                header(HttpHeaders.UserAgent, "ArchiveTune-Lyrics-Fetcher/1.0 (https://github.com/koiverse/archivetune)")
+                header(HttpHeaders.UserAgent, "Resonix-Lyrics-Fetcher/1.0 (https://github.com/koiverse/resonix)")
                 header(HttpHeaders.Accept, "application/json, text/plain, */*")
                 header(HttpHeaders.AcceptLanguage, "en-US,en;q=0.9")
             }
@@ -82,7 +81,7 @@ object PaxsenixLyrics {
         } else trimmed
     }
 
-    // ─── Provider methods (identical to ArchiveTune) ──────────────────────────
+    // ─── Provider methods ─────────────────────────────────────────────────────
 
     suspend fun getAppleMusicLyrics(
         title: String,
@@ -330,7 +329,6 @@ object PaxsenixLyrics {
 
     /**
      * Sequential fallback chain: Apple Music → NetEase → Spotify → Musixmatch → KuGou.
-     * Identical to ArchiveTune's getLyrics().
      */
     suspend fun getLyrics(
         title: String,
