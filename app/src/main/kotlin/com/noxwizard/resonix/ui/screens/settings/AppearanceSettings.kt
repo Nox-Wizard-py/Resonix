@@ -429,7 +429,7 @@ fun AppearanceSettings(
                     LyricsStyle.FLOW   -> "Flow"
                     LyricsStyle.VELVET -> "Velvet"
                     LyricsStyle.HALO   -> "Halo"
-                    LyricsStyle.AURORA -> "Aurora"
+                    LyricsStyle.PRISM -> "Prism"
                 }
             },
         )
