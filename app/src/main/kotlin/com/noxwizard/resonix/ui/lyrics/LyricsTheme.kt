@@ -31,20 +31,28 @@ data class LyricsThemeSpec(
     val blurRadiusPx: Float = 18f,
     /** Apply blur to future lines. False for Flow/Spotifont. */
     val blurFutureLines: Boolean = false,
+    /** Per-distance blur falloff for future lines (index 0 = distance 1). */
+    val futureBlurFalloffPx: List<Float> = emptyList(),
 
     // ── Scale ──────────────────────────────────────────────────────────────
     /** Scale factor for the active line. 1.0 = no scale change. */
     val activeLineScale: Float = 1.0f,
     /** Scale factor per-distance falloff (index 0 = distance 1). */
     val inactiveScaleFalloff: List<Float> = listOf(0.97f, 0.94f, 0.92f),
+    /** Use spring physics for scale transitions instead of tween. */
+    val useSpringForScale: Boolean = true,
 
     // ── Typography ─────────────────────────────────────────────────────────
+    /** Font family. If null, uses default. */
+    val fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
     /** Font weight for the active line. */
     val activeFontWeight: FontWeight = FontWeight.Bold,
     /** Font weight for inactive lines. */
     val inactiveFontWeight: FontWeight = FontWeight.Bold,
     /** Line height multiplier (relative to fontSize). */
     val lineHeightMultiplier: Float = 1.3f,
+    /** Font size multiplier to scale up text for specific themes. */
+    val fontSizeMultiplier: Float = 1.0f,
 
     // ── Word sync ──────────────────────────────────────────────────────────
     /** Enable soft glow on the currently active word. */
@@ -65,8 +73,30 @@ data class LyricsThemeSpec(
     val tintNextLineWithAccent: Boolean = false,
     /** Whether the active line should use a left-to-right progress fill animation. */
     val activeLineProgressFill: Boolean = false,
+    /** Enable Apple Music-style vertical word lift effect on active words. */
+    val wordLiftEffect: Boolean = false,
+    /** Enable spectrum color animation (Purple -> Pink -> Gold) on the active line. */
+    val useAnimatedSpectrumColors: Boolean = false,
+    /** Amplitude of the vertical float animation on the active line. 0f = no animation. */
+    val activeLineFloatAmplitude: Float = 0f,
+    /** Base glow radius applied to the entire active line. 0f = no line glow. */
+    val activeLineGlowRadiusPx: Float = 0f,
+    /** Enable color anticipation: next line gains spectrum color before activation. */
+    val useColorAnticipation: Boolean = false,
+    /**
+     * Progress threshold [0.0, 1.0] within the active line at which the next line
+     * starts receiving spectrum color. 0.75 = last 25% of the line's duration.
+     */
+    val anticipationThreshold: Float = 0.75f,
+    /**
+     * Enable depth-transfer scale animation on activation:
+     * incoming line overshoots (0.92→1.05→1.00), outgoing line retreats (1.00→0.92).
+     */
+    val useDepthTransfer: Boolean = false,
 
     // ── Romanized / Translated ─────────────────────────────────────────────
+    /** Font style for the romanized/translated text. If null, uses default. */
+    val romanizedFontStyle: androidx.compose.ui.text.font.FontStyle? = null,
     /** Alpha for the romanized text. */
     val romanizedTextAlpha: Float = 0.5f,
     /** Background container alpha for romanized text. 0.0f = no background. */
@@ -77,6 +107,12 @@ data class LyricsThemeSpec(
     // ── Transitions ────────────────────────────────────────────────────────
     /** Duration (ms) for opacity/blur transitions on inactive lines. */
     val transitionDurationMs: Int = 500,
+    /** Duration (ms) for alpha transition when a line becomes previous. If null, uses transitionDurationMs. */
+    val previousAlphaDurationMs: Int? = null,
+    /** Duration (ms) for blur transition when a line becomes previous. If null, uses transitionDurationMs. */
+    val previousBlurDurationMs: Int? = null,
+    /** Duration (ms) for scale transition. If null, uses transitionDurationMs. */
+    val scaleDurationMs: Int? = null,
     /** Delay (ms) before blur/opacity transition starts. CSS: 0.3s delay. */
     val transitionDelayMs: Int = 300,
     /** Easing for blur/alpha transitions. */
@@ -178,7 +214,94 @@ fun LyricsStyle.toThemeSpec(): LyricsThemeSpec = when (this) {
         transitionEasing = FlowEasing,
     )
 
-    // Placeholder specs — fall back to Flow visuals until implemented.
-    LyricsStyle.HALO   -> LyricsStyle.FLOW.toThemeSpec()
-    LyricsStyle.AURORA -> LyricsStyle.FLOW.toThemeSpec()
+    LyricsStyle.HALO -> LyricsThemeSpec(
+        // Opacity
+        activeLineAlpha = 1.0f,
+        previousLineAlpha = 0.0f,   // Outgoing line fades into nothingness over 900ms
+        futureLineAlpha = 0.7f,     // Incoming line starts ~0.7
+        futureAlphaFalloff = listOf(0.7f, 0.5f, 0.3f, 0.15f),
+
+        // Blur
+        blurPreviousLines = true,
+        blurRadiusPx = 10f,         // Blur gradually increases
+        blurFutureLines = true,
+        futureBlurFalloffPx = listOf(4f, 8f, 12f, 16f, 20f, 24f), 
+
+        // Scale
+        activeLineScale = 1.0f,     // Incoming line scales to 1.00f
+        inactiveScaleFalloff = listOf(0.92f, 0.84f, 0.76f), // Outgoing line scales to 0.92f
+        useSpringForScale = false,  // Simultaneous tween animation
+
+        // Typography
+        activeFontWeight = FontWeight.Bold,
+        inactiveFontWeight = FontWeight.Bold,
+        lineHeightMultiplier = 1.35f,
+        fontSizeMultiplier = 1.15f, // Increased font size
+
+        // Word sync
+        glowActiveWord = false,
+        wordGlowRadiusPx = 0f,
+        futureWordAlpha = 0.2f,
+        passedWordAlpha = 1.0f,
+        useAccentForWordGlow = false,
+        wordLiftEffect = true,     // Apple Music vertical lift
+
+        // Romanized / Translated
+        romanizedTextAlpha = 0.4f,
+        romanizedBackgroundAlpha = 0.0f,
+        translatedTextAlpha = 0.4f,
+        themeAccentColor = null,
+        tintNextLineWithAccent = false,
+        activeLineProgressFill = false,
+
+        // Transitions
+        transitionDurationMs = 500,
+        previousAlphaDurationMs = 900, // Lingering fade out
+        previousBlurDurationMs = 250,  // Fast blur
+        scaleDurationMs = 166,         // Fast scale down
+        transitionDelayMs = 0,
+        transitionEasing = FastOutSlowInEasing,
+    )
+    
+    LyricsStyle.PRISM -> LyricsThemeSpec(
+        // Typography
+        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+        activeFontWeight = FontWeight.Bold,
+        inactiveFontWeight = FontWeight.Bold,
+        lineHeightMultiplier = 1.5f,
+        fontSizeMultiplier = 1.0f,
+        
+        // Opacity
+        activeLineAlpha = 1.0f,
+        previousLineAlpha = 0.33f,
+        futureLineAlpha = 0.66f,
+        futureAlphaFalloff = listOf(0.66f),
+        
+        // Blur
+        blurPreviousLines = true,
+        blurRadiusPx = 2.5f,
+        blurFutureLines = false,
+        
+        // Scale — depth transfer handles real scale, use smaller falloff for future
+        activeLineScale = 1.0f,
+        inactiveScaleFalloff = listOf(0.92f),
+        useSpringForScale = false,
+        
+        // Prism-specific: Color Anticipation + Depth Transfer
+        useAnimatedSpectrumColors = true,
+        activeLineFloatAmplitude = 0f, // No float; depth transfer replaces it
+        activeLineGlowRadiusPx = 8f,
+        useColorAnticipation = true,
+        anticipationThreshold = 0.78f,
+        useDepthTransfer = true,
+        
+        // Romanized
+        romanizedFontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+        romanizedTextAlpha = 0.7f,
+        translatedTextAlpha = 0.7f,
+        
+        // Transitions
+        transitionDurationMs = 500,
+        transitionEasing = FastOutSlowInEasing,
+    )
 }
