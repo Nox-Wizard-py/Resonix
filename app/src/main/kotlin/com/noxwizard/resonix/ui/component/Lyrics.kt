@@ -85,6 +85,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
@@ -604,6 +608,17 @@ fun Lyrics(
                 )
             }
         } else {
+            val infiniteTransition = rememberInfiniteTransition(label = "prism")
+            val prismPhaseState = infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 3f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "prismPhase"
+            )
+
             LazyColumn(
             state = lazyListState,
             contentPadding = WindowInsets.systemBars
@@ -662,6 +677,16 @@ fun Lyrics(
                     }
                 }
             } else {
+                // Hoist anticipation progress so any line can read it without per-item nesting.
+                val hoistedAnticipationProgress: Float = if (themeSpec.useColorAnticipation && displayedCurrentLineIndex >= 0) {
+                    val lineStartMs  = lines.getOrNull(displayedCurrentLineIndex)?.time ?: 0L
+                    val lineEndMs    = lines.getOrNull(displayedCurrentLineIndex + 1)?.time ?: (lineStartMs + 3000L)
+                    val lineDuration = (lineEndMs - lineStartMs).coerceAtLeast(1L)
+                    val rawProgress  = (currentPlaybackPosition - lineStartMs).toFloat() / lineDuration
+                    val threshold    = themeSpec.anticipationThreshold
+                    if (rawProgress >= threshold) ((rawProgress - threshold) / (1f - threshold)).coerceIn(0f, 1f) else 0f
+                } else 0f
+
                 itemsIndexed(
                     items = lines,
                     key = { index, _ -> index }
@@ -674,6 +699,96 @@ fun Lyrics(
                     // Future lines: futureAlphaFalloff (no blur)
                     val isPreviousLine = isSynced && index < displayedCurrentLineIndex
                     val isFutureLine   = isSynced && index > displayedCurrentLineIndex
+                    val isActiveLineForAnimation = index == displayedCurrentLineIndex && isSynced
+                    val isNextLineForAnimation   = index == displayedCurrentLineIndex + 1 && isSynced
+                    val prismPhase = prismPhaseState.value
+
+                    // ── Prism spectrum color (Purple→Pink→Amber) ──────────────────────
+                    fun spectrumColorAt(phase: Float): Color = when {
+                        phase < 1f -> androidx.compose.ui.graphics.lerp(Color(0xFF8E44AD), Color(0xFFE75480), phase)
+                        phase < 2f -> androidx.compose.ui.graphics.lerp(Color(0xFFE75480), Color(0xFFE79C3C), phase - 1f)
+                        else       -> androidx.compose.ui.graphics.lerp(Color(0xFFE79C3C), Color(0xFF8E44AD), phase - 2f)
+                    }
+                    val currentSpectrumColor = spectrumColorAt(prismPhase)
+
+                    val anticipationProgress = hoistedAnticipationProgress
+
+                    // ── Depth transfer: per-item scale Animatable with overshoot ────────
+                    val depthScaleAnimatable = remember { androidx.compose.animation.core.Animatable(if (isActiveLineForAnimation) 1.0f else 0.92f) }
+                    LaunchedEffect(isActiveLineForAnimation) {
+                        if (themeSpec.useDepthTransfer) {
+                            if (isActiveLineForAnimation) {
+                                // Incoming: 0.92 → 1.05 → 1.00
+                                depthScaleAnimatable.animateTo(1.05f, tween(280, easing = FastOutSlowInEasing))
+                                depthScaleAnimatable.animateTo(1.00f, tween(220, easing = FastOutSlowInEasing))
+                            } else {
+                                // Outgoing: retreat to 0.92
+                                depthScaleAnimatable.animateTo(0.92f, tween(350, easing = FastOutSlowInEasing))
+                            }
+                        }
+                    }
+
+                    // ── White fill sweep animation (left → right) ────────────────────────
+                    val whiteFillAnimatable = remember { androidx.compose.animation.core.Animatable(0f) }
+                    LaunchedEffect(isActiveLineForAnimation) {
+                        if (isActiveLineForAnimation) {
+                            whiteFillAnimatable.snapTo(0f)
+                            // Delay briefly to let spectrum color linger, then sweep white in
+                            kotlinx.coroutines.delay(300)
+                            whiteFillAnimatable.animateTo(
+                                targetValue = 1f,
+                                animationSpec = tween(1200, easing = FastOutSlowInEasing)
+                            )
+                        } else {
+                            whiteFillAnimatable.snapTo(0f)
+                        }
+                    }
+                    val whiteFillProgress = whiteFillAnimatable.value
+
+                    // ── Resolve final colors ─────────────────────────────────────────────
+                    // Next line anticipation: lerp from neutral → spectrum (no black dip)
+                    val anticipatedNextLineColor = if (themeSpec.useColorAnticipation && isNextLineForAnimation && anticipationProgress > 0f) {
+                        val neutralColor = expressiveAccent.copy(alpha = 0.7f)
+                        androidx.compose.ui.graphics.lerp(neutralColor, currentSpectrumColor, anticipationProgress)
+                    } else expressiveAccent.copy(alpha = 0.7f)
+
+                    // Active line brush: white sweeps in from left, spectrum color on the right
+                    val activeLineBrush: androidx.compose.ui.graphics.Brush? = if (isActiveLineForAnimation && themeSpec.useAnimatedSpectrumColors) {
+                        val edge = whiteFillProgress.coerceIn(0.001f, 0.999f)
+                        Brush.horizontalGradient(
+                            colorStops = arrayOf(
+                                0f          to Color.White,
+                                edge        to Color.White,
+                                edge        to currentSpectrumColor,
+                                1f          to currentSpectrumColor
+                            )
+                        )
+                    } else null
+
+                    // Legacy scalar color (used by word-synced path which has its own span logic)
+                    val activeSpectrumColor = when {
+                        themeSpec.useAnimatedSpectrumColors && isActiveLineForAnimation ->
+                            androidx.compose.ui.graphics.lerp(currentSpectrumColor, Color.White, whiteFillProgress)
+                        themeSpec.useColorAnticipation && isNextLineForAnimation && anticipationProgress > 0f ->
+                            anticipatedNextLineColor
+                        else -> expressiveAccent
+                    }
+
+                    // White glow on active line, spectrum-tinted glow on next line
+                    val activeGlowRadius = when {
+                        isActiveLineForAnimation -> themeSpec.activeLineGlowRadiusPx
+                        isNextLineForAnimation && anticipationProgress > 0f ->
+                            themeSpec.activeLineGlowRadiusPx * anticipationProgress * 0.45f
+                        else -> 0f
+                    }
+                    val activeGlowColor = when {
+                        isActiveLineForAnimation -> Color.White.copy(alpha = 0.40f)
+                        isNextLineForAnimation && anticipationProgress > 0f ->
+                            currentSpectrumColor.copy(alpha = anticipationProgress * 0.30f)
+                        else -> Color.Transparent
+                    }
+
+                    val lineYOffset = 0f // Depth transfer via scale; no vertical float
 
                     val targetAlpha = when {
                         !isSynced || (isSelectionModeActive && isSelected) -> 1f
@@ -690,7 +805,7 @@ fun Lyrics(
                     val animatedAlpha by animateFloatAsState(
                         targetValue = targetAlpha,
                         animationSpec = tween(
-                            durationMillis = themeSpec.transitionDurationMs,
+                            durationMillis = if (isPreviousLine) (themeSpec.previousAlphaDurationMs ?: themeSpec.transitionDurationMs) else themeSpec.transitionDurationMs,
                             delayMillis = if (isPreviousLine) themeSpec.transitionDelayMs else 0,
                             easing = themeSpec.transitionEasing
                         ),
@@ -709,10 +824,18 @@ fun Lyrics(
 
                     val animatedScale by animateFloatAsState(
                         targetValue = targetScale,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
+                        animationSpec = if (themeSpec.useSpringForScale) {
+                            spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        } else {
+                            tween(
+                                durationMillis = themeSpec.scaleDurationMs ?: themeSpec.transitionDurationMs,
+                                delayMillis = if (isPreviousLine) themeSpec.transitionDelayMs else 0,
+                                easing = themeSpec.transitionEasing
+                            )
+                        },
                         label = "lyricScale"
                     )
 
@@ -720,14 +843,19 @@ fun Lyrics(
                     val targetBlurRadius = when {
                         !isSynced -> 0f
                         isPreviousLine && themeSpec.blurPreviousLines -> themeSpec.blurRadiusPx
-                        isFutureLine && themeSpec.blurFutureLines     -> themeSpec.blurRadiusPx
+                        isFutureLine && themeSpec.blurFutureLines -> {
+                            val distance = index - displayedCurrentLineIndex
+                            themeSpec.futureBlurFalloffPx.getOrElse(distance - 1) {
+                                themeSpec.futureBlurFalloffPx.lastOrNull() ?: themeSpec.blurRadiusPx
+                            }
+                        }
                         else -> 0f
                     }
 
                     val animatedBlurRadius by animateFloatAsState(
                         targetValue = targetBlurRadius,
                         animationSpec = tween(
-                            durationMillis = themeSpec.transitionDurationMs,
+                            durationMillis = if (isPreviousLine) (themeSpec.previousBlurDurationMs ?: themeSpec.transitionDurationMs) else themeSpec.transitionDurationMs,
                             delayMillis = if (isPreviousLine) themeSpec.transitionDelayMs else 0,
                             easing = themeSpec.transitionEasing
                         ),
@@ -736,7 +864,6 @@ fun Lyrics(
 
                     val itemModifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
                         .combinedClickable(
                             enabled = true,
                             onClick = {
@@ -791,8 +918,9 @@ fun Lyrics(
                             }
                         )
                         .background(
-                            if (isSelected && isSelectionModeActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                            else Color.Transparent
+                            color = if (isSelected && isSelectionModeActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            else Color.Transparent,
+                            shape = RoundedCornerShape(8.dp)
                         )
                         .padding(
                             horizontal = 24.dp,
@@ -800,8 +928,15 @@ fun Lyrics(
                         )
                         .alpha(animatedAlpha)
                         .graphicsLayer {
-                            scaleX = animatedScale
-                            scaleY = animatedScale
+                            val scale = if (themeSpec.useDepthTransfer) depthScaleAnimatable.value else animatedScale
+                            scaleX = scale
+                            scaleY = scale
+                            translationY = lineYOffset
+                            transformOrigin = when (lyricsTextPosition) {
+                                LyricsPosition.LEFT -> androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                                LyricsPosition.RIGHT -> androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
+                                LyricsPosition.CENTER -> androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.5f)
+                            }
                         }
                         .lyricsBlurEffect(animatedBlurRadius)
 
@@ -829,7 +964,8 @@ fun Lyrics(
 
                         val hasWordTimings = item.words?.isNotEmpty() == true
                         // Use theme spec line height instead of raw lyricsLineSpacing
-                        val specLineHeight = (lyricsTextSize * themeSpec.lineHeightMultiplier).sp
+                        val scaledTextSize = lyricsTextSize * themeSpec.fontSizeMultiplier
+                        val specLineHeight = (scaledTextSize * themeSpec.lineHeightMultiplier).sp
 
                         if (hasWordTimings && item.words != null) {
 
@@ -901,11 +1037,18 @@ fun Lyrics(
                                         )
                                     } else null
 
+                                    val wordBaselineShift = if (themeSpec.wordLiftEffect && isActiveLine) {
+                                        if (hasWordPassed) null
+                                        else if (isWordActive) androidx.compose.ui.text.style.BaselineShift(-0.15f * (1f - transitionProgress))
+                                        else androidx.compose.ui.text.style.BaselineShift(-0.15f)
+                                    } else null
+
                                     withStyle(
                                         style = SpanStyle(
                                             color = wordColor,
                                             fontWeight = wordWeight,
-                                            shadow = wordShadow
+                                            shadow = wordShadow,
+                                            baselineShift = wordBaselineShift
                                         )
                                     ) {
                                         append(word.text)
@@ -919,9 +1062,19 @@ fun Lyrics(
 
                             Text(
                                 text = styledText,
-                                fontSize = lyricsTextSize.sp,
+                                fontFamily = themeSpec.fontFamily,
+                                fontSize = scaledTextSize.sp,
                                 textAlign = alignment,
                                 lineHeight = specLineHeight,
+                                style = if (activeGlowRadius > 0f) {
+                                    androidx.compose.ui.text.TextStyle(
+                                        shadow = Shadow(
+                                            color = activeGlowColor,
+                                            offset = Offset.Zero,
+                                            blurRadius = activeGlowRadius
+                                        )
+                                    )
+                                } else androidx.compose.ui.text.TextStyle.Default
                             )
                         } else {
                             val popInScale = remember { androidx.compose.animation.core.Animatable(1f) }
@@ -941,11 +1094,25 @@ fun Lyrics(
 
                             Text(
                                 text = item.text,
-                                fontSize = lyricsTextSize.sp,
-                                color = if (isActiveLine) expressiveAccent else lineColor,
+                                fontFamily = themeSpec.fontFamily,
+                                fontSize = scaledTextSize.sp,
+                                color = if (!isActiveLine && !(isNextLineForAnimation && anticipationProgress > 0f)) lineColor else Color.Unspecified,
                                 textAlign = alignment,
                                 fontWeight = if (isActiveLine) themeSpec.activeFontWeight else themeSpec.inactiveFontWeight,
                                 lineHeight = specLineHeight,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    brush = when {
+                                        isActiveLine && activeLineBrush != null -> activeLineBrush
+                                        isNextLineForAnimation && anticipationProgress > 0f ->
+                                            Brush.horizontalGradient(listOf(anticipatedNextLineColor, anticipatedNextLineColor))
+                                        else -> null
+                                    },
+                                    shadow = if (activeGlowRadius > 0f) Shadow(
+                                        color = activeGlowColor,
+                                        offset = Offset.Zero,
+                                        blurRadius = activeGlowRadius
+                                    ) else null
+                                ),
                                 modifier = if (isActiveLine) Modifier.graphicsLayer {
                                     scaleX = popInScale.value
                                     scaleY = popInScale.value
@@ -1028,6 +1195,8 @@ fun Lyrics(
 
                                     Text(
                                         text = romanizedStyledText,
+                                        fontFamily = themeSpec.fontFamily,
+                                        fontStyle = themeSpec.romanizedFontStyle,
                                         fontSize = romanizedFontSize,
                                         textAlign = when (lyricsTextPosition) {
                                             LyricsPosition.LEFT -> TextAlign.Left
@@ -1040,6 +1209,8 @@ fun Lyrics(
 
                                     Text(
                                         text = romanized,
+                                        fontFamily = themeSpec.fontFamily,
+                                        fontStyle = themeSpec.romanizedFontStyle,
                                         fontSize = romanizedFontSize,
                                         color = expressiveAccent.copy(alpha = if (isActiveLine) (themeSpec.romanizedTextAlpha + 0.1f).coerceAtMost(1f) else themeSpec.romanizedTextAlpha),
                                         textAlign = when (lyricsTextPosition) {
