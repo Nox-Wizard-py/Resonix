@@ -382,7 +382,7 @@ enum class LyricsStyle {
     FLOW,
     VELVET,
     HALO,
-    AURORA
+    PRISM
 }
 
 val LyricsTextSizeKey = floatPreferencesKey("lyricsTextSize")
