@@ -924,12 +924,31 @@ fun BottomSheetPlayer(
                                 modifier = Modifier.size(44.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.bedtime),
-                                        contentDescription = null,
-                                        tint = TextBackgroundColor,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                    AnimatedContent(
+                                        label = "sleepTimer",
+                                        targetState = sleepTimerEnabled,
+                                    ) { enabled ->
+                                        if (enabled) {
+                                            Text(
+                                                text = com.noxwizard.resonix.utils.makeTimeString(sleepTimerTimeLeft),
+                                                color = TextBackgroundColor,
+                                                fontSize = 10.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .androidx.compose.foundation.basicMarquee()
+                                            )
+                                        } else {
+                                            Icon(
+                                                painter = painterResource(R.drawable.bedtime),
+                                                contentDescription = null,
+                                                tint = TextBackgroundColor,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
@@ -1010,12 +1029,31 @@ fun BottomSheetPlayer(
                                 modifier = Modifier.size(42.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.bedtime),
-                                        contentDescription = null,
-                                        tint = TextBackgroundColor,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    AnimatedContent(
+                                        label = "sleepTimer",
+                                        targetState = sleepTimerEnabled,
+                                    ) { enabled ->
+                                        if (enabled) {
+                                            Text(
+                                                text = com.noxwizard.resonix.utils.makeTimeString(sleepTimerTimeLeft),
+                                                color = TextBackgroundColor,
+                                                fontSize = 10.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .androidx.compose.foundation.basicMarquee()
+                                            )
+                                        } else {
+                                            Icon(
+                                                painter = painterResource(R.drawable.bedtime),
+                                                contentDescription = null,
+                                                tint = TextBackgroundColor,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
@@ -1092,15 +1130,32 @@ fun BottomSheetPlayer(
                                     }
                                 },
                         ) {
-                            Image(
-                                painter = painterResource(R.drawable.bedtime),
-                                contentDescription = null,
-                                colorFilter = ColorFilter.tint(if (sleepTimerEnabled) MaterialTheme.colorScheme.primary else iconButtonColor),
-                                modifier =
-                                Modifier
-                                    .align(Alignment.Center)
-                                    .size(24.dp),
-                            )
+                            AnimatedContent(
+                                label = "sleepTimer",
+                                targetState = sleepTimerEnabled,
+                                modifier = Modifier.align(Alignment.Center)
+                            ) { enabled ->
+                                if (enabled) {
+                                    Text(
+                                        text = com.noxwizard.resonix.utils.makeTimeString(sleepTimerTimeLeft),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 10.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .androidx.compose.foundation.basicMarquee()
+                                    )
+                                } else {
+                                    Image(
+                                        painter = painterResource(R.drawable.bedtime),
+                                        contentDescription = null,
+                                        colorFilter = ColorFilter.tint(iconButtonColor),
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.size(12.dp))
