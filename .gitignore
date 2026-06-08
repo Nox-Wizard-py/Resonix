@@ -104,3 +104,7 @@ backend/.env
 backend/dist/
 backend/tmp/
 backend/downloads
+
+#Temporary files for reference
+tmp/
+tmp_metrolist/
