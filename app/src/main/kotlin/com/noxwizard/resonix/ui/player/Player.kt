@@ -1077,7 +1077,6 @@ fun BottomSheetPlayer(
                     }
                     
                     PlayerDesignStyle.V1 -> {
-                        val isLiked = currentSong?.song?.liked == true
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier =
@@ -1086,13 +1085,17 @@ fun BottomSheetPlayer(
                                 .clip(RoundedCornerShape(24.dp))
                                 .background(textButtonColor)
                                 .clickable {
-                                    playerConnection.toggleLike()
+                                    if (sleepTimerEnabled) {
+                                        playerConnection.service.sleepTimer.clear()
+                                    } else {
+                                        showSleepTimerDialog = true
+                                    }
                                 },
                         ) {
                             Image(
-                                painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+                                painter = painterResource(R.drawable.bedtime),
                                 contentDescription = null,
-                                colorFilter = ColorFilter.tint(if (isLiked) MaterialTheme.colorScheme.error else iconButtonColor),
+                                colorFilter = ColorFilter.tint(if (sleepTimerEnabled) MaterialTheme.colorScheme.primary else iconButtonColor),
                                 modifier =
                                 Modifier
                                     .align(Alignment.Center)
