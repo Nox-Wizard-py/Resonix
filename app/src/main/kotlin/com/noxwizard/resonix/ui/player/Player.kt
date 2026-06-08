@@ -938,7 +938,7 @@ fun BottomSheetPlayer(
                                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .androidx.compose.foundation.basicMarquee()
+                                                    .basicMarquee()
                                             )
                                         } else {
                                             Icon(
@@ -1043,7 +1043,7 @@ fun BottomSheetPlayer(
                                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .androidx.compose.foundation.basicMarquee()
+                                                    .basicMarquee()
                                             )
                                         } else {
                                             Icon(
@@ -1145,7 +1145,7 @@ fun BottomSheetPlayer(
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .androidx.compose.foundation.basicMarquee()
+                                            .basicMarquee()
                                     )
                                 } else {
                                     Image(
