@@ -276,7 +276,8 @@ fun Lyrics(
                 }
                 newEntry
             }.let {
-                listOf(LyricsEntry.HEAD_LYRICS_ENTRY) + it
+                val dur = playerConnection.player.duration.coerceAtLeast(0L)
+                listOf(LyricsEntry.HEAD_LYRICS_ENTRY) + com.noxwizard.resonix.lyrics.LyricsUtils.insertInstrumentalBreaks(it, dur)
             }
         } else {
             if (lyricsDocument.isBlank()) emptyList()
@@ -687,10 +688,102 @@ fun Lyrics(
                     if (rawProgress >= threshold) ((rawProgress - threshold) / (1f - threshold)).coerceIn(0f, 1f) else 0f
                 } else 0f
 
+                // Removed dynamic gap overlay in favor of inline instrumental breaks
+
                 itemsIndexed(
                     items = lines,
                     key = { index, _ -> index }
                 ) { index, item ->
+                    if (item == LyricsEntry.HEAD_LYRICS_ENTRY) {
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(120.dp))
+                        return@itemsIndexed
+                    }
+
+                    if (item.isInstrumental && isSynced) {
+                        val startTimeMs = item.time
+                        val endTimeMs = item.time + item.durationMs
+                        val isActive = currentPlaybackPosition in startTimeMs until endTimeMs
+                        val distanceFromActive = kotlin.math.abs(index - displayedCurrentLineIndex)
+                        val instrAlpha = when {
+                            isActive -> 1f
+                            isManualScrolling -> when {
+                                distanceFromActive == 1 -> 0.72f
+                                distanceFromActive == 2 -> 0.56f
+                                distanceFromActive == 3 -> 0.40f
+                                else -> 0.28f
+                            }
+                            distanceFromActive == 1 -> 0.52f
+                            distanceFromActive == 2 -> 0.30f
+                            distanceFromActive == 3 -> 0.18f
+                            else -> themeSpec.previousLineAlpha
+                        }
+                        val animatedInstrAlpha by androidx.compose.animation.core.animateFloatAsState(
+                            targetValue = instrAlpha,
+                            animationSpec = androidx.compose.animation.core.tween(
+                                durationMillis = if (isActive) 330 else 500,
+                                easing = androidx.compose.animation.core.FastOutSlowInEasing,
+                            ),
+                            label = "v2InstrumentalAlpha",
+                        )
+                        val animatedInstrScale by androidx.compose.animation.core.animateFloatAsState(
+                            targetValue = if (isActive) 1f else 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(
+                                durationMillis = 166,
+                                easing = androidx.compose.animation.core.FastOutSlowInEasing,
+                            ),
+                            label = "v2InstrumentalScale",
+                        )
+                        val targetInstrBlur = when {
+                            !isSynced || isActive || isManualScrolling -> 0f
+                            distanceFromActive == 1 -> 2f
+                            distanceFromActive == 2 -> 5f
+                            else -> 12f
+                        }
+                        val animatedInstrBlur by androidx.compose.animation.core.animateFloatAsState(
+                            targetValue = targetInstrBlur,
+                            animationSpec = androidx.compose.animation.core.tween(
+                                durationMillis = 300,
+                                easing = androidx.compose.animation.core.FastOutSlowInEasing,
+                            ),
+                            label = "v2InstrumentalBlur",
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = 12.dp,
+                                    end = 12.dp,
+                                    top = if (index == 0 || (index == 1 && lines[0] == LyricsEntry.HEAD_LYRICS_ENTRY)) 0.dp
+                                          else (lyricsTextSize * lyricsLineSpacing * 1.5f).dp,
+                                    bottom = (lyricsTextSize * lyricsLineSpacing * 1.5f).dp,
+                                )
+                                .lyricsBlurEffect(animatedInstrBlur)
+                                .graphicsLayer {
+                                    scaleX = animatedInstrScale
+                                    scaleY = animatedInstrScale
+                                    alpha = animatedInstrAlpha
+                                }
+                                .then(
+                                    if (changeLyrics && item.time > 0) {
+                                        Modifier.clickable { playerConnection.seekTo(item.time) }
+                                    } else Modifier
+                                ),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            com.noxwizard.resonix.ui.lyrics.InstrumentalBreakItem(
+                                durationMs = item.durationMs,
+                                currentPositionMs = currentPlaybackPosition,
+                                startTimeMs = startTimeMs,
+                                textColor = textColor,
+                                // HALO previousLineAlpha is 0.0f (text fade design), which would
+                                // hide the silhouette. Use 0.3f so the grey filled note is visible.
+                                inactiveAlpha = if (themeSpec.previousLineAlpha < 0.1f) 0.3f else themeSpec.previousLineAlpha,
+                                drawOutline = themeSpec.loaderDrawOutline,
+                            )
+                        }
+                        return@itemsIndexed
+                    }
+
                     val isSelected = selectedIndices.contains(index)
 
                     // ── FLOW theme: spec-driven opacity hierarchy ─────────────────────────
