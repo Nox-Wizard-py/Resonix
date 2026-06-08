@@ -104,6 +104,22 @@ data class LyricsThemeSpec(
     /** Alpha for the translated text. */
     val translatedTextAlpha: Float = 0.5f,
 
+    // ── Loader ─────────────────────────────────────────────────────────────
+    /** Enable vertical floating animation for the music note loader. */
+    val loaderUseFloatAnim: Boolean = false,
+    /** Enable scale breathing animation for the music note loader. */
+    val loaderUseScaleAnim: Boolean = false,
+    /** Enable opacity breathing animation for the music note loader. */
+    val loaderUseOpacityPulse: Boolean = false,
+    /** Base glow radius for the music note loader in pixels. */
+    val loaderGlowRadiusPx: Float = 0f,
+    /** Enable cycling spectrum color for the music note loader (Prism). */
+    val loaderUseSpectrumColor: Boolean = false,
+    /** Theme-specific accent color override for the loader's glow. */
+    val loaderGlowColorOverride: Color? = null,
+    /** Whether to draw the loader as a hollow outline instead of a filled shape. */
+    val loaderDrawOutline: Boolean = false,
+
     // ── Transitions ────────────────────────────────────────────────────────
     /** Duration (ms) for opacity/blur transitions on inactive lines. */
     val transitionDurationMs: Int = 500,
@@ -165,6 +181,11 @@ fun LyricsStyle.toThemeSpec(): LyricsThemeSpec = when (this) {
         translatedTextAlpha = 0.5f,
         themeAccentColor = null,
 
+        // Loader
+        loaderUseFloatAnim = true,
+        loaderUseOpacityPulse = true,
+        loaderGlowRadiusPx = 14f,
+
         // Transitions — CSS: `transition: 0.5s 0.3s`
         transitionDurationMs = 500,
         transitionDelayMs = 300,
@@ -207,6 +228,11 @@ fun LyricsStyle.toThemeSpec(): LyricsThemeSpec = when (this) {
         romanizedBackgroundAlpha = 0.05f,
         translatedTextAlpha = 0.7f,
         themeAccentColor = Color(0xFFD49E9B),
+
+        // Loader
+        loaderUseOpacityPulse = true,
+        loaderGlowRadiusPx = 16f,
+        loaderGlowColorOverride = Color(0xFFD49E9B),
 
         // Transitions
         transitionDurationMs = 500,
@@ -254,6 +280,10 @@ fun LyricsStyle.toThemeSpec(): LyricsThemeSpec = when (this) {
         tintNextLineWithAccent = false,
         activeLineProgressFill = false,
 
+        // Loader
+        loaderUseScaleAnim = true,
+        loaderGlowRadiusPx = 10f,
+
         // Transitions
         transitionDurationMs = 500,
         previousAlphaDurationMs = 900, // Lingering fade out
@@ -300,6 +330,10 @@ fun LyricsStyle.toThemeSpec(): LyricsThemeSpec = when (this) {
         romanizedTextAlpha = 0.7f,
         translatedTextAlpha = 0.7f,
         
+        // Loader
+        loaderUseSpectrumColor = true,
+        loaderGlowRadiusPx = 18f,
+
         // Transitions
         transitionDurationMs = 500,
         transitionEasing = FastOutSlowInEasing,
