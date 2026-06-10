@@ -192,35 +192,7 @@ fun ContentSettings(
             Spacer(Modifier.height(16.dp))
         }
 
-        item {
-            Material3PreferenceGroup(title = stringResource(R.string.lyrics)) {
-                PreferenceEntry(
-                    title = { Text("Provider selection") },
-                    description = "Choose which lyrics providers are enabled",
-                    icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                    onClick = { navController.navigate("settings/lyrics_providers") }
-                )
-                PreferenceEntry(
-                    title = { Text("Lyrics provider priority") },
-                    description = "Drag to reorder providers by preference. Higher position means higher priority",
-                    icon = { Icon(painterResource(R.drawable.drag_handle), null) },
-                    onClick = { navController.navigate("settings/lyrics_provider_priority") }
-                )
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.lyrics_romanization_title)) },
-                    description = stringResource(R.string.lyrics_romanization_desc),
-                    icon = { Icon(painterResource(R.drawable.translate), null) },
-                    onClick = { navController.navigate("settings/lyrics_romanization") }
-                )
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.ai_lyrics_translation)) },
-                    description = stringResource(R.string.ai_lyrics_translation_desc),
-                    icon = { Icon(painterResource(R.drawable.translate), null) },
-                    onClick = { navController.navigate("settings/ai_lyrics_translation") }
-                )
-            }
-            Spacer(Modifier.height(16.dp))
-        }
+
 
         item {
             Material3PreferenceGroup(title = stringResource(R.string.misc)) {
