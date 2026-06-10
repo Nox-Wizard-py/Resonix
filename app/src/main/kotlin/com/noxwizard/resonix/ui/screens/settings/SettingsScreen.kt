@@ -276,9 +276,9 @@ fun SettingsScreen(
                     }
                 ),
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.lucide_headphones),
-                    title = { Text(stringResource(R.string.high_resolution_audio)) },
-                    subtitle = stringResource(R.string.high_resolution_audio_subtitle),
+                    icon = painterResource(R.drawable.lyrics),
+                    title = { Text(stringResource(R.string.lyrics)) },
+                    subtitle = "Customize lyrics appearance, providers and translations",
                     onClick = { navController.navigate("settings/high_res_audio") }
                 )
             )
