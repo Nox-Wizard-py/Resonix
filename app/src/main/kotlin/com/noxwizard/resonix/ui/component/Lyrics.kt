@@ -128,7 +128,6 @@ import com.noxwizard.resonix.constants.LyricsClickKey
 import com.noxwizard.resonix.constants.LyricsRomanizeJapaneseKey
 import com.noxwizard.resonix.constants.LyricsRomanizeKoreanKey
 import com.noxwizard.resonix.constants.LyricsScrollKey
-import com.noxwizard.resonix.constants.LyricsTextPositionKey
 import com.noxwizard.resonix.constants.LyricsTextSizeKey
 import com.noxwizard.resonix.constants.LyricsLineSpacingKey
 import com.noxwizard.resonix.constants.LyricsStyle
@@ -151,7 +150,6 @@ import com.noxwizard.resonix.ui.component.shimmer.ShimmerHost
 import com.noxwizard.resonix.ui.component.shimmer.TextPlaceholder
 import com.noxwizard.resonix.ui.menu.LyricsMenu
 import com.noxwizard.resonix.ui.screens.settings.DarkMode
-import com.noxwizard.resonix.ui.screens.settings.LyricsPosition
 import com.noxwizard.resonix.ui.utils.fadingEdge
 import com.noxwizard.resonix.ui.utils.smoothFadingEdge
 import com.noxwizard.resonix.utils.ComposeToImage
@@ -196,7 +194,6 @@ fun Lyrics(
     val landscapeOffset =
         configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    val lyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsPosition.LEFT)
     val lyricsTextSize by rememberPreference(LyricsTextSizeKey, 26f)
     val lyricsLineSpacing by rememberPreference(LyricsLineSpacingKey, 1.3f)
     val changeLyrics by rememberPreference(LyricsClickKey, true)
@@ -663,11 +660,7 @@ fun Lyrics(
                     ShimmerHost {
                         repeat(10) {
                             Box(
-                                contentAlignment = when (lyricsTextPosition) {
-                                    LyricsPosition.LEFT -> Alignment.CenterStart
-                                    LyricsPosition.CENTER -> Alignment.Center
-                                    LyricsPosition.RIGHT -> Alignment.CenterEnd
-                                },
+                                contentAlignment = Alignment.CenterStart,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 24.dp, vertical = 4.dp)
@@ -1025,21 +1018,13 @@ fun Lyrics(
                             scaleX = scale
                             scaleY = scale
                             translationY = lineYOffset
-                            transformOrigin = when (lyricsTextPosition) {
-                                LyricsPosition.LEFT -> androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
-                                LyricsPosition.RIGHT -> androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
-                                LyricsPosition.CENTER -> androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.5f)
-                            }
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
                         }
                         .lyricsBlurEffect(animatedBlurRadius)
 
                     Column(
                         modifier = itemModifier,
-                        horizontalAlignment = when (lyricsTextPosition) {
-                            LyricsPosition.LEFT -> Alignment.Start
-                            LyricsPosition.CENTER -> Alignment.CenterHorizontally
-                            LyricsPosition.RIGHT -> Alignment.End
-                        }
+                        horizontalAlignment = Alignment.Start
                     ) {
                         val isActiveLine = index == displayedCurrentLineIndex && isSynced
                         val isNextLine = index == displayedCurrentLineIndex + 1 && isSynced
@@ -1049,11 +1034,7 @@ fun Lyrics(
                             themeSpec.tintNextLineWithAccent && isNextLine -> themeAccent.copy(alpha = 0.9f)
                             else -> expressiveAccent.copy(alpha = 0.7f)
                         }
-                        val alignment = when (lyricsTextPosition) {
-                            LyricsPosition.LEFT   -> TextAlign.Left
-                            LyricsPosition.CENTER -> TextAlign.Center
-                            LyricsPosition.RIGHT  -> TextAlign.Right
-                        }
+                        val alignment = TextAlign.Left
 
                         val hasWordTimings = item.words?.isNotEmpty() == true
                         // Use theme spec line height instead of raw lyricsLineSpacing
@@ -1291,11 +1272,7 @@ fun Lyrics(
                                         fontFamily = themeSpec.fontFamily,
                                         fontStyle = themeSpec.romanizedFontStyle,
                                         fontSize = romanizedFontSize,
-                                        textAlign = when (lyricsTextPosition) {
-                                            LyricsPosition.LEFT -> TextAlign.Left
-                                            LyricsPosition.CENTER -> TextAlign.Center
-                                            LyricsPosition.RIGHT -> TextAlign.Right
-                                        },
+                                        textAlign = TextAlign.Left,
                                         modifier = romanizedModifier
                                     )
                                 } else {
@@ -1306,11 +1283,7 @@ fun Lyrics(
                                         fontStyle = themeSpec.romanizedFontStyle,
                                         fontSize = romanizedFontSize,
                                         color = expressiveAccent.copy(alpha = if (isActiveLine) (themeSpec.romanizedTextAlpha + 0.1f).coerceAtMost(1f) else themeSpec.romanizedTextAlpha),
-                                        textAlign = when (lyricsTextPosition) {
-                                            LyricsPosition.LEFT -> TextAlign.Left
-                                            LyricsPosition.CENTER -> TextAlign.Center
-                                            LyricsPosition.RIGHT -> TextAlign.Right
-                                        },
+                                        textAlign = TextAlign.Left,
                                         fontWeight = FontWeight.Normal,
                                         modifier = romanizedModifier
                                     )
