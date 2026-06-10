@@ -65,7 +65,6 @@ import com.noxwizard.resonix.constants.GridItemsSizeKey
 import com.noxwizard.resonix.constants.LibraryFilter
 import com.noxwizard.resonix.constants.LyricsClickKey
 import com.noxwizard.resonix.constants.LyricsScrollKey
-import com.noxwizard.resonix.constants.LyricsTextPositionKey
 import com.noxwizard.resonix.constants.PlayerDesignStyle
 import com.noxwizard.resonix.constants.PlayerDesignStyleKey
 import com.noxwizard.resonix.constants.UseNewMiniPlayerDesignKey
@@ -142,10 +141,6 @@ fun AppearanceSettings(
     val (defaultOpenTab, onDefaultOpenTabChange) = rememberEnumPreference(
         DefaultOpenTabKey,
         defaultValue = NavigationTab.HOME
-    )
-    val (lyricsPosition, onLyricsPositionChange) = rememberEnumPreference(
-        LyricsTextPositionKey,
-        defaultValue = LyricsPosition.LEFT
     )
     val (lyricsClick, onLyricsClickChange) = rememberPreference(LyricsClickKey, defaultValue = true)
     val (lyricsScroll, onLyricsScrollChange) = rememberPreference(LyricsScrollKey, defaultValue = true)
@@ -430,20 +425,6 @@ fun AppearanceSettings(
                     LyricsStyle.VELVET -> "Velvet"
                     LyricsStyle.HALO   -> "Halo"
                     LyricsStyle.PRISM -> "Prism"
-                }
-            },
-        )
-
-        EnumListPreference(
-            title = { Text(stringResource(R.string.lyrics_text_position)) },
-            icon = { Icon(painterResource(R.drawable.lyrics), null) },
-            selectedValue = lyricsPosition,
-            onValueSelected = onLyricsPositionChange,
-            valueText = {
-                when (it) {
-                    LyricsPosition.LEFT   -> stringResource(R.string.left)
-                    LyricsPosition.CENTER -> stringResource(R.string.center)
-                    LyricsPosition.RIGHT  -> stringResource(R.string.right)
                 }
             },
         )
@@ -754,12 +735,6 @@ enum class NavigationTab {
     HOME,
     SEARCH,
     LIBRARY,
-}
-
-enum class LyricsPosition {
-    LEFT,
-    CENTER,
-    RIGHT,
 }
 
 enum class PlayerTextAlignment {
