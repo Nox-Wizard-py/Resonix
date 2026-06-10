@@ -78,7 +78,7 @@ import com.noxwizard.resonix.ui.screens.settings.ThemeCreatorScreen
 import com.noxwizard.resonix.ui.screens.settings.StorageSettings
 import com.noxwizard.resonix.ui.screens.settings.UpdateScreen
 import com.noxwizard.resonix.ui.screens.settings.PlayerStyleSettings
-import com.noxwizard.resonix.ui.screens.settings.HighResAudioSettings
+import com.noxwizard.resonix.ui.screens.settings.LyricsSettings
 import com.noxwizard.resonix.ui.screens.settings.LibraryBehaviourSettings
 import com.noxwizard.resonix.ui.screens.settings.ImportPlaylistsSettings
 import com.noxwizard.resonix.ui.screens.settings.LyricsProviderPriorityScreen
@@ -387,8 +387,8 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/player_style") {
         PlayerStyleSettings(navController, scrollBehavior)
     }
-    composable("settings/high_res_audio") {
-        HighResAudioSettings(navController, scrollBehavior)
+    composable("settings/lyrics") {
+        LyricsSettings(navController, scrollBehavior)
     }
     composable("settings/library_behaviour") {
         LibraryBehaviourSettings(navController, scrollBehavior)
