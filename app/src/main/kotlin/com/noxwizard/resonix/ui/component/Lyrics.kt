@@ -315,10 +315,7 @@ fun Lyrics(
             !lyricsDocument.isNullOrEmpty() && lyricsDocument.startsWith("[")
         }
 
-    val baseAccent = when (playerBackground) {
-        PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.primary
-        else -> Color.White
-    }
+    val baseAccent = Color.White
     val themeAccent = themeSpec.themeAccentColor ?: baseAccent
     // Base text color remains neutral (white)
     val expressiveAccent = baseAccent
