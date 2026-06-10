@@ -279,7 +279,7 @@ fun SettingsScreen(
                     icon = painterResource(R.drawable.lyrics),
                     title = { Text(stringResource(R.string.lyrics)) },
                     subtitle = "Customize lyrics appearance, providers and translations",
-                    onClick = { navController.navigate("settings/high_res_audio") }
+                    onClick = { navController.navigate("settings/lyrics") }
                 )
             )
         )
