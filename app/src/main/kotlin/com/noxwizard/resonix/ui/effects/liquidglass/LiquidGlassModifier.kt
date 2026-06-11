@@ -51,9 +51,7 @@ fun Modifier.liquidGlass(
         // Stage 2: Vibrancy
         if (vibrancy) {
             val vibrantFilter = colorControlsColorFilter(saturation = 1.5f)
-            val colorEffect = android.graphics.RenderEffect.createColorFilterEffect(
-                androidx.compose.ui.graphics.asAndroidColorFilter(vibrantFilter)
-            )
+            val colorEffect = android.graphics.RenderEffect.createColorFilterEffect(vibrantFilter)
             currentEffect = if (currentEffect != null) {
                 android.graphics.RenderEffect.createChainEffect(colorEffect, currentEffect)
             } else {
@@ -75,7 +73,7 @@ private fun colorControlsColorFilter(
     brightness: Float = 0f,
     contrast: Float = 1f,
     saturation: Float = 1f
-): ColorFilter {
+): android.graphics.ColorFilter {
     val invSat = 1f - saturation
     val r = 0.213f * invSat
     val g = 0.715f * invSat
@@ -90,13 +88,12 @@ private fun colorControlsColorFilter(
     val cb = c * b
     val cs = c * s
 
-    val colorMatrix = ColorMatrix(
-        floatArrayOf(
-            cr + cs, cg, cb, 0f, t,
-            cr, cg + cs, cb, 0f, t,
-            cr, cg, cb + cs, 0f, t,
-            0f, 0f, 0f, 1f, 0f
-        )
+    val floatArray = floatArrayOf(
+        cr + cs, cg, cb, 0f, t,
+        cr, cg + cs, cb, 0f, t,
+        cr, cg, cb + cs, 0f, t,
+        0f, 0f, 0f, 1f, 0f
     )
-    return ColorMatrixColorFilter(colorMatrix)
+    val colorMatrix = android.graphics.ColorMatrix(floatArray)
+    return android.graphics.ColorMatrixColorFilter(colorMatrix)
 }
