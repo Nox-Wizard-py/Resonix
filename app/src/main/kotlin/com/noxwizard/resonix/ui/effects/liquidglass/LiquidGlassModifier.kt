@@ -8,7 +8,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ColorMatrixColorFilter
-import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -38,11 +38,11 @@ fun Modifier.liquidGlass(
         this.shape = shape
         this.clip = true
         
-        var currentEffect: RenderEffect? = null
+        var currentEffect: android.graphics.RenderEffect? = null
         
         // Stage 1: Blur
         if (blurRadius > 0f) {
-            currentEffect = RenderEffect.createBlurEffect(
+            currentEffect = android.graphics.RenderEffect.createBlurEffect(
                 blurRadius, blurRadius,
                 android.graphics.Shader.TileMode.DECAL
             )
@@ -51,9 +51,11 @@ fun Modifier.liquidGlass(
         // Stage 2: Vibrancy
         if (vibrancy) {
             val vibrantFilter = colorControlsColorFilter(saturation = 1.5f)
-            val colorEffect = RenderEffect.createColorFilterEffect(vibrantFilter)
+            val colorEffect = android.graphics.RenderEffect.createColorFilterEffect(
+                androidx.compose.ui.graphics.asAndroidColorFilter(vibrantFilter)
+            )
             currentEffect = if (currentEffect != null) {
-                RenderEffect.createChainEffect(colorEffect, currentEffect)
+                android.graphics.RenderEffect.createChainEffect(colorEffect, currentEffect)
             } else {
                 colorEffect
             }
@@ -65,7 +67,7 @@ fun Modifier.liquidGlass(
             // This will be implemented using the shader strings.
         }
         
-        this.renderEffect = currentEffect
+        this.renderEffect = currentEffect?.asComposeRenderEffect()
     }
 }
 
