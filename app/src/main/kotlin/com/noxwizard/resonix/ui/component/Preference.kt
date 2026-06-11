@@ -336,10 +336,9 @@ fun SliderPreference(
 
                     Spacer(Modifier.height(16.dp))
 
-                    Slider(
-                        value = sliderValue,
-                        onValueChange = { sliderValue = it },
-                        valueRange = 15f..60f,
+                    VolumeSlider(
+                        progressProvider = { (sliderValue - 15f) / 45f },
+                        onProgressChange = { fraction -> sliderValue = 15f + (fraction * 45f) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
