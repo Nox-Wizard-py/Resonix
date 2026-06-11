@@ -431,14 +431,6 @@ fun Lyrics(
                     "[Resolver Selected] provider=$prov syncType=${snap.syncType} " +
                             "confidence=${"%.2f".format(snap.confidence)} lines=${snap.totalLines}"
                 )
-                // Toast (Task 8 — visible debug notification)
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Lyrics: $prov | ${snap.syncType.name}",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                }
             }
         }
     }
