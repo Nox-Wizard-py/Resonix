@@ -158,6 +158,7 @@ private fun NewMiniPlayer(
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
     
     val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
     val isDarkTheme = if (pureBlack) true
     else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
 
@@ -299,10 +300,14 @@ private fun NewMiniPlayer(
                                 shape = RoundedCornerShape(32.dp)
                             )
                             .liquidGlass(
-                                backdropLayer = null,
+                                backdropLayer = backdropLayer,
                                 shape = RoundedCornerShape(32.dp),
                                 blurRadius = 16f,
-                                vibrancy = true // Stage 2
+                                vibrancy = true, // Stage 2
+                                refractionHeight = 2f, // Stage 4
+                                refractionAmount = 0.5f,
+                                depthEffect = true,
+                                chromaticAberration = true
                             )
                             .clip(RoundedCornerShape(32.dp))
                             .background(glassBg)
