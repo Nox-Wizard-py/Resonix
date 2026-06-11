@@ -281,36 +281,44 @@ private fun NewMiniPlayer(
             }
     ) {
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
-                .height(64.dp) // Circular height
+                .height(MiniPlayerHeight)
                 .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                .let {
-                    if (frostedGlassMiniPlayer) {
-                        it.shadow(
-                            elevation = 8.dp,
-                            ambientColor = shadowColor,
-                            spotColor = shadowColor,
-                            shape = RoundedCornerShape(32.dp)
-                        )
-                        .liquidGlass(
-                            backdropLayer = null,
-                            shape = RoundedCornerShape(32.dp),
-                            blurRadius = 16f,
-                            vibrancy = false // Stage 1
-                        )
-                        .clip(RoundedCornerShape(32.dp))
-                        .background(glassBg)
-                        .liquid(rememberLiquidState()) {
-                            shape = RoundedCornerShape(32.dp)
-                            frost = if (isDarkTheme) 32.dp else 28.dp
-                            curve = if (isDarkTheme) 0.40f else 0.50f
-                            refraction = if (isDarkTheme) 0.06f else 0.10f
-                            dispersion = if (isDarkTheme) 0.15f else 0.22f
-                            saturation = if (isDarkTheme) 0.70f else 0.90f
-                            contrast = if (isDarkTheme) 1.9f else 1.2f
+        ) {
+            // Background Layer for Glass Effect
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .let {
+                        if (frostedGlassMiniPlayer) {
+                            it.shadow(
+                                elevation = 8.dp,
+                                ambientColor = shadowColor,
+                                spotColor = shadowColor,
+                                shape = RoundedCornerShape(32.dp)
+                            )
+                            .liquidGlass(
+                                backdropLayer = null,
+                                shape = RoundedCornerShape(32.dp),
+                                blurRadius = 16f,
+                                vibrancy = true // Stage 2
+                            )
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(glassBg)
+                        } else {
+                            it.shadow(
+                                elevation = 8.dp,
+                                ambientColor = shadowColor,
+                                spotColor = shadowColor,
+                                shape = RoundedCornerShape(32.dp)
+                            )
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                         }
-                        .drawBehind {
+                    }
+                    .drawBehind {
+                        if (frostedGlassMiniPlayer) {
                             // Top specular highlight
                             drawRoundRect(
                                 brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
@@ -338,12 +346,8 @@ private fun NewMiniPlayer(
                                 ),
                             )
                         }
-                    } else {
-                        it.clip(RoundedCornerShape(32.dp))
-                          .background(color = MaterialTheme.colorScheme.surfaceContainer)
                     }
-                }
-        ) {
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
