@@ -675,6 +675,8 @@ fun ResonixApp(
 
             var showAccountDialog by remember { mutableStateOf(false) }
 
+            val backdropLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+
             CompositionLocalProvider(
                 LocalDatabase provides database,
                 LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -686,6 +688,7 @@ fun ResonixApp(
                 com.noxwizard.resonix.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                 com.noxwizard.resonix.ui.component.LocalMenuState provides menuState,
                 LocalCategoryAccentCallback provides { color -> categoryAccentOverride = color },
+                com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer provides backdropLayer,
             ) {
                 var isUtilityFabExpanded by rememberSaveable { mutableStateOf(false) }
                 val utilityFabBlurRadius by animateDpAsState(
@@ -699,7 +702,10 @@ fun ResonixApp(
                     label = "scrim_anim"
                 )
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .com.noxwizard.resonix.ui.effects.liquidglass.provideBackdropLayer(backdropLayer)
+                ) {
                     Scaffold(
                         modifier = Modifier
                             .fillMaxSize()
