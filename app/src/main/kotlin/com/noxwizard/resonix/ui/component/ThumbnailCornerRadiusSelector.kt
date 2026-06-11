@@ -277,22 +277,17 @@ fun ThumbnailCornerRadiusModal(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            Slider(
-                                value = thumbnailCornerRadius,
-                                onValueChange = { newValue ->
+                            VolumeSlider(
+                                progressProvider = { thumbnailCornerRadius / 45f },
+                                onProgressChange = { fraction ->
+                                    val newValue = fraction * 45f
                                     thumbnailCornerRadius = newValue
                                     customValue = newValue.roundToInt().toString()
                                     isCustomSelected = !presetValues.contains(newValue)
                                 },
-                                valueRange = 0f..45f,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .padding(horizontal = 8.dp),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = MaterialTheme.colorScheme.primary,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
+                                    .padding(horizontal = 8.dp)
                             )
 
                             Text(
