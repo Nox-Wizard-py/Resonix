@@ -205,10 +205,10 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import java.net.URLDecoder
+import java.net.URLDecoder
 import java.net.URLEncoder
 import kotlin.time.Duration.Companion.days
-
-
+import com.noxwizard.resonix.ui.effects.liquidglass.provideBackdropLayer
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -704,7 +704,7 @@ fun ResonixApp(
 
                 Box(modifier = Modifier
                     .fillMaxSize()
-                    .com.noxwizard.resonix.ui.effects.liquidglass.provideBackdropLayer(backdropLayer)
+                    .provideBackdropLayer(backdropLayer)
                 ) {
                     Scaffold(
                         modifier = Modifier
