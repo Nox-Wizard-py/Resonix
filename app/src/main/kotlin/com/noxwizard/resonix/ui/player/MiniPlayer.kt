@@ -63,6 +63,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import io.github.fletchmckee.liquid.liquid
 import io.github.fletchmckee.liquid.rememberLiquidState
+import com.noxwizard.resonix.ui.effects.liquidglass.liquidGlass
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -288,9 +289,15 @@ private fun NewMiniPlayer(
                     if (frostedGlassMiniPlayer) {
                         it.shadow(
                             elevation = 8.dp,
-                            shape = RoundedCornerShape(32.dp),
                             ambientColor = shadowColor,
                             spotColor = shadowColor,
+                            shape = RoundedCornerShape(32.dp)
+                        )
+                        .liquidGlass(
+                            backdropLayer = null,
+                            shape = RoundedCornerShape(32.dp),
+                            blurRadius = 16f,
+                            vibrancy = false // Stage 1
                         )
                         .clip(RoundedCornerShape(32.dp))
                         .background(glassBg)
