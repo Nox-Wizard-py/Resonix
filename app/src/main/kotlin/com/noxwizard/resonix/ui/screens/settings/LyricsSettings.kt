@@ -169,11 +169,9 @@ fun LyricsSettings(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    Slider(
-                        value = tempTextSize,
-                        onValueChange = { tempTextSize = it },
-                        valueRange = 16f..36f,
-                        steps = 19,
+                    com.noxwizard.resonix.ui.component.VolumeSlider(
+                        progressProvider = { (tempTextSize - 16f) / 20f },
+                        onProgressChange = { fraction -> tempTextSize = 16f + (fraction * 20f) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -242,11 +240,9 @@ fun LyricsSettings(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    Slider(
-                        value = tempLineSpacing,
-                        onValueChange = { tempLineSpacing = it },
-                        valueRange = 1.0f..2.0f,
-                        steps = 19,
+                    com.noxwizard.resonix.ui.component.VolumeSlider(
+                        progressProvider = { tempLineSpacing - 1.0f },
+                        onProgressChange = { fraction -> tempLineSpacing = 1.0f + fraction },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
