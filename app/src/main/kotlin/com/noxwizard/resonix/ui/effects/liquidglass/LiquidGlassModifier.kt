@@ -22,7 +22,9 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 
 fun Modifier.liquidGlass(
     backdropLayer: GraphicsLayer?,
