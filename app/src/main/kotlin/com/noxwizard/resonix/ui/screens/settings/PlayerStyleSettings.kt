@@ -533,10 +533,9 @@ fun PlayerStyleSettings(
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
     
-                        Slider(
-                            value = tempSensitivity,
-                            onValueChange = { tempSensitivity = it },
-                            valueRange = 0f..1f,
+                        com.noxwizard.resonix.ui.component.VolumeSlider(
+                            progressProvider = { tempSensitivity },
+                            onProgressChange = { tempSensitivity = it },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
