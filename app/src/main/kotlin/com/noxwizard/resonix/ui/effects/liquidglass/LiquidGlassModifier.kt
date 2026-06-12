@@ -24,7 +24,8 @@ fun Modifier.liquidGlass(
     backdropLayer: GraphicsLayer?,
     shape: CornerBasedShape, // Kept for compose Modifier.graphicsLayer bounds clipping
     luminanceAnimation: Float = 0.5f,
-    interaction: GlassInteraction? = null
+    interaction: GlassInteraction? = null,
+    isDarkTheme: Boolean = true
 ): Modifier {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
         return this
@@ -110,8 +111,14 @@ fun Modifier.liquidGlass(
                     }
                 }
                 
-                val darken = androidx.compose.ui.util.lerp(0.12f, 0.5f, ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f))
-                drawRect(androidx.compose.ui.graphics.Color.Black.copy(alpha = darken))
+                val l = ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f)
+                if (isDarkTheme) {
+                    val darken = androidx.compose.ui.util.lerp(0.12f, 0.5f, l)
+                    drawRect(androidx.compose.ui.graphics.Color.Black.copy(alpha = darken))
+                } else {
+                    val lighten = androidx.compose.ui.util.lerp(0.12f, 0.5f, 1f - l)
+                    drawRect(androidx.compose.ui.graphics.Color.White.copy(alpha = lighten))
+                }
 
                 val press = interaction?.pressProgress ?: 0f
                 if (press > 0f) {
