@@ -837,7 +837,6 @@ fun ResonixApp(
                     }
 
                     NavHost(
-                        modifier = Modifier.provideBackdropLayer(backdropLayer),
                         navController = navController,
                         startDestination = when (tabOpenedFromShortcut ?: defaultOpenTab) {
                             NavigationTab.HOME -> Screens.Home
@@ -872,8 +871,10 @@ fun ResonixApp(
                                 fadeOut(tween(200)) + slideOutHorizontally { it / 2 }
                             }
                         },
-                        modifier = Modifier.nestedScroll(
-                            if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
+                        modifier = Modifier
+                            .provideBackdropLayer(backdropLayer)
+                            .nestedScroll(
+                                if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
                                 navBackStackEntry?.destination?.route?.startsWith("search/") == true
                             ) {
                                 searchBarScrollBehavior.nestedScrollConnection
