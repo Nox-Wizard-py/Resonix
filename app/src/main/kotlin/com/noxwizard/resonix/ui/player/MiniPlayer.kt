@@ -169,12 +169,12 @@ private fun NewMiniPlayer(
     
     LaunchedEffect(backdropLayer, frostedGlassMiniPlayer) {
         val buffer = IntArray(25) // 5x5
-        while (kotlinx.coroutines.isActive && frostedGlassMiniPlayer) {
+        while (isActive && frostedGlassMiniPlayer) {
             try {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     backdropLayer?.let { layer ->
                         val imageBitmap = layer.toImageBitmap()
-                        val bitmap = androidx.compose.ui.graphics.asAndroidBitmap(imageBitmap)
+                        val bitmap = imageBitmap.asAndroidBitmap()
                         val thumbnail = android.graphics.Bitmap.createScaledBitmap(bitmap, 5, 5, true)
                         thumbnail.getPixels(buffer, 0, 5, 0, 0, 5, 5)
                         
