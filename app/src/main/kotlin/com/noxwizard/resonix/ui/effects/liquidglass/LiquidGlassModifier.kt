@@ -98,7 +98,9 @@ fun Modifier.liquidGlass(
                     
                     val refractionEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content")
                     currentEffect = if (currentEffect != null) {
-                        android.graphics.RenderEffect.createChainEffect(refractionEffect, currentEffect)
+                        // Swap the chain order: Refraction is inner, Blur/Color is outer!
+                        // This fixes the Android 13+ bug where RuntimeShaderEffect as outer drops the inner effect.
+                        android.graphics.RenderEffect.createChainEffect(currentEffect, refractionEffect)
                     } else refractionEffect
                 }
 
