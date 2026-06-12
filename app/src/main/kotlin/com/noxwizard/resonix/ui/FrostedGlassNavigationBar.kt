@@ -116,9 +116,9 @@ fun FrostedGlassNavigationBar(
 
     // --- Glass colors ---
     val glassBg = if (isDarkTheme)
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+        Color.Black.copy(alpha = 0.15f)
     else
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
+        Color.White.copy(alpha = 0.20f)
 
     val indicatorHighColor = if (isDarkTheme) Color.White.copy(alpha = 0.25f)
     else Color.Black.copy(alpha = 0.12f)
