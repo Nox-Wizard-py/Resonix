@@ -92,7 +92,7 @@ fun Modifier.liquidGlass(
                     shader?.setFloatUniform("offset", localPosition.x, localPosition.y)
                     shader?.setFloatUniform("cornerRadii", 32.dp.toPx(), 32.dp.toPx(), 32.dp.toPx(), 32.dp.toPx()) // Hardcoded for MiniPlayer
                     shader?.setFloatUniform("refractionHeight", refractionHeight)
-                    shader?.setFloatUniform("refractionAmount", refractionAmount)
+                    shader?.setFloatUniform("refractionAmount", -refractionAmount)
                     shader?.setFloatUniform("depthEffect", if (depthEffect) 1f else 0f)
                     
                     val refractionEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader!!, "content")
