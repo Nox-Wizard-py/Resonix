@@ -179,7 +179,6 @@ fun FrostedGlassNavigationBar(
                     }
                 },
         ) {
-            // Pill
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -189,45 +188,51 @@ fun FrostedGlassNavigationBar(
                         shape = RoundedCornerShape(NavBarCornerRadius),
                         ambientColor = shadowColor,
                         spotColor = shadowColor,
-                    )
-                    .clip(RoundedCornerShape(NavBarCornerRadius))
-                    .liquidGlass(
-                        backdropLayer = backdropLayer,
-                        shape = RoundedCornerShape(NavBarCornerRadius),
-                        luminanceAnimation = 0.5f,
-                        interaction = null
-                    )
-                // Inner glass reflection line at top
-                .drawBehind {
-                    // Top specular highlight
-                    drawRoundRect(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                innerReflectionColor,
-                                innerReflectionColor,
-                                Color.Transparent,
-                            ),
-                            startX = size.width * 0.15f,
-                            endX = size.width * 0.85f,
-                        ),
-                        topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
-                        size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
-                        cornerRadius = CornerRadius(1.dp.toPx()),
-                    )
-                    // Subtle border
-                    drawRoundRect(
-                        color = borderColor,
-                        topLeft = Offset.Zero,
-                        size = size,
-                        cornerRadius = CornerRadius(NavBarCornerRadius.toPx()),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 0.5f.dp.toPx()
-                        ),
-                    )
-                },
-            contentAlignment = Alignment.Center,
-        ) {
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                // Glass Background
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(NavBarCornerRadius))
+                        .liquidGlass(
+                            backdropLayer = backdropLayer,
+                            shape = RoundedCornerShape(NavBarCornerRadius),
+                            luminanceAnimation = 0.5f,
+                            interaction = null,
+                            isDarkTheme = isDarkTheme
+                        )
+                        // Inner glass reflection line at top
+                        .drawBehind {
+                            // Top specular highlight
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        innerReflectionColor,
+                                        innerReflectionColor,
+                                        Color.Transparent,
+                                    ),
+                                    startX = size.width * 0.15f,
+                                    endX = size.width * 0.85f,
+                                ),
+                                topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
+                                size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
+                                cornerRadius = CornerRadius(1.dp.toPx()),
+                            )
+                            // Subtle border
+                            drawRoundRect(
+                                color = borderColor,
+                                topLeft = Offset.Zero,
+                                size = size,
+                                cornerRadius = CornerRadius(NavBarCornerRadius.toPx()),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                    width = 0.5f.dp.toPx()
+                                ),
+                            )
+                        }
+                )
             Box(
                 modifier = Modifier
                     .height(NavBarHeight)
