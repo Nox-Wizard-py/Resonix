@@ -114,13 +114,8 @@ fun Modifier.liquidGlass(
                 }
                 
                 val l = ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f)
-                if (isDarkTheme) {
-                    val darken = androidx.compose.ui.util.lerp(0.12f, 0.5f, l)
-                    drawRect(androidx.compose.ui.graphics.Color.Black.copy(alpha = darken))
-                } else {
-                    val lighten = androidx.compose.ui.util.lerp(0.12f, 0.5f, 1f - l)
-                    drawRect(androidx.compose.ui.graphics.Color.White.copy(alpha = lighten))
-                }
+                val darken = androidx.compose.ui.util.lerp(0.12f, 0.5f, l)
+                drawRect(androidx.compose.ui.graphics.Color.Black.copy(alpha = darken))
 
                 val press = interaction?.pressProgress ?: 0f
                 if (press > 0f) {
