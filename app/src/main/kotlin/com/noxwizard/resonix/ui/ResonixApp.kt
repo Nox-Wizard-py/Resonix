@@ -703,7 +703,6 @@ fun ResonixApp(
 
                 Box(modifier = Modifier
                     .fillMaxSize()
-                    .provideBackdropLayer(backdropLayer)
                 ) {
                     Scaffold(
                         modifier = Modifier
@@ -838,6 +837,7 @@ fun ResonixApp(
                     }
 
                     NavHost(
+                        modifier = Modifier.provideBackdropLayer(backdropLayer),
                         navController = navController,
                         startDestination = when (tabOpenedFromShortcut ?: defaultOpenTab) {
                             NavigationTab.HOME -> Screens.Home
