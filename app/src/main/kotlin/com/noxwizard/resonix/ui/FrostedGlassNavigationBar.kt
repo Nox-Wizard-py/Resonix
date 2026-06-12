@@ -61,7 +61,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.noxwizard.resonix.constants.NavigationBarHeight
+import com.noxwizard.resonix.ui.effects.liquidglass.liquidGlass
 import com.noxwizard.resonix.ui.component.BottomSheetState
 import com.noxwizard.resonix.ui.player.BottomSheetPlayer
 import com.noxwizard.resonix.ui.screens.Screens
@@ -137,6 +139,8 @@ fun FrostedGlassNavigationBar(
 
     val shadowColor = if (isDarkTheme) Color.Black.copy(alpha = 0.50f)
     else Color.Black.copy(alpha = 0.12f)
+    
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
 
     Box {
         BottomSheetPlayer(
@@ -187,16 +191,12 @@ fun FrostedGlassNavigationBar(
                         spotColor = shadowColor,
                     )
                     .clip(RoundedCornerShape(NavBarCornerRadius))
-                    .background(glassBg)
-                    .liquid(rememberLiquidState()) {
-                    shape = RoundedCornerShape(NavBarCornerRadius)
-                    frost = if (isDarkTheme) 32.dp else 28.dp
-                    curve = if (isDarkTheme) 0.40f else 0.50f
-                    refraction = if (isDarkTheme) 0.06f else 0.10f
-                    dispersion = if (isDarkTheme) 0.15f else 0.22f
-                    saturation = if (isDarkTheme) 0.70f else 0.90f
-                    contrast = if (isDarkTheme) 1.9f else 1.2f
-                }
+                    .liquidGlass(
+                        backdropLayer = backdropLayer,
+                        shape = RoundedCornerShape(NavBarCornerRadius),
+                        luminanceAnimation = 0.5f,
+                        interaction = null
+                    )
                 // Inner glass reflection line at top
                 .drawBehind {
                     // Top specular highlight
