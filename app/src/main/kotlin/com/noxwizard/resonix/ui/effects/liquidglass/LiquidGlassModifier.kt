@@ -1,108 +1,106 @@
 package com.noxwizard.resonix.ui.effects.liquidglass
 
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.shape.CornerBasedShape
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.ColorMatrixColorFilter
-import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.dp
 
 fun Modifier.liquidGlass(
     backdropLayer: GraphicsLayer?,
-    shape: CornerBasedShape,
-    blurRadius: Float = 0f,
-    vibrancy: Boolean = false,
-    refractionHeight: Float = 0f,
-    refractionAmount: Float = 0f,
-    depthEffect: Boolean = false,
-    chromaticAberration: Boolean = false
+    shape: CornerBasedShape, // Kept for compose Modifier.graphicsLayer bounds clipping
+    luminanceAnimation: Float = 0.5f,
+    interaction: GlassInteraction? = null
 ): Modifier {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
         return this
     }
 
-    // Incremental Implementation Stages
-    // Stage 1: Blur only
-    // Stage 2: Blur + Vibrancy
-    // Stage 3: Blur + Vibrancy + Highlights
-    // Stage 4: Full Lens Refraction
-
     return composed {
         var localPosition by remember { mutableStateOf(Offset.Zero) }
-        
-        val shader by remember(refractionHeight, refractionAmount) {
-            mutableStateOf(
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && refractionHeight > 0f && refractionAmount > 0f) {
-                    android.graphics.RuntimeShader(RoundedRectRefractionShaderString)
-                } else null
-            )
-        }
 
         this
             .onGloballyPositioned { coordinates ->
                 localPosition = coordinates.positionInWindow()
             }
+            .then(
+                if (interaction != null) {
+                    Modifier.pointerInput(interaction) { interaction.detectPress(this) }
+                } else Modifier
+            )
             .graphicsLayer {
                 this.shape = shape
                 this.clip = true
                 
+                val press = interaction?.pressProgress ?: 0f
+                val scale = androidx.compose.ui.util.lerp(1f, 1.04f, press)
+                this.scaleX = scale
+                this.scaleY = scale
+
                 var currentEffect: android.graphics.RenderEffect? = null
                 
-                // Stage 1: Blur
+                val l = (luminanceAnimation * 2f - 1f).let { kotlin.math.sign(it) * it * it }
+                val blurRadius = (
+                    if (l > 0f) {
+                        androidx.compose.ui.util.lerp(8.dp.toPx(), 16.dp.toPx(), l)
+                    } else {
+                        androidx.compose.ui.util.lerp(8.dp.toPx(), 2.dp.toPx(), -l)
+                    }
+                ) + 2.dp.toPx() * press
+
                 if (blurRadius > 0f) {
                     currentEffect = android.graphics.RenderEffect.createBlurEffect(
                         blurRadius, blurRadius,
                         android.graphics.Shader.TileMode.DECAL
                     )
                 }
-                
-                // Stage 2: Vibrancy
-                if (vibrancy) {
-                    val vibrantFilter = colorControlsColorFilter(saturation = 1.5f)
-                    val colorEffect = android.graphics.RenderEffect.createColorFilterEffect(vibrantFilter)
-                    currentEffect = if (currentEffect != null) {
-                        android.graphics.RenderEffect.createChainEffect(colorEffect, currentEffect)
-                    } else {
-                        colorEffect
-                    }
-                }
-                
-                // Stage 4: Lens Refraction
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shader != null && backdropLayer != null) {
-                    shader?.setFloatUniform("size", size.width, size.height)
-                    shader?.setFloatUniform("offset", localPosition.x, localPosition.y)
-                    shader?.setFloatUniform("cornerRadii", 32.dp.toPx(), 32.dp.toPx(), 32.dp.toPx(), 32.dp.toPx()) // Hardcoded for MiniPlayer
-                    shader?.setFloatUniform("refractionHeight", refractionHeight)
-                    shader?.setFloatUniform("refractionAmount", -refractionAmount)
-                    shader?.setFloatUniform("depthEffect", if (depthEffect) 1f else 0f)
+
+                val colorFilter = colorControlsColorFilter(
+                    brightness = 0.05f,
+                    contrast = 1f,
+                    saturation = 1.5f
+                )
+                val colorEffect = android.graphics.RenderEffect.createColorFilterEffect(colorFilter)
+                currentEffect = if (currentEffect != null) {
+                    android.graphics.RenderEffect.createChainEffect(colorEffect, currentEffect)
+                } else colorEffect
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backdropLayer != null) {
+                    val shader = android.graphics.RuntimeShader(RoundedRectRefractionShaderString)
                     
-                    val refractionEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader!!, "content")
+                    val refractionHeight = size.minDimension / 4f + 2.dp.toPx() * press
+                    val refractionAmount = size.minDimension / 2f
+
+                    shader.setFloatUniform("size", size.width, size.height)
+                    shader.setFloatUniform("offset", localPosition.x, localPosition.y)
+                    
+                    val cr = 32.dp.toPx() // Hardcoded corner radius fallback for now to match MiniPlayer
+                    shader.setFloatUniform("cornerRadii", cr, cr, cr, cr) 
+
+                    shader.setFloatUniform("refractionHeight", refractionHeight)
+                    shader.setFloatUniform("refractionAmount", -refractionAmount)
+                    shader.setFloatUniform("depthEffect", 0f)
+                    
+                    val refractionEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content")
                     currentEffect = if (currentEffect != null) {
                         android.graphics.RenderEffect.createChainEffect(refractionEffect, currentEffect)
-                    } else {
-                        refractionEffect
-                    }
+                    } else refractionEffect
                 }
-                
+
                 this.renderEffect = currentEffect?.asComposeRenderEffect()
             }
             .drawBehind {
@@ -110,6 +108,24 @@ fun Modifier.liquidGlass(
                     translate(-localPosition.x, -localPosition.y) {
                         drawLayer(backdropLayer)
                     }
+                }
+                
+                val darken = androidx.compose.ui.util.lerp(0.12f, 0.5f, ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f))
+                drawRect(androidx.compose.ui.graphics.Color.Black.copy(alpha = darken))
+
+                val press = interaction?.pressProgress ?: 0f
+                if (press > 0f) {
+                    drawRect(
+                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                            colors = listOf(
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.18f * press),
+                                androidx.compose.ui.graphics.Color.Transparent,
+                            ),
+                            center = interaction?.touchPosition ?: Offset(size.width / 2f, size.height / 2f),
+                            radius = size.minDimension * 1.2f,
+                        ),
+                        blendMode = androidx.compose.ui.graphics.BlendMode.Plus,
+                    )
                 }
             }
     }
