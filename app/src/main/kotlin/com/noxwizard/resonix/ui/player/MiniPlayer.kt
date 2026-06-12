@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.asAndroidBitmap
 import kotlinx.coroutines.isActive
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -340,7 +341,8 @@ private fun NewMiniPlayer(
                                 backdropLayer = backdropLayer,
                                 shape = RoundedCornerShape(32.dp),
                                 luminanceAnimation = luminanceAnimation.value,
-                                interaction = interaction
+                                interaction = interaction,
+                                isDarkTheme = isSystemInDarkTheme()
                             )
                             .clip(RoundedCornerShape(32.dp))
                         } else {
