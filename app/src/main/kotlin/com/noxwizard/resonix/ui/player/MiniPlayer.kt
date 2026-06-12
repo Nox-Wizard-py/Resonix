@@ -42,9 +42,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.asAndroidBitmap
+import kotlinx.coroutines.isActive
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -160,6 +163,39 @@ private fun NewMiniPlayer(
     
     val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
     val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
+    
+    val interaction = com.noxwizard.resonix.ui.effects.liquidglass.rememberGlassInteraction()
+    val luminanceAnimation = remember { Animatable(0.5f) }
+    
+    LaunchedEffect(backdropLayer, frostedGlassMiniPlayer) {
+        val buffer = IntArray(25) // 5x5
+        while (kotlinx.coroutines.isActive && frostedGlassMiniPlayer) {
+            try {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    backdropLayer?.let { layer ->
+                        val imageBitmap = layer.toImageBitmap()
+                        val bitmap = androidx.compose.ui.graphics.asAndroidBitmap(imageBitmap)
+                        val thumbnail = android.graphics.Bitmap.createScaledBitmap(bitmap, 5, 5, true)
+                        thumbnail.getPixels(buffer, 0, 5, 0, 0, 5, 5)
+                        
+                        var sum = 0f
+                        for (color in buffer) {
+                            val r = android.graphics.Color.red(color) / 255f
+                            val g = android.graphics.Color.green(color) / 255f
+                            val b = android.graphics.Color.blue(color) / 255f
+                            val l = 0.2126f * r + 0.7152f * g + 0.0722f * b
+                            sum += l
+                        }
+                        val avgLuminance = sum / 25f
+                        luminanceAnimation.animateTo(avgLuminance, spring(stiffness = 50f))
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore error if layer isn't ready
+            }
+            kotlinx.coroutines.delay(1000)
+        }
+    }
     val isDarkTheme = if (pureBlack) true
     else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
 
@@ -303,15 +339,10 @@ private fun NewMiniPlayer(
                             .liquidGlass(
                                 backdropLayer = backdropLayer,
                                 shape = RoundedCornerShape(32.dp),
-                                blurRadius = with(LocalDensity.current) { 32.dp.toPx() },
-                                vibrancy = true, // Stage 2
-                                refractionHeight = with(LocalDensity.current) { 48.dp.toPx() }, // Stage 4
-                                refractionAmount = with(LocalDensity.current) { 48.dp.toPx() },
-                                depthEffect = true,
-                                chromaticAberration = true
+                                luminanceAnimation = luminanceAnimation.value,
+                                interaction = interaction
                             )
                             .clip(RoundedCornerShape(32.dp))
-                            .background(glassBg)
                         } else {
                             it.shadow(
                                 elevation = 8.dp,
