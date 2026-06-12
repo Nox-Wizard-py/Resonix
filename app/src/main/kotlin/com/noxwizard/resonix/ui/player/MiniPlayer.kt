@@ -163,9 +163,9 @@ private fun NewMiniPlayer(
     else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
 
     val glassBg = if (isDarkTheme)
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+        Color.Black.copy(alpha = 0.15f)
     else
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
+        Color.White.copy(alpha = 0.20f)
 
     val shadowColor = if (isDarkTheme) Color.Black.copy(alpha = 0.50f)
     else Color.Black.copy(alpha = 0.12f)
@@ -302,10 +302,10 @@ private fun NewMiniPlayer(
                             .liquidGlass(
                                 backdropLayer = backdropLayer,
                                 shape = RoundedCornerShape(32.dp),
-                                blurRadius = 16f,
+                                blurRadius = with(LocalDensity.current) { 32.dp.toPx() },
                                 vibrancy = true, // Stage 2
-                                refractionHeight = 2f, // Stage 4
-                                refractionAmount = 0.5f,
+                                refractionHeight = with(LocalDensity.current) { 48.dp.toPx() }, // Stage 4
+                                refractionAmount = with(LocalDensity.current) { 48.dp.toPx() },
                                 depthEffect = true,
                                 chromaticAberration = true
                             )
