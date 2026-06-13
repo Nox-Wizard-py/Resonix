@@ -736,15 +736,13 @@ private fun LegacyMiniPlayer(
                         ambientColor = shadowColor,
                         spotColor = shadowColor,
                     )
-                    .background(glassBg)
-                    .liquid(rememberLiquidState()) {
-                        frost = if (isDarkTheme) 32.dp else 28.dp
-                        curve = if (isDarkTheme) 0.40f else 0.50f
-                        refraction = if (isDarkTheme) 0.06f else 0.10f
-                        dispersion = if (isDarkTheme) 0.15f else 0.22f
-                        saturation = if (isDarkTheme) 0.70f else 0.90f
-                        contrast = if (isDarkTheme) 1.9f else 1.2f
-                    }
+                    .liquidGlass(
+                        backdropLayer = backdropLayer,
+                        shape = RoundedCornerShape(12.dp),
+                        luminanceAnimation = 0.5f,
+                        interaction = null,
+                        isDarkTheme = isDarkTheme
+                    )
                     .drawBehind {
                         // Top specular highlight
                         drawRect(
