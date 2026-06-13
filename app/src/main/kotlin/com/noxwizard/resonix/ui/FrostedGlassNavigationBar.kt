@@ -428,6 +428,7 @@ fun GlassUtilityFab(
     modifier: Modifier = Modifier,
     useGlassTheme: Boolean = true
 ) {
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
     val iconRotation by animateFloatAsState(
         targetValue = if (isExpanded) 45f else 0f,
         animationSpec = spring(
@@ -555,16 +556,13 @@ fun GlassUtilityFab(
                         spotColor = shadowColor,
                     )
                     .clip(CircleShape)
-                    .background(glassBg)
-                    .liquid(rememberLiquidState()) {
-                        shape = CircleShape
-                        frost = if (isDarkTheme) 32.dp else 28.dp
-                        curve = if (isDarkTheme) 0.40f else 0.50f
-                        refraction = if (isDarkTheme) 0.06f else 0.10f
-                        dispersion = if (isDarkTheme) 0.15f else 0.22f
-                        saturation = if (isDarkTheme) 0.70f else 0.90f
-                        contrast = if (isDarkTheme) 1.9f else 1.2f
-                    }
+                    .liquidGlass(
+                        backdropLayer = backdropLayer,
+                        shape = CircleShape,
+                        luminanceAnimation = 0.5f,
+                        interaction = null,
+                        isDarkTheme = isDarkTheme
+                    )
                     .drawBehind {
                         drawRoundRect(
                             brush = Brush.horizontalGradient(
