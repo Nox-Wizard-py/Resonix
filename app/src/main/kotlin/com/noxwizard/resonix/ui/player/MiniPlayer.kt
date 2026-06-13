@@ -698,6 +698,7 @@ private fun LegacyMiniPlayer(
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
     val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
     val isDarkTheme = if (pureBlack) true
     else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
 
