@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -46,6 +47,11 @@ fun Modifier.liquidGlass(
             .graphicsLayer {
                 this.shape = shape
                 this.clip = true
+                // Force HWUI to rasterize ALL content (including text's nested RenderNodes)
+                // into one flat offscreen surface BEFORE applying the blur/refraction
+                // RenderEffect. Without this, hardware-accelerated text glyphs bypass the
+                // RenderEffect pipeline and appear unblurred on top of the blurred surface.
+                this.compositingStrategy = CompositingStrategy.Offscreen
                 
                 val press = interaction?.pressProgress ?: 0f
                 val scale = androidx.compose.ui.util.lerp(1f, 1.04f, press)
