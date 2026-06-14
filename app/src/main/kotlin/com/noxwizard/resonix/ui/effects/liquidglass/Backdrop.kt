@@ -20,6 +20,10 @@ val LocalBackdropGraphicsLayer: ProvidableCompositionLocal<GraphicsLayer?> = sta
  */
 @Composable
 fun Modifier.provideBackdropLayer(layer: GraphicsLayer): Modifier {
+    // Force an offscreen render pass so that hardware-accelerated text
+    // is rasterized into the layer bitmap (instead of being drawn
+    // directly to the hardware canvas and skipped by the capture).
+    layer.compositingStrategy = androidx.compose.ui.graphics.layer.CompositingStrategy.Offscreen
     return this.drawWithContent {
         layer.record {
             this@drawWithContent.drawContent()
