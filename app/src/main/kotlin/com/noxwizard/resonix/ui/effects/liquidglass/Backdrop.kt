@@ -6,7 +6,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
 
 /**
  * Provides the background layer for liquid glass effects to capture and refract.
@@ -20,10 +19,6 @@ val LocalBackdropGraphicsLayer: ProvidableCompositionLocal<GraphicsLayer?> = sta
  */
 @Composable
 fun Modifier.provideBackdropLayer(layer: GraphicsLayer): Modifier {
-    // Force an offscreen render pass so that hardware-accelerated text
-    // is rasterized into the layer bitmap (instead of being drawn
-    // directly to the hardware canvas and skipped by the capture).
-    layer.compositingStrategy = androidx.compose.ui.graphics.layer.CompositingStrategy.Offscreen
     return this.drawWithContent {
         layer.record {
             this@drawWithContent.drawContent()
