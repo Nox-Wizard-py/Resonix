@@ -556,35 +556,42 @@ fun GlassUtilityFab(
                         spotColor = shadowColor,
                     )
                     .clip(CircleShape)
-                    .liquidGlass(
-                        backdropLayer = backdropLayer,
-                        shape = CircleShape,
-                        luminanceAnimation = 0.5f,
-                        interaction = null,
-                        isDarkTheme = isDarkTheme
-                    )
-                    .drawBehind {
-                        drawRoundRect(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, innerReflectionColor, innerReflectionColor, Color.Transparent),
-                                startX = size.width * 0.15f,
-                                endX = size.width * 0.85f,
-                            ),
-                            topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
-                            size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
-                            cornerRadius = CornerRadius(1.dp.toPx()),
-                        )
-                        drawRoundRect(
-                            color = borderColor,
-                            topLeft = Offset.Zero,
-                            size = size,
-                            cornerRadius = CornerRadius(size.width / 2),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5f.dp.toPx()),
-                        )
-                    }
                     .clickable { onExpandedChange(!isExpanded) },
                 contentAlignment = Alignment.Center,
             ) {
+                // Glass background layer
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .liquidGlass(
+                            backdropLayer = backdropLayer,
+                            shape = CircleShape,
+                            luminanceAnimation = 0.5f,
+                            interaction = null,
+                            isDarkTheme = isDarkTheme
+                        )
+                        .drawBehind {
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, innerReflectionColor, innerReflectionColor, Color.Transparent),
+                                    startX = size.width * 0.15f,
+                                    endX = size.width * 0.85f,
+                                ),
+                                topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
+                                size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
+                                cornerRadius = CornerRadius(1.dp.toPx()),
+                            )
+                            drawRoundRect(
+                                color = borderColor,
+                                topLeft = Offset.Zero,
+                                size = size,
+                                cornerRadius = CornerRadius(size.width / 2),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5f.dp.toPx()),
+                            )
+                        }
+                )
+
+                // Foreground content
                 Icon(
                     painter = painterResource(R.drawable.more_vert),
                     contentDescription = null,
