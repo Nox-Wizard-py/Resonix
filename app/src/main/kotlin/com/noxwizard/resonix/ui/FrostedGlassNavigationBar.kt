@@ -173,9 +173,9 @@ fun FrostedGlassNavigationBar(
     }
 
     androidx.compose.runtime.LaunchedEffect(dampedDrag) {
-        androidx.compose.runtime.snapshotFlow { currentIndex }
-            .kotlinx.coroutines.flow.drop(1)
-            .kotlinx.coroutines.flow.collectLatest { index: Int ->
+        snapshotFlow { currentIndex }
+            .drop(1)
+            .collectLatest { index: Int ->
                 dampedDrag.animateToValue(index.toFloat())
                 if (index in navigationItems.indices) {
                     onItemClick(navigationItems[index], false)
@@ -850,4 +850,4 @@ class DampedDragAnimation(
             velocityTracker.calculateVelocity().x / (valueRange.endInclusive - valueRange.start)
         animationScope.launch { velocityAnimation.animateTo(targetVelocity, velocityAnimationSpec) }
     }
-}}
+}
