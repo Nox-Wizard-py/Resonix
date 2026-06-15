@@ -40,7 +40,39 @@ import com.noxwizard.resonix.ui.component.MenuState
 import com.noxwizard.resonix.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import com.noxwizard.resonix.ui.effects.liquidglass.inspectDragGestures
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.MutatorMutex
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.util.fastFirstOrNull
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.util.fastCoerceIn
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -126,7 +158,7 @@ fun FrostedGlassNavigationBar(
                     animateToValue(target.toFloat())
                 }
             },
-            onDrag = { _, dragAmount ->
+            onDrag = { size, dragAmount ->
                 if (dragAmount.x != 0f) draggedFlag[0] = true
                 updateValue(
                     (targetValue + dragAmount.x / (size.width / itemCount.toFloat()))
@@ -143,7 +175,7 @@ fun FrostedGlassNavigationBar(
     androidx.compose.runtime.LaunchedEffect(dampedDrag) {
         androidx.compose.runtime.snapshotFlow { currentIndex }
             .kotlinx.coroutines.flow.drop(1)
-            .kotlinx.coroutines.flow.collectLatest { index ->
+            .kotlinx.coroutines.flow.collectLatest { index: Int ->
                 dampedDrag.animateToValue(index.toFloat())
                 if (index in navigationItems.indices) {
                     onItemClick(navigationItems[index], false)
@@ -781,9 +813,9 @@ class DampedDragAnimation(
             androidx.compose.runtime.withFrameNanos {}
             if (value != targetValue) {
                 val threshold = (valueRange.endInclusive - valueRange.start) * 0.025f
-                androidx.compose.runtime.snapshotFlow { valueAnimation.value }
-                    .kotlinx.coroutines.flow.filter { kotlin.math.abs(it - valueAnimation.targetValue) < threshold }
-                    .kotlinx.coroutines.flow.first()
+                snapshotFlow { valueAnimation.value }
+                    .filter { abs(it - valueAnimation.targetValue) < threshold }
+                    .first()
             }
             launch { pressProgressAnimation.animateTo(0f, pressProgressAnimationSpec) }
             launch { scaleXAnimation.animateTo(initialScale, scaleXAnimationSpec) }
@@ -818,79 +850,4 @@ class DampedDragAnimation(
             velocityTracker.calculateVelocity().x / (valueRange.endInclusive - valueRange.start)
         animationScope.launch { velocityAnimation.animateTo(targetVelocity, velocityAnimationSpec) }
     }
-}
-
-/**
- * Observe-only drag/press recogniser. It never consumes events, so a glass surface can react
- * to a press while the buttons it wraps still handle their own taps.
- */
-internal suspend fun androidx.compose.ui.input.pointer.PointerInputScope.inspectDragGestures(
-    onDragStart: (down: androidx.compose.ui.input.pointer.PointerInputChange) -> Unit = {},
-    onDragEnd: (change: androidx.compose.ui.input.pointer.PointerInputChange) -> Unit = {},
-    onDragCancel: () -> Unit = {},
-    onDrag: (change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: androidx.compose.ui.geometry.Offset) -> Unit,
-) {
-    androidx.compose.foundation.gestures.awaitEachGesture {
-        androidx.compose.foundation.gestures.awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-
-        val down = androidx.compose.foundation.gestures.awaitFirstDown(requireUnconsumed = false)
-
-        onDragStart(down)
-        onDrag(down, androidx.compose.ui.geometry.Offset.Zero)
-        val upEvent =
-            drag(
-                pointerId = down.id,
-                onDrag = { onDrag(it, androidx.compose.ui.input.pointer.positionChange(it)) },
-            )
-        if (upEvent == null) {
-            onDragCancel()
-        } else {
-            onDragEnd(upEvent)
-        }
-    }
-}
-
-private suspend inline fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.drag(
-    pointerId: androidx.compose.ui.input.pointer.PointerId,
-    onDrag: (androidx.compose.ui.input.pointer.PointerInputChange) -> Unit,
-): androidx.compose.ui.input.pointer.PointerInputChange? {
-    val isPointerUp = currentEvent.changes.androidx.compose.ui.util.fastFirstOrNull { it.id == pointerId }?.pressed != true
-    if (isPointerUp) {
-        return null
-    }
-    var pointer = pointerId
-    while (true) {
-        val change = awaitDragOrUp(pointer) ?: return null
-        if (change.isConsumed) {
-            return null
-        }
-        if (androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed(change)) {
-            return change
-        }
-        onDrag(change)
-        pointer = change.id
-    }
-}
-
-private suspend inline fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.awaitDragOrUp(
-    pointerId: androidx.compose.ui.input.pointer.PointerId,
-): androidx.compose.ui.input.pointer.PointerInputChange? {
-    var pointer = pointerId
-    while (true) {
-        val event = awaitPointerEvent()
-        val dragEvent = event.changes.androidx.compose.ui.util.fastFirstOrNull { it.id == pointer } ?: return null
-        if (androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed(dragEvent)) {
-            val otherDown = event.changes.androidx.compose.ui.util.fastFirstOrNull { it.pressed }
-            if (otherDown == null) {
-                return dragEvent
-            } else {
-                pointer = otherDown.id
-            }
-        } else {
-            val hasDragged = dragEvent.previousPosition != dragEvent.position
-            if (hasDragged) {
-                return dragEvent
-            }
-        }
-    }
-}
+}}
