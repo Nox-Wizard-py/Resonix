@@ -42,9 +42,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.asAndroidBitmap
+import kotlinx.coroutines.isActive
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,11 +62,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import io.github.fletchmckee.liquid.liquid
 import io.github.fletchmckee.liquid.rememberLiquidState
+import com.noxwizard.resonix.ui.effects.liquidglass.liquidGlass
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -157,13 +163,47 @@ private fun NewMiniPlayer(
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
     
     val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
+    
+    val interaction = com.noxwizard.resonix.ui.effects.liquidglass.rememberGlassInteraction()
+    val luminanceAnimation = remember { Animatable(0.5f) }
+    
+    LaunchedEffect(backdropLayer, frostedGlassMiniPlayer) {
+        val buffer = IntArray(25) // 5x5
+        while (isActive && frostedGlassMiniPlayer) {
+            try {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    backdropLayer?.let { layer ->
+                        val imageBitmap = layer.toImageBitmap()
+                        val bitmap = imageBitmap.asAndroidBitmap()
+                        val thumbnail = android.graphics.Bitmap.createScaledBitmap(bitmap, 5, 5, true)
+                        thumbnail.getPixels(buffer, 0, 5, 0, 0, 5, 5)
+                        
+                        var sum = 0f
+                        for (color in buffer) {
+                            val r = android.graphics.Color.red(color) / 255f
+                            val g = android.graphics.Color.green(color) / 255f
+                            val b = android.graphics.Color.blue(color) / 255f
+                            val l = 0.2126f * r + 0.7152f * g + 0.0722f * b
+                            sum += l
+                        }
+                        val avgLuminance = sum / 25f
+                        luminanceAnimation.animateTo(avgLuminance, spring(stiffness = 50f))
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore error if layer isn't ready
+            }
+            kotlinx.coroutines.delay(1000)
+        }
+    }
     val isDarkTheme = if (pureBlack) true
     else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
 
     val glassBg = if (isDarkTheme)
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+        Color.Black.copy(alpha = 0.15f)
     else
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
+        Color.White.copy(alpha = 0.20f)
 
     val shadowColor = if (isDarkTheme) Color.Black.copy(alpha = 0.50f)
     else Color.Black.copy(alpha = 0.12f)
@@ -280,30 +320,44 @@ private fun NewMiniPlayer(
             }
     ) {
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
-                .height(64.dp) // Circular height
+                .height(MiniPlayerHeight)
                 .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                .let {
-                    if (frostedGlassMiniPlayer) {
-                        it.shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(32.dp),
-                            ambientColor = shadowColor,
-                            spotColor = shadowColor,
-                        )
-                        .clip(RoundedCornerShape(32.dp))
-                        .background(glassBg)
-                        .liquid(rememberLiquidState()) {
-                            shape = RoundedCornerShape(32.dp)
-                            frost = if (isDarkTheme) 32.dp else 28.dp
-                            curve = if (isDarkTheme) 0.40f else 0.50f
-                            refraction = if (isDarkTheme) 0.06f else 0.10f
-                            dispersion = if (isDarkTheme) 0.15f else 0.22f
-                            saturation = if (isDarkTheme) 0.70f else 0.90f
-                            contrast = if (isDarkTheme) 1.9f else 1.2f
+        ) {
+            // Background Layer for Glass Effect
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .let {
+                        if (frostedGlassMiniPlayer) {
+                            it.shadow(
+                                elevation = 8.dp,
+                                ambientColor = shadowColor,
+                                spotColor = shadowColor,
+                                shape = RoundedCornerShape(32.dp)
+                            )
+                            .liquidGlass(
+                                backdropLayer = backdropLayer,
+                                shape = RoundedCornerShape(32.dp),
+                                luminanceAnimation = luminanceAnimation.value,
+                                interaction = interaction,
+                                isDarkTheme = isSystemInDarkTheme()
+                            )
+                            .clip(RoundedCornerShape(32.dp))
+                        } else {
+                            it.shadow(
+                                elevation = 8.dp,
+                                ambientColor = shadowColor,
+                                spotColor = shadowColor,
+                                shape = RoundedCornerShape(32.dp)
+                            )
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                         }
-                        .drawBehind {
+                    }
+                    .drawBehind {
+                        if (frostedGlassMiniPlayer) {
                             // Top specular highlight
                             drawRoundRect(
                                 brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
@@ -331,12 +385,8 @@ private fun NewMiniPlayer(
                                 ),
                             )
                         }
-                    } else {
-                        it.clip(RoundedCornerShape(32.dp))
-                          .background(color = MaterialTheme.colorScheme.surfaceContainer)
                     }
-                }
-        ) {
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -648,6 +698,7 @@ private fun LegacyMiniPlayer(
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
     val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
     val isDarkTheme = if (pureBlack) true
     else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
 
@@ -686,15 +737,13 @@ private fun LegacyMiniPlayer(
                         ambientColor = shadowColor,
                         spotColor = shadowColor,
                     )
-                    .background(glassBg)
-                    .liquid(rememberLiquidState()) {
-                        frost = if (isDarkTheme) 32.dp else 28.dp
-                        curve = if (isDarkTheme) 0.40f else 0.50f
-                        refraction = if (isDarkTheme) 0.06f else 0.10f
-                        dispersion = if (isDarkTheme) 0.15f else 0.22f
-                        saturation = if (isDarkTheme) 0.70f else 0.90f
-                        contrast = if (isDarkTheme) 1.9f else 1.2f
-                    }
+                    .liquidGlass(
+                        backdropLayer = backdropLayer,
+                        shape = RoundedCornerShape(12.dp),
+                        luminanceAnimation = 0.5f,
+                        interaction = null,
+                        isDarkTheme = isDarkTheme
+                    )
                     .drawBehind {
                         // Top specular highlight
                         drawRect(

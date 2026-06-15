@@ -61,7 +61,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.noxwizard.resonix.constants.NavigationBarHeight
+import com.noxwizard.resonix.ui.effects.liquidglass.liquidGlass
 import com.noxwizard.resonix.ui.component.BottomSheetState
 import com.noxwizard.resonix.ui.player.BottomSheetPlayer
 import com.noxwizard.resonix.ui.screens.Screens
@@ -116,9 +118,9 @@ fun FrostedGlassNavigationBar(
 
     // --- Glass colors ---
     val glassBg = if (isDarkTheme)
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+        Color.Black.copy(alpha = 0.15f)
     else
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
+        Color.White.copy(alpha = 0.20f)
 
     val indicatorHighColor = if (isDarkTheme) Color.White.copy(alpha = 0.25f)
     else Color.Black.copy(alpha = 0.12f)
@@ -137,6 +139,8 @@ fun FrostedGlassNavigationBar(
 
     val shadowColor = if (isDarkTheme) Color.Black.copy(alpha = 0.50f)
     else Color.Black.copy(alpha = 0.12f)
+    
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
 
     Box {
         BottomSheetPlayer(
@@ -175,7 +179,6 @@ fun FrostedGlassNavigationBar(
                     }
                 },
         ) {
-            // Pill
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -185,49 +188,51 @@ fun FrostedGlassNavigationBar(
                         shape = RoundedCornerShape(NavBarCornerRadius),
                         ambientColor = shadowColor,
                         spotColor = shadowColor,
-                    )
-                    .clip(RoundedCornerShape(NavBarCornerRadius))
-                    .background(glassBg)
-                    .liquid(rememberLiquidState()) {
-                    shape = RoundedCornerShape(NavBarCornerRadius)
-                    frost = if (isDarkTheme) 32.dp else 28.dp
-                    curve = if (isDarkTheme) 0.40f else 0.50f
-                    refraction = if (isDarkTheme) 0.06f else 0.10f
-                    dispersion = if (isDarkTheme) 0.15f else 0.22f
-                    saturation = if (isDarkTheme) 0.70f else 0.90f
-                    contrast = if (isDarkTheme) 1.9f else 1.2f
-                }
-                // Inner glass reflection line at top
-                .drawBehind {
-                    // Top specular highlight
-                    drawRoundRect(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                innerReflectionColor,
-                                innerReflectionColor,
-                                Color.Transparent,
-                            ),
-                            startX = size.width * 0.15f,
-                            endX = size.width * 0.85f,
-                        ),
-                        topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
-                        size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
-                        cornerRadius = CornerRadius(1.dp.toPx()),
-                    )
-                    // Subtle border
-                    drawRoundRect(
-                        color = borderColor,
-                        topLeft = Offset.Zero,
-                        size = size,
-                        cornerRadius = CornerRadius(NavBarCornerRadius.toPx()),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 0.5f.dp.toPx()
-                        ),
-                    )
-                },
-            contentAlignment = Alignment.Center,
-        ) {
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                // Glass Background
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(NavBarCornerRadius))
+                        .liquidGlass(
+                            backdropLayer = backdropLayer,
+                            shape = RoundedCornerShape(NavBarCornerRadius),
+                            luminanceAnimation = 0.5f,
+                            interaction = null,
+                            isDarkTheme = isDarkTheme
+                        )
+                        // Inner glass reflection line at top
+                        .drawBehind {
+                            // Top specular highlight
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        innerReflectionColor,
+                                        innerReflectionColor,
+                                        Color.Transparent,
+                                    ),
+                                    startX = size.width * 0.15f,
+                                    endX = size.width * 0.85f,
+                                ),
+                                topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
+                                size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
+                                cornerRadius = CornerRadius(1.dp.toPx()),
+                            )
+                            // Subtle border
+                            drawRoundRect(
+                                color = borderColor,
+                                topLeft = Offset.Zero,
+                                size = size,
+                                cornerRadius = CornerRadius(NavBarCornerRadius.toPx()),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                    width = 0.5f.dp.toPx()
+                                ),
+                            )
+                        }
+                )
             Box(
                 modifier = Modifier
                     .height(NavBarHeight)
@@ -423,6 +428,7 @@ fun GlassUtilityFab(
     modifier: Modifier = Modifier,
     useGlassTheme: Boolean = true
 ) {
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
     val iconRotation by animateFloatAsState(
         targetValue = if (isExpanded) 45f else 0f,
         animationSpec = spring(
@@ -550,38 +556,42 @@ fun GlassUtilityFab(
                         spotColor = shadowColor,
                     )
                     .clip(CircleShape)
-                    .background(glassBg)
-                    .liquid(rememberLiquidState()) {
-                        shape = CircleShape
-                        frost = if (isDarkTheme) 32.dp else 28.dp
-                        curve = if (isDarkTheme) 0.40f else 0.50f
-                        refraction = if (isDarkTheme) 0.06f else 0.10f
-                        dispersion = if (isDarkTheme) 0.15f else 0.22f
-                        saturation = if (isDarkTheme) 0.70f else 0.90f
-                        contrast = if (isDarkTheme) 1.9f else 1.2f
-                    }
-                    .drawBehind {
-                        drawRoundRect(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, innerReflectionColor, innerReflectionColor, Color.Transparent),
-                                startX = size.width * 0.15f,
-                                endX = size.width * 0.85f,
-                            ),
-                            topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
-                            size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
-                            cornerRadius = CornerRadius(1.dp.toPx()),
-                        )
-                        drawRoundRect(
-                            color = borderColor,
-                            topLeft = Offset.Zero,
-                            size = size,
-                            cornerRadius = CornerRadius(size.width / 2),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5f.dp.toPx()),
-                        )
-                    }
                     .clickable { onExpandedChange(!isExpanded) },
                 contentAlignment = Alignment.Center,
             ) {
+                // Glass background layer
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .liquidGlass(
+                            backdropLayer = backdropLayer,
+                            shape = CircleShape,
+                            luminanceAnimation = 0.5f,
+                            interaction = null,
+                            isDarkTheme = isDarkTheme
+                        )
+                        .drawBehind {
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, innerReflectionColor, innerReflectionColor, Color.Transparent),
+                                    startX = size.width * 0.15f,
+                                    endX = size.width * 0.85f,
+                                ),
+                                topLeft = Offset(size.width * 0.15f, 1.dp.toPx()),
+                                size = Size(size.width * 0.70f, 1.5f.dp.toPx()),
+                                cornerRadius = CornerRadius(1.dp.toPx()),
+                            )
+                            drawRoundRect(
+                                color = borderColor,
+                                topLeft = Offset.Zero,
+                                size = size,
+                                cornerRadius = CornerRadius(size.width / 2),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5f.dp.toPx()),
+                            )
+                        }
+                )
+
+                // Foreground content
                 Icon(
                     painter = painterResource(R.drawable.more_vert),
                     contentDescription = null,

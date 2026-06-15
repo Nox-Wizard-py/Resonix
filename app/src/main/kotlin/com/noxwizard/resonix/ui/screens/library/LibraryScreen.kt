@@ -59,7 +59,7 @@ fun LibraryScreen(navController: NavController) {
             MeshGradientBackground(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxSize(0.7f) // Cover top 70% of screen
+                    .fillMaxSize() // Cover entire screen so bottom doesn't show black gap
                     .align(Alignment.TopCenter)
                     .zIndex(-1f) // Place behind all content
             )

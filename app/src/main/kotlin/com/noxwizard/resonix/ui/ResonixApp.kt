@@ -207,8 +207,7 @@ import androidx.compose.animation.core.tween
 import java.net.URLDecoder
 import java.net.URLEncoder
 import kotlin.time.Duration.Companion.days
-
-
+import com.noxwizard.resonix.ui.effects.liquidglass.provideBackdropLayer
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -675,6 +674,8 @@ fun ResonixApp(
 
             var showAccountDialog by remember { mutableStateOf(false) }
 
+            val backdropLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+
             CompositionLocalProvider(
                 LocalDatabase provides database,
                 LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -686,6 +687,7 @@ fun ResonixApp(
                 com.noxwizard.resonix.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                 com.noxwizard.resonix.ui.component.LocalMenuState provides menuState,
                 LocalCategoryAccentCallback provides { color -> categoryAccentOverride = color },
+                com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer provides backdropLayer,
             ) {
                 var isUtilityFabExpanded by rememberSaveable { mutableStateOf(false) }
                 val utilityFabBlurRadius by animateDpAsState(
@@ -699,7 +701,9 @@ fun ResonixApp(
                     label = "scrim_anim"
                 )
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                ) {
                     Scaffold(
                         modifier = Modifier
                             .fillMaxSize()
@@ -867,8 +871,10 @@ fun ResonixApp(
                                 fadeOut(tween(200)) + slideOutHorizontally { it / 2 }
                             }
                         },
-                        modifier = Modifier.nestedScroll(
-                            if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
+                        modifier = Modifier
+                            .provideBackdropLayer(backdropLayer)
+                            .nestedScroll(
+                                if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
                                 navBackStackEntry?.destination?.route?.startsWith("search/") == true
                             ) {
                                 searchBarScrollBehavior.nestedScrollConnection
