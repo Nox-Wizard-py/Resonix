@@ -106,15 +106,50 @@ fun FrostedGlassNavigationBar(
 
     val itemCount = navigationItems.size
 
-    // Animated indicator fraction: slides to selectedIndex
-    val indicatorFraction by animateFloatAsState(
-        targetValue = selectedIndex.toFloat(),
-        animationSpec = tween(
-            durationMillis = 250,
-            easing = FastOutSlowInEasing,
-        ),
-        label = "indicatorSlide",
-    )
+    val animationScope = androidx.compose.runtime.rememberCoroutineScope()
+    var currentIndex by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(selectedIndex.coerceAtLeast(0)) }
+    val draggedFlag = androidx.compose.runtime.remember { booleanArrayOf(false) }
+
+    val dampedDrag = androidx.compose.runtime.remember(animationScope, itemCount) {
+        DampedDragAnimation(
+            animationScope = animationScope,
+            initialValue = selectedIndex.coerceAtLeast(0).toFloat(),
+            valueRange = 0f..(itemCount - 1).toFloat(),
+            visibilityThreshold = 0.001f,
+            initialScale = 1f,
+            pressedScale = 1.15f,
+            onDragStarted = { draggedFlag[0] = false },
+            onDragStopped = {
+                if (draggedFlag[0]) {
+                    val target = targetValue.roundToInt().coerceIn(0, itemCount - 1)
+                    currentIndex = target
+                    animateToValue(target.toFloat())
+                }
+            },
+            onDrag = { _, dragAmount ->
+                if (dragAmount.x != 0f) draggedFlag[0] = true
+                updateValue(
+                    (targetValue + dragAmount.x / (size.width / itemCount.toFloat()))
+                        .coerceIn(0f, (itemCount - 1).toFloat())
+                )
+            }
+        )
+    }
+
+    androidx.compose.runtime.LaunchedEffect(selectedIndex) {
+        if (selectedIndex >= 0 && currentIndex != selectedIndex) currentIndex = selectedIndex
+    }
+
+    androidx.compose.runtime.LaunchedEffect(dampedDrag) {
+        androidx.compose.runtime.snapshotFlow { currentIndex }
+            .kotlinx.coroutines.flow.drop(1)
+            .kotlinx.coroutines.flow.collectLatest { index ->
+                dampedDrag.animateToValue(index.toFloat())
+                if (index in navigationItems.indices) {
+                    onItemClick(navigationItems[index], false)
+                }
+            }
+    }
 
     // --- Glass colors ---
     val glassBg = if (isDarkTheme)
@@ -233,74 +268,92 @@ fun FrostedGlassNavigationBar(
                             )
                         }
                 )
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .height(NavBarHeight)
                     .fillMaxWidth()
             ) {
-                // Sliding pill indicator (drawn behind icons)
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .drawBehind {
-                            if (itemCount == 0) return@drawBehind
-                            val slotWidth = size.width / itemCount
-                            val indicatorX =
-                                indicatorFraction * slotWidth + IndicatorHorizontalPadding.toPx()
-                            val indicatorW =
-                                slotWidth - IndicatorHorizontalPadding.toPx() * 2f
-                            val indicatorY = IndicatorVerticalPadding.toPx()
-                            val indicatorH =
-                                size.height - IndicatorVerticalPadding.toPx() * 2f
-                            val cr = CornerRadius(IndicatorCornerRadius.toPx())
+                if (itemCount > 0) {
+                    val slotWidth = maxWidth / itemCount
+                    val indicatorX = slotWidth * dampedDrag.value + IndicatorHorizontalPadding
+                    val indicatorW = slotWidth - IndicatorHorizontalPadding * 2f
+                    val indicatorY = IndicatorVerticalPadding
+                    val indicatorH = maxHeight - IndicatorVerticalPadding * 2f
 
-                            // Glass gradient fill
-                            drawRoundRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(indicatorHighColor, indicatorLowColor),
-                                ),
-                                topLeft = Offset(indicatorX, indicatorY),
-                                size = Size(indicatorW, indicatorH),
-                                cornerRadius = cr,
-                            )
-
-                            // Top specular line on indicator
-                            val specStartX = indicatorX + indicatorW * 0.15f
-                            val specWidth = indicatorW * 0.70f
-                            drawRoundRect(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        specularColor,
-                                        Color.Transparent,
-                                    ),
-                                    startX = specStartX,
-                                    endX = specStartX + specWidth,
-                                ),
-                                topLeft = Offset(specStartX, indicatorY + 1.5f.dp.toPx()),
-                                size = Size(specWidth, 1.dp.toPx()),
-                                cornerRadius = CornerRadius(0.5f.dp.toPx()),
-                            )
-
-                            // Thin border around indicator (dark theme)
-                            if (isDarkTheme) {
-                                drawRoundRect(
-                                    color = borderColor,
-                                    topLeft = Offset(indicatorX, indicatorY),
-                                    size = Size(indicatorW, indicatorH),
-                                    cornerRadius = cr,
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 0.5f.dp.toPx()
-                                    ),
-                                )
+                    // Sliding pill indicator (glass slider)
+                    Box(
+                        modifier = Modifier
+                            .offset(x = indicatorX, y = indicatorY)
+                            .size(width = indicatorW, height = indicatorH)
+                            .graphicsLayer {
+                                scaleX = dampedDrag.scaleX
+                                scaleY = dampedDrag.scaleY
+                                val velocity = dampedDrag.velocity / 10f
+                                scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
+                                scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                             }
-                        }
-                )
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = RoundedCornerShape(IndicatorCornerRadius),
+                                ambientColor = shadowColor,
+                                spotColor = shadowColor,
+                            )
+                            .clip(RoundedCornerShape(IndicatorCornerRadius))
+                            .liquidGlass(
+                                backdropLayer = backdropLayer,
+                                shape = RoundedCornerShape(IndicatorCornerRadius),
+                                luminanceAnimation = 0.5f,
+                                interaction = null,
+                                isDarkTheme = isDarkTheme
+                            )
+                            .drawBehind {
+                                // Glass gradient fill
+                                drawRoundRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(indicatorHighColor, indicatorLowColor),
+                                    ),
+                                    size = size,
+                                    cornerRadius = CornerRadius(IndicatorCornerRadius.toPx()),
+                                )
+
+                                // Top specular line on indicator
+                                val specStartX = size.width * 0.15f
+                                val specWidth = size.width * 0.70f
+                                drawRoundRect(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            specularColor,
+                                            Color.Transparent,
+                                        ),
+                                        startX = specStartX,
+                                        endX = specStartX + specWidth,
+                                    ),
+                                    topLeft = Offset(specStartX, 1.5f.dp.toPx()),
+                                    size = Size(specWidth, 1.dp.toPx()),
+                                    cornerRadius = CornerRadius(0.5f.dp.toPx()),
+                                )
+
+                                // Thin border around indicator (dark theme)
+                                if (isDarkTheme) {
+                                    drawRoundRect(
+                                        color = borderColor,
+                                        size = size,
+                                        cornerRadius = CornerRadius(IndicatorCornerRadius.toPx()),
+                                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                            width = 0.5f.dp.toPx()
+                                        ),
+                                    )
+                                }
+                            }
+                    )
+                }
 
                 // Navigation items
                 Row(
                     modifier = Modifier
-                        .matchParentSize(),
+                        .matchParentSize()
+                        .then(dampedDrag.modifier),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -653,5 +706,191 @@ private fun ChildFabItem(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
+    }
+}
+
+/**
+ * Spring-damped 1-D drag animation: tracks a continuous [value] across the tab
+ * range, the drag [velocity] (for squash/stretch), a [pressProgress] (rest -> lifted
+ * glass) and decoupled [scaleX]/[scaleY] springs.
+ */
+class DampedDragAnimation(
+    private val animationScope: kotlinx.coroutines.CoroutineScope,
+    val initialValue: Float,
+    val valueRange: ClosedRange<Float>,
+    val visibilityThreshold: Float,
+    val initialScale: Float,
+    val pressedScale: Float,
+    val onDragStarted: DampedDragAnimation.(position: androidx.compose.ui.geometry.Offset) -> Unit,
+    val onDragStopped: DampedDragAnimation.() -> Unit,
+    val onDrag: DampedDragAnimation.(size: androidx.compose.ui.unit.IntSize, dragAmount: androidx.compose.ui.geometry.Offset) -> Unit,
+) {
+    private val valueAnimationSpec = androidx.compose.animation.core.spring<Float>(1f, 1000f, visibilityThreshold)
+    private val velocityAnimationSpec = androidx.compose.animation.core.spring<Float>(0.5f, 300f, visibilityThreshold * 10f)
+    private val pressProgressAnimationSpec = androidx.compose.animation.core.spring<Float>(1f, 1000f, 0.001f)
+    private val scaleXAnimationSpec = androidx.compose.animation.core.spring<Float>(0.6f, 250f, 0.001f)
+    private val scaleYAnimationSpec = androidx.compose.animation.core.spring<Float>(0.7f, 250f, 0.001f)
+
+    private val valueAnimation = androidx.compose.animation.core.Animatable(initialValue, visibilityThreshold)
+    private val velocityAnimation = androidx.compose.animation.core.Animatable(0f, 5f)
+    private val pressProgressAnimation = androidx.compose.animation.core.Animatable(0f, 0.001f)
+    private val scaleXAnimation = androidx.compose.animation.core.Animatable(initialScale, 0.001f)
+    private val scaleYAnimation = androidx.compose.animation.core.Animatable(initialScale, 0.001f)
+
+    private val mutatorMutex = androidx.compose.foundation.MutatorMutex()
+    private val velocityTracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+
+    val value: Float get() = valueAnimation.value
+    val targetValue: Float get() = valueAnimation.targetValue
+    val pressProgress: Float get() = pressProgressAnimation.value
+    val scaleX: Float get() = scaleXAnimation.value
+    val scaleY: Float get() = scaleYAnimation.value
+    val velocity: Float get() = velocityAnimation.value
+
+    val modifier: androidx.compose.ui.Modifier =
+        androidx.compose.ui.Modifier.pointerInput(Unit) {
+            inspectDragGestures(
+                onDragStart = { down ->
+                    onDragStarted(down.position)
+                    press()
+                },
+                onDragEnd = {
+                    onDragStopped()
+                    release()
+                },
+                onDragCancel = {
+                    onDragStopped()
+                    release()
+                },
+            ) { _, dragAmount ->
+                onDrag(size, dragAmount)
+            }
+        }
+
+    fun press() {
+        velocityTracker.resetTracking()
+        animationScope.launch {
+            launch { pressProgressAnimation.animateTo(1f, pressProgressAnimationSpec) }
+            launch { scaleXAnimation.animateTo(pressedScale, scaleXAnimationSpec) }
+            launch { scaleYAnimation.animateTo(pressedScale, scaleYAnimationSpec) }
+        }
+    }
+
+    fun release() {
+        animationScope.launch {
+            androidx.compose.runtime.withFrameNanos {}
+            if (value != targetValue) {
+                val threshold = (valueRange.endInclusive - valueRange.start) * 0.025f
+                androidx.compose.runtime.snapshotFlow { valueAnimation.value }
+                    .kotlinx.coroutines.flow.filter { kotlin.math.abs(it - valueAnimation.targetValue) < threshold }
+                    .kotlinx.coroutines.flow.first()
+            }
+            launch { pressProgressAnimation.animateTo(0f, pressProgressAnimationSpec) }
+            launch { scaleXAnimation.animateTo(initialScale, scaleXAnimationSpec) }
+            launch { scaleYAnimation.animateTo(initialScale, scaleYAnimationSpec) }
+        }
+    }
+
+    fun updateValue(value: Float) {
+        val target = value.coerceIn(valueRange.start, valueRange.endInclusive)
+        animationScope.launch {
+            valueAnimation.animateTo(target, valueAnimationSpec) { updateVelocity() }
+        }
+    }
+
+    fun animateToValue(value: Float) {
+        animationScope.launch {
+            mutatorMutex.mutate {
+                press()
+                val target = value.coerceIn(valueRange.start, valueRange.endInclusive)
+                launch { valueAnimation.animateTo(target, valueAnimationSpec) }
+                if (velocity != 0f) {
+                    launch { velocityAnimation.animateTo(0f, velocityAnimationSpec) }
+                }
+                release()
+            }
+        }
+    }
+
+    private fun updateVelocity() {
+        velocityTracker.addPosition(android.os.SystemClock.uptimeMillis(), androidx.compose.ui.geometry.Offset(value, 0f))
+        val targetVelocity =
+            velocityTracker.calculateVelocity().x / (valueRange.endInclusive - valueRange.start)
+        animationScope.launch { velocityAnimation.animateTo(targetVelocity, velocityAnimationSpec) }
+    }
+}
+
+/**
+ * Observe-only drag/press recogniser. It never consumes events, so a glass surface can react
+ * to a press while the buttons it wraps still handle their own taps.
+ */
+internal suspend fun androidx.compose.ui.input.pointer.PointerInputScope.inspectDragGestures(
+    onDragStart: (down: androidx.compose.ui.input.pointer.PointerInputChange) -> Unit = {},
+    onDragEnd: (change: androidx.compose.ui.input.pointer.PointerInputChange) -> Unit = {},
+    onDragCancel: () -> Unit = {},
+    onDrag: (change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: androidx.compose.ui.geometry.Offset) -> Unit,
+) {
+    androidx.compose.foundation.gestures.awaitEachGesture {
+        androidx.compose.foundation.gestures.awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+
+        val down = androidx.compose.foundation.gestures.awaitFirstDown(requireUnconsumed = false)
+
+        onDragStart(down)
+        onDrag(down, androidx.compose.ui.geometry.Offset.Zero)
+        val upEvent =
+            drag(
+                pointerId = down.id,
+                onDrag = { onDrag(it, androidx.compose.ui.input.pointer.positionChange(it)) },
+            )
+        if (upEvent == null) {
+            onDragCancel()
+        } else {
+            onDragEnd(upEvent)
+        }
+    }
+}
+
+private suspend inline fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.drag(
+    pointerId: androidx.compose.ui.input.pointer.PointerId,
+    onDrag: (androidx.compose.ui.input.pointer.PointerInputChange) -> Unit,
+): androidx.compose.ui.input.pointer.PointerInputChange? {
+    val isPointerUp = currentEvent.changes.androidx.compose.ui.util.fastFirstOrNull { it.id == pointerId }?.pressed != true
+    if (isPointerUp) {
+        return null
+    }
+    var pointer = pointerId
+    while (true) {
+        val change = awaitDragOrUp(pointer) ?: return null
+        if (change.isConsumed) {
+            return null
+        }
+        if (androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed(change)) {
+            return change
+        }
+        onDrag(change)
+        pointer = change.id
+    }
+}
+
+private suspend inline fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.awaitDragOrUp(
+    pointerId: androidx.compose.ui.input.pointer.PointerId,
+): androidx.compose.ui.input.pointer.PointerInputChange? {
+    var pointer = pointerId
+    while (true) {
+        val event = awaitPointerEvent()
+        val dragEvent = event.changes.androidx.compose.ui.util.fastFirstOrNull { it.id == pointer } ?: return null
+        if (androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed(dragEvent)) {
+            val otherDown = event.changes.androidx.compose.ui.util.fastFirstOrNull { it.pressed }
+            if (otherDown == null) {
+                return dragEvent
+            } else {
+                pointer = otherDown.id
+            }
+        } else {
+            val hasDragged = dragEvent.previousPosition != dragEvent.position
+            if (hasDragged) {
+                return dragEvent
+            }
+        }
     }
 }
