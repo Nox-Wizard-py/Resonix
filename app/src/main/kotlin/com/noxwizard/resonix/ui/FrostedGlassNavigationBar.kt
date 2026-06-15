@@ -12,6 +12,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -233,69 +234,79 @@ fun FrostedGlassNavigationBar(
                             )
                         }
                 )
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .height(NavBarHeight)
                     .fillMaxWidth()
             ) {
-                // Sliding pill indicator (drawn behind icons)
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .drawBehind {
-                            if (itemCount == 0) return@drawBehind
-                            val slotWidth = size.width / itemCount
-                            val indicatorX =
-                                indicatorFraction * slotWidth + IndicatorHorizontalPadding.toPx()
-                            val indicatorW =
-                                slotWidth - IndicatorHorizontalPadding.toPx() * 2f
-                            val indicatorY = IndicatorVerticalPadding.toPx()
-                            val indicatorH =
-                                size.height - IndicatorVerticalPadding.toPx() * 2f
-                            val cr = CornerRadius(IndicatorCornerRadius.toPx())
+                if (itemCount > 0) {
+                    val slotWidth = maxWidth / itemCount
+                    val indicatorX = slotWidth * indicatorFraction + IndicatorHorizontalPadding
+                    val indicatorW = slotWidth - IndicatorHorizontalPadding * 2f
+                    val indicatorY = IndicatorVerticalPadding
+                    val indicatorH = maxHeight - IndicatorVerticalPadding * 2f
 
-                            // Glass gradient fill
-                            drawRoundRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(indicatorHighColor, indicatorLowColor),
-                                ),
-                                topLeft = Offset(indicatorX, indicatorY),
-                                size = Size(indicatorW, indicatorH),
-                                cornerRadius = cr,
+                    // Sliding pill indicator (glass slider)
+                    Box(
+                        modifier = Modifier
+                            .offset(x = indicatorX, y = indicatorY)
+                            .size(width = indicatorW, height = indicatorH)
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = RoundedCornerShape(IndicatorCornerRadius),
+                                ambientColor = shadowColor,
+                                spotColor = shadowColor,
                             )
-
-                            // Top specular line on indicator
-                            val specStartX = indicatorX + indicatorW * 0.15f
-                            val specWidth = indicatorW * 0.70f
-                            drawRoundRect(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        specularColor,
-                                        Color.Transparent,
-                                    ),
-                                    startX = specStartX,
-                                    endX = specStartX + specWidth,
-                                ),
-                                topLeft = Offset(specStartX, indicatorY + 1.5f.dp.toPx()),
-                                size = Size(specWidth, 1.dp.toPx()),
-                                cornerRadius = CornerRadius(0.5f.dp.toPx()),
+                            .clip(RoundedCornerShape(IndicatorCornerRadius))
+                            .liquidGlass(
+                                backdropLayer = backdropLayer,
+                                shape = RoundedCornerShape(IndicatorCornerRadius),
+                                luminanceAnimation = 0.5f,
+                                interaction = null,
+                                isDarkTheme = isDarkTheme
                             )
-
-                            // Thin border around indicator (dark theme)
-                            if (isDarkTheme) {
+                            .drawBehind {
+                                // Glass gradient fill
                                 drawRoundRect(
-                                    color = borderColor,
-                                    topLeft = Offset(indicatorX, indicatorY),
-                                    size = Size(indicatorW, indicatorH),
-                                    cornerRadius = cr,
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 0.5f.dp.toPx()
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(indicatorHighColor, indicatorLowColor),
                                     ),
+                                    size = size,
+                                    cornerRadius = CornerRadius(IndicatorCornerRadius.toPx()),
                                 )
+
+                                // Top specular line on indicator
+                                val specStartX = size.width * 0.15f
+                                val specWidth = size.width * 0.70f
+                                drawRoundRect(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            specularColor,
+                                            Color.Transparent,
+                                        ),
+                                        startX = specStartX,
+                                        endX = specStartX + specWidth,
+                                    ),
+                                    topLeft = Offset(specStartX, 1.5f.dp.toPx()),
+                                    size = Size(specWidth, 1.dp.toPx()),
+                                    cornerRadius = CornerRadius(0.5f.dp.toPx()),
+                                )
+
+                                // Thin border around indicator (dark theme)
+                                if (isDarkTheme) {
+                                    drawRoundRect(
+                                        color = borderColor,
+                                        size = size,
+                                        cornerRadius = CornerRadius(IndicatorCornerRadius.toPx()),
+                                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                            width = 0.5f.dp.toPx()
+                                        ),
+                                    )
+                                }
                             }
-                        }
-                )
+                    )
+                }
 
                 // Navigation items
                 Row(
