@@ -116,6 +116,8 @@
     <string name="frosted_glass_navbar_desc">Note : Not recommended for low end devices</string>
     <string name="frosted_glass_miniplayer">Liquid Glass mini player (Beta)</string>
     <string name="frosted_glass_miniplayer_desc">Note : Not recommended for low end devices</string>
+    <string name="disabled_by_battery_saver">Disabled by Battery Saver</string>
+    <string name="disabled_by_battery_saver_desc">Disabled while Battery Saver is active</string>
     <string name="auto_playlists">Auto playlists</string>
     <string name="show_liked_playlist">Show \"Liked\" playlist</string>
     <string name="show_downloaded_playlist">Show \"Downloaded\" playlist</string>
