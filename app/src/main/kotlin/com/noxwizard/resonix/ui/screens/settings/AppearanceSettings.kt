@@ -127,6 +127,8 @@ fun AppearanceSettings(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isBatterySaverEnabled = com.noxwizard.resonix.utils.rememberIsBatterySaverEnabled()
     val (dynamicTheme, onDynamicThemeChange) = rememberPreference(
         DynamicThemeKey,
         defaultValue = true
@@ -460,21 +462,37 @@ fun AppearanceSettings(
             onCheckedChange = onSlimNavChange
         )
 
-        SwitchPreference(
-            title = { Text(stringResource(R.string.frosted_glass_navbar)) },
-            description = stringResource(R.string.frosted_glass_navbar_desc),
-            icon = { Icon(painterResource(R.drawable.gradient), null) },
-            checked = frostedGlassNavBar,
-            onCheckedChange = onFrostedGlassNavBarChange
-        )
+        Box {
+            SwitchPreference(
+                title = { Text(stringResource(R.string.frosted_glass_navbar)) },
+                description = if (isBatterySaverEnabled) stringResource(R.string.disabled_by_battery_saver_desc) else stringResource(R.string.frosted_glass_navbar_desc),
+                icon = { Icon(painterResource(R.drawable.gradient), null) },
+                checked = frostedGlassNavBar && !isBatterySaverEnabled,
+                onCheckedChange = onFrostedGlassNavBarChange,
+                isEnabled = !isBatterySaverEnabled
+            )
+            if (isBatterySaverEnabled) {
+                Box(modifier = Modifier.matchParentSize().clickable {
+                    android.widget.Toast.makeText(context, R.string.disabled_by_battery_saver, android.widget.Toast.LENGTH_SHORT).show()
+                })
+            }
+        }
 
-        SwitchPreference(
-            title = { Text(stringResource(R.string.frosted_glass_miniplayer)) },
-            description = stringResource(R.string.frosted_glass_miniplayer_desc),
-            icon = { Icon(painterResource(R.drawable.gradient), null) },
-            checked = frostedGlassMiniPlayer,
-            onCheckedChange = onFrostedGlassMiniPlayerChange
-        )
+        Box {
+            SwitchPreference(
+                title = { Text(stringResource(R.string.frosted_glass_miniplayer)) },
+                description = if (isBatterySaverEnabled) stringResource(R.string.disabled_by_battery_saver_desc) else stringResource(R.string.frosted_glass_miniplayer_desc),
+                icon = { Icon(painterResource(R.drawable.gradient), null) },
+                checked = frostedGlassMiniPlayer && !isBatterySaverEnabled,
+                onCheckedChange = onFrostedGlassMiniPlayerChange,
+                isEnabled = !isBatterySaverEnabled
+            )
+            if (isBatterySaverEnabled) {
+                Box(modifier = Modifier.matchParentSize().clickable {
+                    android.widget.Toast.makeText(context, R.string.disabled_by_battery_saver, android.widget.Toast.LENGTH_SHORT).show()
+                })
+            }
+        }
 
         EnumListPreference(
             title = { Text(stringResource(R.string.grid_cell_size)) },
