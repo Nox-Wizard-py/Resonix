@@ -162,7 +162,9 @@ private fun NewMiniPlayer(
     var dragStartTime by remember { mutableStateOf(0L) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
     
-    val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val frostedGlassMiniPlayerRaw by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val isBatterySaverEnabled = com.noxwizard.resonix.utils.rememberIsBatterySaverEnabled()
+    val frostedGlassMiniPlayer = frostedGlassMiniPlayerRaw && !isBatterySaverEnabled
     val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
     
     val interaction = com.noxwizard.resonix.ui.effects.liquidglass.rememberGlassInteraction()
@@ -697,7 +699,9 @@ private fun LegacyMiniPlayer(
     var dragStartTime by remember { mutableStateOf(0L) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
-    val frostedGlassMiniPlayer by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val frostedGlassMiniPlayerRaw by rememberPreference(com.noxwizard.resonix.constants.FrostedGlassMiniPlayerKey, true)
+    val isBatterySaverEnabled = com.noxwizard.resonix.utils.rememberIsBatterySaverEnabled()
+    val frostedGlassMiniPlayer = frostedGlassMiniPlayerRaw && !isBatterySaverEnabled
     val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
     val isDarkTheme = if (pureBlack) true
     else !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
