@@ -385,7 +385,9 @@ fun ResonixApp(
 
             val navigationItems = remember { Screens.MainScreens }
             val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
-            val (frostedGlassNavBar) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+            val (frostedGlassNavBarRaw) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+            val isBatterySaverEnabled = com.noxwizard.resonix.utils.rememberIsBatterySaverEnabled()
+            val frostedGlassNavBar = frostedGlassNavBarRaw && !isBatterySaverEnabled
             val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
             val defaultOpenTab =
                 remember {
