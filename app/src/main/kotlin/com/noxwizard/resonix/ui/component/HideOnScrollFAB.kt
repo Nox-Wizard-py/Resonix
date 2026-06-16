@@ -34,7 +34,9 @@ fun BoxScope.HideOnScrollFAB(
     offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
-    val (frostedGlassNavBar) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val (frostedGlassNavBarRaw) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val isBatterySaverEnabled = com.noxwizard.resonix.utils.rememberIsBatterySaverEnabled()
+    val frostedGlassNavBar = frostedGlassNavBarRaw && !isBatterySaverEnabled
     val bottomPadding = if (frostedGlassNavBar) 16.dp else 84.dp
 
     AnimatedVisibility(
@@ -70,7 +72,9 @@ fun BoxScope.HideOnScrollFAB(
     offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
-    val (frostedGlassNavBar) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val (frostedGlassNavBarRaw) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val isBatterySaverEnabled = com.noxwizard.resonix.utils.rememberIsBatterySaverEnabled()
+    val frostedGlassNavBar = frostedGlassNavBarRaw && !isBatterySaverEnabled
     val bottomPadding = if (frostedGlassNavBar) 16.dp else 84.dp
 
     AnimatedVisibility(
@@ -106,7 +110,9 @@ fun BoxScope.HideOnScrollFAB(
     offsetY: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
-    val (frostedGlassNavBar) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val (frostedGlassNavBarRaw) = rememberPreference(FrostedGlassNavBarKey, defaultValue = true)
+    val isBatterySaverEnabled = com.noxwizard.resonix.utils.rememberIsBatterySaverEnabled()
+    val frostedGlassNavBar = frostedGlassNavBarRaw && !isBatterySaverEnabled
     val bottomPadding = if (frostedGlassNavBar) 16.dp else 84.dp
 
     AnimatedVisibility(
