@@ -81,7 +81,12 @@ fun ResonixTopBar(
         }
     ) {
         if (shouldShowBlurBackground) {
-            if (disableBlur) {
+            val scrollFraction = currentScrollBehavior.state.overlappedFraction
+            val targetAlpha = 0.05f + (0.50f * scrollFraction)
+            val animatedAlphaState = androidx.compose.animation.core.animateFloatAsState(targetValue = targetAlpha, label = "HeaderAlpha")
+            val animatedAlpha = animatedAlphaState.value
+
+            if (disableBlur || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -91,56 +96,52 @@ fun ResonixTopBar(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    surfaceColor.copy(alpha = 0.95f),
-                                    surfaceColor.copy(alpha = 0.85f),
-                                    surfaceColor.copy(alpha = 0.6f),
+                                    surfaceColor.copy(alpha = animatedAlpha * 1.5f),
+                                    surfaceColor.copy(alpha = animatedAlpha),
+                                    surfaceColor.copy(alpha = animatedAlpha * 0.5f),
                                     Color.Transparent
                                 )
                             )
                         )
                 )
             } else {
+                val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
+                var localPosition by remember { androidx.compose.runtime.mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(AppBarHeight + with(LocalDensity.current) {
+                        .height(AppBarHeight + 32.dp + with(LocalDensity.current) {
                             WindowInsets.systemBars.getTop(LocalDensity.current).toDp()
                         })
-                ) {
-                    // Semi-transparent surface — no GPU BlurEffect needed
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(surfaceColor.copy(alpha = 0.7f))
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.10f),
-                                        Color.White.copy(alpha = 0.03f),
-                                        Color.Transparent
-                                    ),
+                        .androidx.compose.ui.layout.onGloballyPositioned { coordinates ->
+                            localPosition = coordinates.androidx.compose.ui.layout.positionInWindow()
+                        }
+                        .graphicsLayer {
+                            compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                            alpha = animatedAlpha
+                            renderEffect = androidx.compose.ui.graphics.BlurEffect(
+                                radiusX = 14.dp.toPx(),
+                                radiusY = 14.dp.toPx(),
+                                edgeTreatment = androidx.compose.ui.graphics.TileMode.Decal
+                            )
+                        }
+                        .androidx.compose.ui.draw.drawBehind {
+                            if (backdropLayer != null) {
+                                androidx.compose.ui.graphics.drawscope.translate(-localPosition.x, -localPosition.y) {
+                                    androidx.compose.ui.graphics.layer.drawLayer(backdropLayer)
+                                }
+                            }
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Black, Color.Transparent),
                                     startY = 0f,
-                                    endY = Float.POSITIVE_INFINITY
-                                )
+                                    endY = size.height
+                                ),
+                                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
                             )
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        surfaceColor.copy(alpha = 0.3f),
-                                        surfaceColor.copy(alpha = 0.1f)
-                                    )
-                                )
-                            )
-                    )
-                }
+                        }
+                )
             }
         }
 
