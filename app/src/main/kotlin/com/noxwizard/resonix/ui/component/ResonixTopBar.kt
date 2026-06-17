@@ -147,7 +147,7 @@ fun ResonixTopBar(
                                             android.graphics.Shader.TileMode.DECAL
                                         ).asComposeRenderEffect()
                                     } else null
-                                    compositingStrategy = CompositingStrategy.Offscreen
+                                    compositingStrategy = androidx.compose.ui.graphics.layer.CompositingStrategy.Offscreen
                                 }
                                 blurLayer.record {
                                     // Draw the backdrop offset so the header region aligns
@@ -157,10 +157,10 @@ fun ResonixTopBar(
                                 }
 
                                 // Step 2: Draw the blurred layer with a vertical DstIn fade
-                                saveLayer(null, androidx.compose.ui.graphics.Paint().apply {
-                                    compositingMode = androidx.compose.ui.graphics.CompositingMode.Screen
-                                    this.alpha = 1f
-                                })
+                                drawContext.canvas.saveLayer(
+                                    androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
+                                    androidx.compose.ui.graphics.Paint()
+                                )
                                 drawLayer(blurLayer)
                                 // Surface tint over the blur
                                 drawRect(
@@ -176,7 +176,7 @@ fun ResonixTopBar(
                                     ),
                                     blendMode = BlendMode.DstIn
                                 )
-                                restore()
+                                drawContext.canvas.restore()
                             }
 
                             // Always draw the composable's own children on top
