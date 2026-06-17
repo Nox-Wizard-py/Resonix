@@ -47,12 +47,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.navigation.NavBackStackEntry
@@ -95,16 +98,10 @@ fun ResonixTopBar(
     ) {
         if (shouldShowBlurBackground) {
             val scrollFraction = currentScrollBehavior.state.overlappedFraction
-            
-            // The alpha for the entire blurred backdrop layer. Must reach 1.0 quickly to fully obscure sharp content.
-            val targetBlurAlpha = (scrollFraction * 3f).coerceIn(0f, 1f)
-            val animatedBlurAlphaState = animateFloatAsState(targetValue = targetBlurAlpha, label = "HeaderBlurAlpha")
-            val animatedBlurAlpha = animatedBlurAlphaState.value
 
-            // The alpha for the surface tint overlay.
-            val targetTintAlpha = 0.05f + (0.50f * scrollFraction)
-            val animatedTintAlphaState = animateFloatAsState(targetValue = targetTintAlpha, label = "HeaderTintAlpha")
-            val animatedTintAlpha = animatedTintAlphaState.value
+            // Tint fades in as user scrolls
+            val targetTintAlpha = (0.05f + 0.50f * scrollFraction).coerceIn(0f, 0.55f)
+            val animatedTintAlpha by animateFloatAsState(targetValue = targetTintAlpha, label = "HeaderTintAlpha")
 
             if (disableBlur || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
                 Box(
@@ -126,6 +123,8 @@ fun ResonixTopBar(
                 )
             } else {
                 val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
+                // A child layer that we record the blurred snapshot into
+                val blurLayer = rememberGraphicsLayer()
                 var localPosition by remember { mutableStateOf(Offset.Zero) }
 
                 Box(
@@ -137,37 +136,51 @@ fun ResonixTopBar(
                         .onGloballyPositioned { coordinates ->
                             localPosition = coordinates.positionInWindow()
                         }
-                        .graphicsLayer {
-                            compositingStrategy = CompositingStrategy.Offscreen
-                            alpha = animatedBlurAlpha
-                            renderEffect = BlurEffect(
-                                radiusX = 14.dp.toPx(),
-                                radiusY = 14.dp.toPx(),
-                                edgeTreatment = TileMode.Decal
-                            )
-                        }
-                        .drawBehind {
+                        .drawWithContent {
                             if (backdropLayer != null) {
-                                translate(-localPosition.x, -localPosition.y) {
-                                    drawLayer(backdropLayer)
+                                // Step 1: Record the blurred snapshot into blurLayer
+                                blurLayer.apply {
+                                    val blurRadius = 14.dp.toPx()
+                                    renderEffect = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                        android.graphics.RenderEffect.createBlurEffect(
+                                            blurRadius, blurRadius,
+                                            android.graphics.Shader.TileMode.DECAL
+                                        ).asComposeRenderEffect()
+                                    } else null
+                                    compositingStrategy = CompositingStrategy.Offscreen
                                 }
-                            }
-                            
-                            // Apply the surface tint over the blurred backdrop
-                            drawRect(
-                                color = surfaceColor.copy(alpha = animatedTintAlpha),
-                                blendMode = BlendMode.SrcOver
-                            )
-                            
-                            // Fade out the bottom edge smoothly into the content
-                            drawRect(
-                                brush = Brush.verticalGradient(
+                                blurLayer.record {
+                                    // Draw the backdrop offset so the header region aligns
+                                    translate(-localPosition.x, -localPosition.y) {
+                                        drawLayer(backdropLayer)
+                                    }
+                                }
+
+                                // Step 2: Draw the blurred layer with a vertical DstIn fade
+                                saveLayer(null, androidx.compose.ui.graphics.Paint().apply {
+                                    compositingMode = androidx.compose.ui.graphics.CompositingMode.Screen
+                                    this.alpha = 1f
+                                })
+                                drawLayer(blurLayer)
+                                // Surface tint over the blur
+                                drawRect(
+                                    color = surfaceColor.copy(alpha = animatedTintAlpha),
+                                    blendMode = BlendMode.SrcOver
+                                )
+                                // Fade out toward the bottom
+                                drawRect(
+                                    brush = Brush.verticalGradient(
                                     colors = listOf(Color.Black, Color.Transparent),
-                                    startY = 0f,
-                                    endY = size.height
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
+                                        startY = 0f,
+                                        endY = size.height
+                                    ),
+                                    blendMode = BlendMode.DstIn
+                                )
+                                restore()
+                            }
+
+                            // Always draw the composable's own children on top
+                            drawContent()
                         }
                 )
             }
