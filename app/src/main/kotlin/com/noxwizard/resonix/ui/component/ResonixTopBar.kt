@@ -95,9 +95,16 @@ fun ResonixTopBar(
     ) {
         if (shouldShowBlurBackground) {
             val scrollFraction = currentScrollBehavior.state.overlappedFraction
-            val targetAlpha = 0.05f + (0.50f * scrollFraction)
-            val animatedAlphaState = animateFloatAsState(targetValue = targetAlpha, label = "HeaderAlpha")
-            val animatedAlpha = animatedAlphaState.value
+            
+            // The alpha for the entire blurred backdrop layer. Must reach 1.0 quickly to fully obscure sharp content.
+            val targetBlurAlpha = (scrollFraction * 3f).coerceIn(0f, 1f)
+            val animatedBlurAlphaState = animateFloatAsState(targetValue = targetBlurAlpha, label = "HeaderBlurAlpha")
+            val animatedBlurAlpha = animatedBlurAlphaState.value
+
+            // The alpha for the surface tint overlay.
+            val targetTintAlpha = 0.05f + (0.50f * scrollFraction)
+            val animatedTintAlphaState = animateFloatAsState(targetValue = targetTintAlpha, label = "HeaderTintAlpha")
+            val animatedTintAlpha = animatedTintAlphaState.value
 
             if (disableBlur || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
                 Box(
@@ -109,9 +116,9 @@ fun ResonixTopBar(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    surfaceColor.copy(alpha = animatedAlpha * 1.5f),
-                                    surfaceColor.copy(alpha = animatedAlpha),
-                                    surfaceColor.copy(alpha = animatedAlpha * 0.5f),
+                                    surfaceColor.copy(alpha = animatedTintAlpha * 1.5f),
+                                    surfaceColor.copy(alpha = animatedTintAlpha),
+                                    surfaceColor.copy(alpha = animatedTintAlpha * 0.5f),
                                     Color.Transparent
                                 )
                             )
@@ -132,7 +139,7 @@ fun ResonixTopBar(
                         }
                         .graphicsLayer {
                             compositingStrategy = CompositingStrategy.Offscreen
-                            alpha = animatedAlpha
+                            alpha = animatedBlurAlpha
                             renderEffect = BlurEffect(
                                 radiusX = 14.dp.toPx(),
                                 radiusY = 14.dp.toPx(),
@@ -145,6 +152,14 @@ fun ResonixTopBar(
                                     drawLayer(backdropLayer)
                                 }
                             }
+                            
+                            // Apply the surface tint over the blurred backdrop
+                            drawRect(
+                                color = surfaceColor.copy(alpha = animatedTintAlpha),
+                                blendMode = BlendMode.SrcOver
+                            )
+                            
+                            // Fade out the bottom edge smoothly into the content
                             drawRect(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(Color.Black, Color.Transparent),
