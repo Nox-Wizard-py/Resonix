@@ -42,6 +42,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -83,7 +96,7 @@ fun ResonixTopBar(
         if (shouldShowBlurBackground) {
             val scrollFraction = currentScrollBehavior.state.overlappedFraction
             val targetAlpha = 0.05f + (0.50f * scrollFraction)
-            val animatedAlphaState = androidx.compose.animation.core.animateFloatAsState(targetValue = targetAlpha, label = "HeaderAlpha")
+            val animatedAlphaState = animateFloatAsState(targetValue = targetAlpha, label = "HeaderAlpha")
             val animatedAlpha = animatedAlphaState.value
 
             if (disableBlur || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
@@ -106,7 +119,7 @@ fun ResonixTopBar(
                 )
             } else {
                 val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
-                var localPosition by remember { androidx.compose.runtime.mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                var localPosition by remember { mutableStateOf(Offset.Zero) }
 
                 Box(
                     modifier = Modifier
@@ -114,22 +127,22 @@ fun ResonixTopBar(
                         .height(AppBarHeight + 32.dp + with(LocalDensity.current) {
                             WindowInsets.systemBars.getTop(LocalDensity.current).toDp()
                         })
-                        .androidx.compose.ui.layout.onGloballyPositioned { coordinates ->
-                            localPosition = coordinates.androidx.compose.ui.layout.positionInWindow()
+                        .onGloballyPositioned { coordinates ->
+                            localPosition = coordinates.positionInWindow()
                         }
                         .graphicsLayer {
-                            compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                            compositingStrategy = CompositingStrategy.Offscreen
                             alpha = animatedAlpha
-                            renderEffect = androidx.compose.ui.graphics.BlurEffect(
+                            renderEffect = BlurEffect(
                                 radiusX = 14.dp.toPx(),
                                 radiusY = 14.dp.toPx(),
-                                edgeTreatment = androidx.compose.ui.graphics.TileMode.Decal
+                                edgeTreatment = TileMode.Decal
                             )
                         }
-                        .androidx.compose.ui.draw.drawBehind {
+                        .drawBehind {
                             if (backdropLayer != null) {
-                                androidx.compose.ui.graphics.drawscope.translate(-localPosition.x, -localPosition.y) {
-                                    androidx.compose.ui.graphics.layer.drawLayer(backdropLayer)
+                                translate(-localPosition.x, -localPosition.y) {
+                                    drawLayer(backdropLayer)
                                 }
                             }
                             drawRect(
@@ -138,7 +151,7 @@ fun ResonixTopBar(
                                     startY = 0f,
                                     endY = size.height
                                 ),
-                                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+                                blendMode = BlendMode.DstIn
                             )
                         }
                 )
