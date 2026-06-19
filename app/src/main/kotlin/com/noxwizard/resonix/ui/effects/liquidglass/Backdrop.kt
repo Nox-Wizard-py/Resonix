@@ -20,6 +20,11 @@ val LocalBackdropGraphicsLayer: ProvidableCompositionLocal<GraphicsLayer?> = sta
 @Composable
 fun Modifier.provideBackdropLayer(layer: GraphicsLayer): Modifier {
     return this.drawWithContent {
+        // Force Offscreen compositing before recording.
+        // This rasterizes all child RenderNodes (including hardware-accelerated
+        // text glyphs) into a flat bitmap. Without this, text nodes bypass
+        // the RenderEffect blur pipeline when the layer is sampled by glass elements.
+        layer.compositingStrategy = androidx.compose.ui.graphics.layer.CompositingStrategy.Offscreen
         layer.record {
             this@drawWithContent.drawContent()
         }
