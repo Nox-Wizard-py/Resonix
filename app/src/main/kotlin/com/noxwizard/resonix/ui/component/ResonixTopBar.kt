@@ -47,15 +47,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.navigation.NavBackStackEntry
@@ -123,64 +120,58 @@ fun ResonixTopBar(
                 )
             } else {
                 val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
-                // A child layer that we record the blurred snapshot into
-                val blurLayer = rememberGraphicsLayer()
                 var localPosition by remember { mutableStateOf(Offset.Zero) }
+                val blurRadius = 20.dp
 
+                // Layer 1: The blurred backdrop — same pattern as LiquidGlassModifier.
+                // graphicsLayer.renderEffect blurs everything drawn into this layer,
+                // including what drawBehind paints (the backdrop snapshot).
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(AppBarHeight + 32.dp + with(LocalDensity.current) {
+                        .height(AppBarHeight + 40.dp + with(LocalDensity.current) {
                             WindowInsets.systemBars.getTop(LocalDensity.current).toDp()
                         })
                         .onGloballyPositioned { coordinates ->
                             localPosition = coordinates.positionInWindow()
                         }
-                        .drawWithContent {
+                        .graphicsLayer {
+                            compositingStrategy = CompositingStrategy.Offscreen
+                            renderEffect = android.graphics.RenderEffect.createBlurEffect(
+                                blurRadius.toPx(), blurRadius.toPx(),
+                                android.graphics.Shader.TileMode.DECAL
+                            ).asComposeRenderEffect()
+                        }
+                        .drawBehind {
                             if (backdropLayer != null) {
-                                // Step 1: Record the blurred snapshot into blurLayer
-                                blurLayer.apply {
-                                    val blurRadius = 14.dp.toPx()
-                                    renderEffect = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                                        android.graphics.RenderEffect.createBlurEffect(
-                                            blurRadius, blurRadius,
-                                            android.graphics.Shader.TileMode.DECAL
-                                        ).asComposeRenderEffect()
-                                    } else null
-                                    compositingStrategy = androidx.compose.ui.graphics.layer.CompositingStrategy.Offscreen
+                                translate(-localPosition.x, -localPosition.y) {
+                                    drawLayer(backdropLayer)
                                 }
-                                blurLayer.record {
-                                    // Draw the backdrop offset so the header region aligns
-                                    translate(-localPosition.x, -localPosition.y) {
-                                        drawLayer(backdropLayer)
-                                    }
-                                }
-
-                                // Step 2: Draw the blurred layer with a vertical DstIn fade
-                                drawContext.canvas.saveLayer(
-                                    androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
-                                    androidx.compose.ui.graphics.Paint()
-                                )
-                                drawLayer(blurLayer)
-                                // Surface tint over the blur
-                                drawRect(
-                                    color = surfaceColor.copy(alpha = animatedTintAlpha),
-                                    blendMode = BlendMode.SrcOver
-                                )
-                                // Fade out toward the bottom
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Black, Color.Transparent),
-                                        startY = 0f,
-                                        endY = size.height
-                                    ),
-                                    blendMode = BlendMode.DstIn
-                                )
-                                drawContext.canvas.restore()
                             }
+                        }
+                )
 
-                            // Always draw the composable's own children on top
-                            drawContent()
+                // Layer 2: Gradient mask that fades the blur out toward the bottom.
+                // This must be a SEPARATE composable — we can't DstIn-mask inside the
+                // blurred layer itself or it would erase the blur content.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(AppBarHeight + 40.dp + with(LocalDensity.current) {
+                            WindowInsets.systemBars.getTop(LocalDensity.current).toDp()
+                        })
+                        .drawBehind {
+                            // Fade the blur region out toward the bottom
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        surfaceColor.copy(alpha = animatedTintAlpha * 0.3f),
+                                        Color.Transparent
+                                    ),
+                                    startY = 0f,
+                                    endY = size.height
+                                )
+                            )
                         }
                 )
             }
