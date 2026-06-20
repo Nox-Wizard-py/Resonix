@@ -207,7 +207,9 @@ import androidx.compose.animation.core.tween
 import java.net.URLDecoder
 import java.net.URLEncoder
 import kotlin.time.Duration.Companion.days
-import com.noxwizard.resonix.ui.effects.liquidglass.provideBackdropLayer
+import com.noxwizard.resonix.ui.effects.liquidglass.LocalLayerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -676,7 +678,7 @@ fun ResonixApp(
 
             var showAccountDialog by remember { mutableStateOf(false) }
 
-            val backdropLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+            val backdropLayer = rememberLayerBackdrop()
 
             CompositionLocalProvider(
                 LocalDatabase provides database,
@@ -689,7 +691,7 @@ fun ResonixApp(
                 com.noxwizard.resonix.ui.component.LocalBottomSheetPageState provides bottomSheetPageState,
                 com.noxwizard.resonix.ui.component.LocalMenuState provides menuState,
                 LocalCategoryAccentCallback provides { color -> categoryAccentOverride = color },
-                com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer provides backdropLayer,
+                com.noxwizard.resonix.ui.effects.liquidglass.LocalLayerBackdrop provides backdropLayer,
             ) {
                 var isUtilityFabExpanded by rememberSaveable { mutableStateOf(false) }
                 val utilityFabBlurRadius by animateDpAsState(
@@ -874,7 +876,7 @@ fun ResonixApp(
                             }
                         },
                         modifier = Modifier
-                            .provideBackdropLayer(backdropLayer)
+                            .layerBackdrop(backdropLayer)
                             .nestedScroll(
                                 if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
                                 navBackStackEntry?.destination?.route?.startsWith("search/") == true
