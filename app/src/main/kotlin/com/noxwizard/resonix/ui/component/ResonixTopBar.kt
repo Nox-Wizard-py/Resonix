@@ -59,6 +59,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.kyant.backdrop.drawPlainBackdrop
+import com.kyant.backdrop.effects.blur
 import com.noxwizard.resonix.BuildConfig
 import com.noxwizard.resonix.R
 import com.noxwizard.resonix.constants.AppBarHeight
@@ -133,7 +134,7 @@ fun ResonixTopBar(
                             backdrop = backdropLayer ?: com.kyant.backdrop.backdrops.emptyBackdrop(),
                             shape = { androidx.compose.ui.graphics.RectangleShape },
                             effects = {
-                                com.kyant.backdrop.effects.blur(blurRadius)
+                                blur(blurRadius)
                             },
                             onDrawSurface = {
                                 drawRect(
