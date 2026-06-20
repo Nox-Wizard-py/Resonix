@@ -36,6 +36,7 @@ include(":shazamkit")
 include(":resonix-sync")
 include(":paxsenix")
 include(":lyrics-benchmark")
+include(":kyant-backdrop")
 
 // Use a local copy of NewPipe Extractor by uncommenting the lines below.
 // We assume, that Resonix and NewPipe Extractor have the same parent directory.
