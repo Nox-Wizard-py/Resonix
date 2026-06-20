@@ -207,7 +207,7 @@ fun FrostedGlassNavigationBar(
     val shadowColor = if (isDarkTheme) Color.Black.copy(alpha = 0.50f)
     else Color.Black.copy(alpha = 0.12f)
     
-    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalLayerBackdrop.current
 
     Box {
         BottomSheetPlayer(
@@ -513,7 +513,7 @@ fun GlassUtilityFab(
     modifier: Modifier = Modifier,
     useGlassTheme: Boolean = true
 ) {
-    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
+    val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalLayerBackdrop.current
     val iconRotation by animateFloatAsState(
         targetValue = if (isExpanded) 45f else 0f,
         animationSpec = spring(
