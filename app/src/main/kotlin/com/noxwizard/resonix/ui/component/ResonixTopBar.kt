@@ -58,6 +58,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.kyant.backdrop.drawPlainBackdrop
 import com.noxwizard.resonix.BuildConfig
 import com.noxwizard.resonix.R
 import com.noxwizard.resonix.constants.AppBarHeight
@@ -119,60 +120,34 @@ fun ResonixTopBar(
                         )
                 )
             } else {
-                val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalBackdropGraphicsLayer.current
-                var localPosition by remember { mutableStateOf(Offset.Zero) }
-                val blurRadius = 20.dp
-
-                // Layer 1: The blurred backdrop — same pattern as LiquidGlassModifier.
-                // graphicsLayer.renderEffect blurs everything drawn into this layer,
-                // including what drawBehind paints (the backdrop snapshot).
+                val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalLayerBackdrop.current
+                val blurRadius = 20f
+                
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(AppBarHeight + 40.dp + with(LocalDensity.current) {
                             WindowInsets.systemBars.getTop(LocalDensity.current).toDp()
                         })
-                        .onGloballyPositioned { coordinates ->
-                            localPosition = coordinates.positionInWindow()
-                        }
-                        .graphicsLayer {
-                            compositingStrategy = CompositingStrategy.Offscreen
-                            renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                                blurRadius.toPx(), blurRadius.toPx(),
-                                android.graphics.Shader.TileMode.DECAL
-                            ).asComposeRenderEffect()
-                        }
-                        .drawBehind {
-                            if (backdropLayer != null) {
-                                translate(-localPosition.x, -localPosition.y) {
-                                    drawLayer(backdropLayer)
-                                }
-                            }
-                        }
-                )
-
-                // Layer 2: Gradient mask that fades the blur out toward the bottom.
-                // This must be a SEPARATE composable — we can't DstIn-mask inside the
-                // blurred layer itself or it would erase the blur content.
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(AppBarHeight + 40.dp + with(LocalDensity.current) {
-                            WindowInsets.systemBars.getTop(LocalDensity.current).toDp()
-                        })
-                        .drawBehind {
-                            // Fade the blur region out toward the bottom
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        surfaceColor.copy(alpha = animatedTintAlpha * 0.3f),
-                                        Color.Transparent
-                                    ),
-                                    startY = 0f,
-                                    endY = size.height
+                        .drawPlainBackdrop(
+                            backdrop = backdropLayer ?: com.kyant.backdrop.backdrops.emptyBackdrop(),
+                            shape = { androidx.compose.ui.graphics.RectangleShape },
+                            effects = {
+                                com.kyant.backdrop.effects.blur(blurRadius)
+                            },
+                            onDrawSurface = {
+                                drawRect(
+                                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                        colors = listOf(
+                                            surfaceColor.copy(alpha = animatedTintAlpha * 0.3f),
+                                            androidx.compose.ui.graphics.Color.Transparent
+                                        ),
+                                        startY = 0f,
+                                        endY = size.height
+                                    )
                                 )
-                            )
-                        }
+                            }
+                        )
                 )
             }
         }
