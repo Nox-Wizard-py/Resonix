@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -179,7 +179,7 @@ fun AddToPlaylistDialog(
                     }
                 ) {
                     if (isAddingToPlaylist) {
-                        CircularProgressIndicator(
+                        ResonixLoadingIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp
                         )
@@ -255,5 +255,6 @@ fun AddToPlaylistDialog(
         }
     }
 }
+
 
 
