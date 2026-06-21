@@ -36,7 +36,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -880,7 +880,7 @@ private fun PlaylistSelectionDialog(onDismiss: () -> Unit) {
                         .height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(
+                    ResonixLoadingIndicator(
                         modifier = Modifier.size(48.dp),
                         strokeWidth = 3.dp,
                         color = MaterialTheme.colorScheme.primary
@@ -952,6 +952,7 @@ private fun PlaylistSelectionDialog(onDismiss: () -> Unit) {
         }
     )
 }
+
 
 
 
