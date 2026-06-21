@@ -98,8 +98,8 @@ fun ResonixTopBar(
         if (shouldShowBlurBackground) {
             val scrollFraction = currentScrollBehavior.state.overlappedFraction
 
-            // Tint fades in as user scrolls
-            val targetTintAlpha = (0.05f + 0.50f * scrollFraction).coerceIn(0f, 0.55f)
+            // Tint fades in as user scrolls - opacity reduced by 50%+ for a subtle effect
+            val targetTintAlpha = (0.02f + 0.20f * scrollFraction).coerceIn(0f, 0.25f)
             val animatedTintAlpha by animateFloatAsState(targetValue = targetTintAlpha, label = "HeaderTintAlpha")
 
             if (disableBlur || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
@@ -122,14 +122,31 @@ fun ResonixTopBar(
                 )
             } else {
                 val backdropLayer = com.noxwizard.resonix.ui.effects.liquidglass.LocalLayerBackdrop.current
-                val blurRadius = 20f
+                val blurRadius = 40f // Slightly higher blur radius for a stronger glass effect
                 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(AppBarHeight + 40.dp + with(LocalDensity.current) {
+                        .height(AppBarHeight + 24.dp + with(LocalDensity.current) {
                             WindowInsets.systemBars.getTop(LocalDensity.current).toDp()
                         })
+                        // Use offscreen compositing to allow the DstIn blend mode to mask the entire blurred layer
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            // Gradient mask to fade out the blur smoothly at the bottom
+                            drawRect(
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        androidx.compose.ui.graphics.Color.Black,
+                                        androidx.compose.ui.graphics.Color.Transparent
+                                    ),
+                                    startY = size.height - 24.dp.toPx(),
+                                    endY = size.height
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
                         .drawPlainBackdrop(
                             backdrop = backdropLayer ?: com.kyant.backdrop.backdrops.emptyBackdrop(),
                             shape = { androidx.compose.ui.graphics.RectangleShape },
@@ -137,14 +154,15 @@ fun ResonixTopBar(
                                 blur(blurRadius)
                             },
                             onDrawSurface = {
+                                // Subtle tint to give depth, completely transparent at the bottom
                                 drawRect(
                                     brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                         colors = listOf(
-                                            surfaceColor.copy(alpha = animatedTintAlpha * 0.3f),
+                                            surfaceColor.copy(alpha = animatedTintAlpha),
                                             androidx.compose.ui.graphics.Color.Transparent
                                         ),
                                         startY = 0f,
-                                        endY = size.height
+                                        endY = size.height - 24.dp.toPx()
                                     )
                                 )
                             }
