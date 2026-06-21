@@ -1,6 +1,6 @@
 package com.noxwizard.resonix.ui.menu
 
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHostState
@@ -55,7 +55,7 @@ fun ImportPlaylistDialog(
             onDismiss = onDismiss,
             extraContent = {
                 if (isImporting) {
-                    CircularProgressIndicator()
+                    ResonixLoadingIndicator()
                 }
             },
             onDone = { finalName ->
@@ -204,5 +204,6 @@ fun ImportPlaylistDialog(
         )
     }
 }
+
 
 
