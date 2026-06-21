@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -158,7 +158,7 @@ fun ShazamResultSheet(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         if (isLoading) {
-                            CircularProgressIndicator(
+                            ResonixLoadingIndicator(
                                 modifier = Modifier.size(20.dp),
                                 color = LocalContentColor.current,
                                 strokeWidth = 2.dp
@@ -180,3 +180,4 @@ fun ShazamResultSheet(
         }
     }
 }
+
