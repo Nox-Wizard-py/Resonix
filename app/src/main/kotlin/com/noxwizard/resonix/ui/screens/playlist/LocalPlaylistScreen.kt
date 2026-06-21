@@ -30,7 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -894,7 +894,7 @@ fun LocalPlaylistScreen(
                                                     )
                                                 }
                                                 Download.STATE_DOWNLOADING -> {
-                                                    CircularProgressIndicator(
+                                                    ResonixLoadingIndicator(
                                                         strokeWidth = 2.dp,
                                                         modifier = Modifier.size(24.dp),
                                                         color = MaterialTheme.colorScheme.primary
@@ -1517,6 +1517,7 @@ private fun MetadataChip(
         }
     }
 }
+
 
 
 
