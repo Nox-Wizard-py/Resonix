@@ -22,7 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -192,7 +192,7 @@ fun UpdateScreen(
             enabled = !isChecking,
         ) {
             if (isChecking) {
-                CircularProgressIndicator(
+                ResonixLoadingIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onPrimary,
@@ -362,3 +362,4 @@ fun UpdateScreen(
         scrollBehavior = scrollBehavior,
     )
 }
+
