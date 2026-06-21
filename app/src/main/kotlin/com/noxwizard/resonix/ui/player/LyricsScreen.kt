@@ -31,7 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.ripple
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -914,7 +914,7 @@ fun LyricsScreen(
                                     modifier = Modifier.size(56.dp)
                                 ) {
                                     if (isLoading) {
-                                        CircularProgressIndicator(
+                                        ResonixLoadingIndicator(
                                             modifier = Modifier.size(36.dp),
                                             color = textBackgroundColor,
                                             strokeWidth = 3.dp
@@ -1332,7 +1332,7 @@ fun LyricsScreen(
                                 modifier = Modifier.size(56.dp) // Slightly smaller but still prominent
                             ) {
                                 if (isLoading) {
-                                    CircularProgressIndicator(
+                                    ResonixLoadingIndicator(
                                         modifier = Modifier.size(36.dp),
                                         color = textBackgroundColor,
                                         strokeWidth = 3.dp
@@ -1424,6 +1424,7 @@ fun LyricsScreen(
         }
     }
 }
+
 
 
 
