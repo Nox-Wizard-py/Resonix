@@ -678,7 +678,16 @@ fun ResonixApp(
 
             var showAccountDialog by remember { mutableStateOf(false) }
 
-            val backdropLayer = rememberLayerBackdrop()
+            val backdropLayer = rememberLayerBackdrop {
+                // ⚠️ CRITICAL: Fill with opaque black BEFORE drawContent().
+                // This ensures ALL Compose UI — including hardware-accelerated Text glyphs —
+                // is composited onto an opaque surface in the captured GraphicsLayer snapshot.
+                // Without this base, Text renders into a transparent RenderNode that is drawn
+                // AFTER the layer is recorded, so it never participates in blur/refraction.
+                // This is the exact pattern used by SimpMusic's rememberBackdrop().
+                drawRect(androidx.compose.ui.graphics.Color.Black)
+                drawContent()
+            }
 
             CompositionLocalProvider(
                 LocalDatabase provides database,
