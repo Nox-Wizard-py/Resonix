@@ -292,7 +292,7 @@ fun DiscordSettings(
         isEnabled = discordRPC,
         trailingContent = {
            if (isRefreshing) {
-                CircularProgressIndicator(
+                ResonixLoadingIndicator(
                 modifier = Modifier.size(28.dp),
                 strokeWidth = 2.dp
             )
@@ -1156,5 +1156,6 @@ fun SongProgressBar(
         }
     }
 }
+
 
 
