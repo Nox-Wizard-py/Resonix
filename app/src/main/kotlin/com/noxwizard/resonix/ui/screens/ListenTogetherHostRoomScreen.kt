@@ -100,7 +100,7 @@ fun ListenTogetherHostRoomScreen(
                     }
                 }
             } else {
-                CircularProgressIndicator()
+                ResonixLoadingIndicator()
             }
         }
         return
@@ -938,7 +938,7 @@ fun QrShareDialog(
                                 contentDescription = "QR Code",
                                 modifier = Modifier.fillMaxSize()
                             )
-                        } ?: androidx.compose.material3.CircularProgressIndicator()
+                        } ?: com.noxwizard.resonix.ui.component.ResonixLoadingIndicator()
                     }
                 }
                 
@@ -1006,3 +1006,4 @@ fun QrShareDialog(
         }
     }
 }
+
