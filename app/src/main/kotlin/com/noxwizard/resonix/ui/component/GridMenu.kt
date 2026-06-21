@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -131,7 +131,7 @@ fun LazyGridScope.DownloadGridMenu(
         Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
             GridMenuItem(
                 icon = {
-                    CircularProgressIndicator(
+                    ResonixLoadingIndicator(
                         modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp
                     )
@@ -192,5 +192,6 @@ fun LazyGridScope.SleepTimerGridMenu(
         }
     }
 }
+
 
 
