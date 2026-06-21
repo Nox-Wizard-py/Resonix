@@ -23,7 +23,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.CircularProgressIndicator
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.ListItem
 import androidx.compose.runtime.Composable
@@ -563,7 +563,7 @@ fun YouTubePlaylistMenu(
                         ListItem(
                             headlineContent = { Text(text = stringResource(R.string.downloading)) },
                             leadingContent = {
-                                CircularProgressIndicator(
+                                ResonixLoadingIndicator(
                                     modifier = Modifier.size(24.dp),
                                     strokeWidth = 2.dp
                                 )
@@ -640,5 +640,6 @@ fun YouTubePlaylistMenu(
         }
     }
 }
+
 
 
