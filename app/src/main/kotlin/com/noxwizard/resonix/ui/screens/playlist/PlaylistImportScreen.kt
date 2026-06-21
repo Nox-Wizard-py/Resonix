@@ -146,7 +146,7 @@ fun PlaylistImportScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         if (isWorking) {
-                            CircularProgressIndicator(
+                            ResonixLoadingIndicator(
                                 modifier = Modifier.size(20.dp),
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 strokeWidth = 2.dp
@@ -561,3 +561,4 @@ private fun SaveDialog(
         }
     )
 }
+
