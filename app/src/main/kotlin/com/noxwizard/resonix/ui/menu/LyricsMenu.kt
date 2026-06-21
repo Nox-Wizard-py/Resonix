@@ -298,7 +298,7 @@ fun LyricsMenu(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        CircularProgressIndicator()
+                        ResonixLoadingIndicator()
                     }
                 }
             }
@@ -402,7 +402,7 @@ fun LyricsMenu(
                     }
                     Spacer(Modifier.width(8.dp))
                     if (isTranslating) {
-                        CircularProgressIndicator(
+                        ResonixLoadingIndicator(
                         modifier = Modifier
                         .size(20.dp)
                         .align(Alignment.CenterVertically),
@@ -599,5 +599,6 @@ fun LyricsMenu(
 
     }
 }
+
 
 
