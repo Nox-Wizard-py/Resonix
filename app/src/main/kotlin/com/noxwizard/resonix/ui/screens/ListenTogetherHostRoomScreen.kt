@@ -1,4 +1,6 @@
 package com.noxwizard.resonix.ui.screens
+
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -1006,4 +1008,5 @@ fun QrShareDialog(
         }
     }
 }
+
 

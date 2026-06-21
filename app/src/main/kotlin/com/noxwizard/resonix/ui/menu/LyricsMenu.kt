@@ -1,5 +1,7 @@
 package com.noxwizard.resonix.ui.menu
 
+import com.noxwizard.resonix.ui.component.ResonixLoadingIndicator
+
 import android.app.SearchManager
 import android.content.Intent
 import android.widget.Toast
@@ -599,6 +601,7 @@ fun LyricsMenu(
 
     }
 }
+
 
 
 

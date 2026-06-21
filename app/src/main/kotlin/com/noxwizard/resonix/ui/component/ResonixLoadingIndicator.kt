@@ -19,10 +19,12 @@ enum class ResonixLoadingIndicatorSize(val dp: Dp) {
 @Composable
 fun ResonixLoadingIndicator(
     modifier: Modifier = Modifier,
-    size: ResonixLoadingIndicatorSize = ResonixLoadingIndicatorSize.Medium
+    size: ResonixLoadingIndicatorSize = ResonixLoadingIndicatorSize.Medium,
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+    strokeWidth: Dp = 4.dp // Ignored, legacy compatibility
 ) {
     LoadingIndicator(
         modifier = modifier.size(size.dp),
-        color = MaterialTheme.colorScheme.primary
+        color = color
     )
 }
