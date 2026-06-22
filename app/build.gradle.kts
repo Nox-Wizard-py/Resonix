@@ -171,6 +171,27 @@ composeCompiler {
     stabilityConfigurationFiles.add(project.layout.projectDirectory.file("compose_stability.conf"))
 }
 
+configurations.all {
+    resolutionStrategy {
+        // Force Compose to 1.10.0-rc01 so material3-alpha22 doesn't pull in
+        // Compose 1.12 which requires compileSdk 37 / AGP 9.1.0
+        val composeVersion = "1.10.0-rc01"
+        force("androidx.compose.ui:ui:$composeVersion")
+        force("androidx.compose.ui:ui-graphics:$composeVersion")
+        force("androidx.compose.ui:ui-text:$composeVersion")
+        force("androidx.compose.ui:ui-tooling:$composeVersion")
+        force("androidx.compose.ui:ui-tooling-data:$composeVersion")
+        force("androidx.compose.foundation:foundation:$composeVersion")
+        force("androidx.compose.foundation:foundation-layout:$composeVersion")
+        force("androidx.compose.animation:animation:$composeVersion")
+        force("androidx.compose.animation:animation-core:$composeVersion")
+        force("androidx.compose.animation:animation-graphics:$composeVersion")
+        force("androidx.compose.runtime:runtime:$composeVersion")
+        force("androidx.compose.runtime:runtime-saveable:$composeVersion")
+        force("androidx.compose.material:material-ripple:$composeVersion")
+    }
+}
+
 dependencies {
     implementation(project(":kyant-backdrop"))
     implementation(libs.guava)
